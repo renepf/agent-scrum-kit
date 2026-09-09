@@ -5,6 +5,7 @@ CASE_HOST="claude-code"
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 
 ANTWORT="$(live_claude 'Lies AGENTS.md und adapters/hermes/README.md. Frage: mit welchem Befehl startet man eine Hermes-Session fuer die Rolle engineer-a? Antworte in genau einer Zeile.')"
+live_guard "$ANTWORT"
 
 fehler=""
 case "$ANTWORT" in *UNKNOWN*) ;; *) fehler="$fehler kein-UNKNOWN" ;; esac

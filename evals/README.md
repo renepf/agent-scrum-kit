@@ -7,8 +7,18 @@ evals/run.sh --case <name>   # genau einen Fall
 evals/run.sh --list          # auflisten, nichts ausfuehren
 ```
 
-Jeder Fall druckt bestanden oder durchgefallen **mit dem beobachteten Wert**. Ein Fall, der
-nur bei einem bestimmten Host laeuft, wird als `[host-gebunden: <host>]` markiert.
+Jeder Fall druckt sein Urteil **mit dem beobachteten Wert**. Ein Fall, der nur bei einem
+bestimmten Host laeuft, wird als `[host-gebunden: <host>]` markiert.
+
+| Urteil | Bedeutung | Exitcode der Suite |
+|---|---|---|
+| `PASS` | bestanden | |
+| `FAIL` | durchgefallen | 1 |
+| `BLOCK` | der Host konnte nicht antworten: Kontingent erschoepft, API-Fehler, leere Antwort | 2 |
+| `SKIP` | live-Fall ohne `--live` | |
+
+`BLOCK` ist **kein** Urteil ueber die Rolle. Ein fehlgeschlagener Aufruf ist ein Fehlschlag,
+kein Ergebnis — die Suite leitet daraus keinen Zustand ab, sie sagt "erneut laufen lassen".
 
 ## Die Familien
 

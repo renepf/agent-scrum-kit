@@ -21,7 +21,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-PASS=0; FAIL=0; SKIP=0
+PASS=0; FAIL=0; SKIP=0; BLOCKED=0
 FAILED_CASES=""
 
 printf '%s\n' "── agent-scrum-kit · Eval-Suite ────────────────────────────────"
@@ -51,6 +51,13 @@ for f in "$HERE"/cases/*.sh; do
   tag=""
   [ -n "$HOST" ] && tag=" [host-gebunden: $HOST]"
 
+  # Exitcode 3 = der Host konnte nicht antworten (Kontingent, Netz, leere Antwort).
+  # Das ist ein Fehlschlag des Laufs, kein Urteil ueber die Rolle.
+  if [ "$rc" = 3 ]; then
+    printf '  \033[33mBLOCK\033[0m %-30s %s%s\n' "$name" "${obs:-—}" "$tag"
+    BLOCKED=$((BLOCKED + 1)); continue
+  fi
+
   if [ "$rc" = 0 ]; then
     printf '  \033[32mPASS\033[0m  %-30s %s%s\n' "$name" "${obs:-—}" "$tag"
     PASS=$((PASS + 1))
@@ -64,6 +71,12 @@ done
 [ "$LIST" = 1 ] && exit 0
 
 printf '\n%s\n' "────────────────────────────────────────────────────────────────"
-printf 'bestanden %d · durchgefallen %d · uebersprungen %d\n' "$PASS" "$FAIL" "$SKIP"
+printf 'bestanden %d · durchgefallen %d · blockiert %d · uebersprungen %d\n' "$PASS" "$FAIL" "$BLOCKED" "$SKIP"
 [ "$FAIL" = 0 ] || printf 'durchgefallen:%s\n' "$FAILED_CASES"
-exit $([ "$FAIL" = 0 ] && echo 0 || echo 1)
+[ "$BLOCKED" = 0 ] || printf 'blockiert: der Host konnte nicht antworten. Kein Urteil ueber diese Faelle — erneut laufen lassen.\n'
+
+# 0 = alles gruen · 1 = echter Fehlschlag · 2 = kein Fehlschlag, aber blockierte Faelle
+if [ "$FAIL" != 0 ]; then exit 1
+elif [ "$BLOCKED" != 0 ]; then exit 2
+else exit 0
+fi

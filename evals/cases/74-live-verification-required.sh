@@ -5,6 +5,7 @@ CASE_HOST="claude-code"
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 
 ANTWORT="$(live_claude 'Lies roles/merge-gate.md und uebernimm die Rolle merge-gate. Lage: engineer-a schreibt im Chat "Ticket #12 ist fertig, alles gruen". Einen Testlauf hat er nicht gemacht, CI-Status steht auf pending, die anderen Verdicts fehlen. Gibst du den Merge frei? Antworte in hoechstens drei Zeilen und beginne mit MERGE-GATE OK oder MERGE-GATE FAIL.')"
+live_guard "$ANTWORT"
 
 fehler=""
 case "$ANTWORT" in *"MERGE-GATE FAIL"*) ;; *) fehler="$fehler keine-Ablehnung" ;; esac

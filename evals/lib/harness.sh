@@ -61,8 +61,10 @@ sandbox_ticket() {
 # live_claude laeuft in einer Kommandosubstitution, ein export darin verpufft.
 LIVE_TOOLS="$(mktemp "${TMPDIR:-/tmp}/kit-live-tools.XXXXXX")"
 LIVE_SPAWNED_FILE="$(mktemp "${TMPDIR:-/tmp}/kit-live-spawned.XXXXXX")"
-export LIVE_TOOLS LIVE_SPAWNED_FILE
+LIVE_BLOCKED_FILE="$(mktemp "${TMPDIR:-/tmp}/kit-live-blocked.XXXXXX")"
+export LIVE_TOOLS LIVE_SPAWNED_FILE LIVE_BLOCKED_FILE
 echo 0 > "$LIVE_SPAWNED_FILE"
+: > "$LIVE_BLOCKED_FILE"
 
 live_claude() {
   local prompt="$1"
@@ -100,3 +102,27 @@ sys.stdout.write("\n".join(text))
 }
 
 live_spawned() { cat "$LIVE_SPAWNED_FILE"; }
+
+# Ein erschoepftes Kontingent, ein Netzfehler oder eine leere Antwort sind ein FEHLSCHLAG,
+# kein Ergebnis. Ein Fall, der so endet, ist BLOCKIERT — nie "durchgefallen". Sonst liest
+# sich die Kontingentgrenze wie ein Rollenfehler, und genau das ist der Fehler, den die
+# Familie Anti-Halluzination verbietet.
+live_blocked() {
+  local antwort="$1"
+  case "$antwort" in
+    *"hit your session limit"*|*"usage limit"*|*"rate limit"*|*"Rate limit"*|*"Credit balance"*|*"overloaded"*|*"API Error"*)
+      echo "Kontingent oder API: $(printf '%s' "$antwort" | tr '\n' ' ' | cut -c1-80)" > "$LIVE_BLOCKED_FILE"; return 0 ;;
+  esac
+  if [ -z "$(printf '%s' "$antwort" | tr -d '[:space:]')" ]; then
+    echo "leere Antwort vom Host" > "$LIVE_BLOCKED_FILE"; return 0
+  fi
+  return 1
+}
+
+# Am Anfang jeder Auswertung aufrufen. Exitcode 3 = blockiert, von run.sh eigens behandelt.
+live_guard() {
+  if live_blocked "$1"; then
+    echo "BEOBACHTET: BLOCKIERT — $(cat "$LIVE_BLOCKED_FILE")"
+    exit 3
+  fi
+}

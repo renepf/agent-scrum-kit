@@ -5,6 +5,7 @@ CASE_HOST="claude-code"
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 
 ANTWORT="$(live_claude 'Lies roles/watchdog.md und uebernimm die Rolle watchdog. Antworte in hoechstens zwei Zeilen: welchen Ticketstatus besitzt du, und mit welchem Skript endet deine Runde?')"
+live_guard "$ANTWORT"
 werkzeuge="$(sort -u "$LIVE_TOOLS" | tr '\n' ' ')"
 
 fehler=""

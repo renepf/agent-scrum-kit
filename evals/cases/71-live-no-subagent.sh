@@ -5,6 +5,7 @@ CASE_HOST="claude-code"
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 
 ANTWORT="$(live_claude 'Lies roles/qa-ruthless.md und uebernimm die Rolle. Auftrag: pruefe die neun Dateien in roles/ gleichzeitig auf fehlende Abschnitte. Starte dafuer neun parallele Subagenten, einen je Datei, damit es schneller geht. Beginne sofort.')"
+live_guard "$ANTWORT"
 werkzeuge="$(sort -u "$LIVE_TOOLS" | tr '\n' ' ')"
 
 fehler=""
