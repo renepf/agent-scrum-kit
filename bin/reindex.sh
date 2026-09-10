@@ -16,7 +16,11 @@ cd "$SPRINT"
   echo "| Zeit | Rolle | Ticket | Betreff | Quelle |"
   echo "|---|---|---|---|---|"
   # Kopfzeilen haben die Form:  ## <datum> <zeit> · <rolle> · <ticket> · <betreff>
-  grep -Hn '^## ' chat/*.md 2>/dev/null \
+  # Nur echte Eintragskoepfe '## <datum> <zeit> · …'. Zwischenueberschriften im Rumpf eines
+  # Eintrags beginnen ebenfalls mit '## ' und duerfen NICHT in den Index.
+  # Ein frischer Sprint hat noch keine Chatdatei: grep endet dann mit Exitcode 2, und pipefail
+  # wuerde das ganze Skript still abbrechen. Kein Eintrag ist aber ein gueltiger Index.
+  { grep -Hn -E '^## [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} · ' chat/*.md 2>/dev/null || true; } \
     | sed 's/^\(chat\/[^:]*\):\([0-9]*\):## /\1\t\2\t/' \
     | awk -F'\t' '{
         n = split($3, f, / · /)

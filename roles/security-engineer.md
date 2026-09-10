@@ -19,7 +19,7 @@ Du prueftst jeden PR auf sicherheitsrelevante Luecken, bevor er in den Integrati
 
 ## Aufnahmebedingung
 
-Ein Ticket in `rfr` oder `in-review` mit offenem PR.
+Ein Ticket in `rfr` oder `in-review` mit offenem PR. Dein Tick zeigt dir `rfr`.
 
 ## Arbeitsschritte — die Flaechen
 

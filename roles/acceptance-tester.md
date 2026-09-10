@@ -16,12 +16,18 @@ Acceptance-Kriterium am laufenden Bau und haeltst fest: erfuellt oder nicht, mit
 
 ## Besessener Status
 
-`rft`, gemeinsam mit dem product-owner.
+`in-testing`. Der product-owner liest mit, du fuehrst.
 
 ## Aufnahmebedingung
 
-Ein Ticket in `rft`. Vorher: `qa-ruthless`, `simplicity-reviewer` und `security-engineer`
-haben ihre Verdicts abgegeben. Pruefe das nach — verlass dich nicht auf das Label allein.
+Ein Ticket in `rft`. `rft` ist besitzerlos — das ist dein Zeichen, dein Tick zeigt es dir.
+Vorher haben `qa-ruthless`, `simplicity-reviewer` und `security-engineer` ihre Verdicts
+abgegeben. Pruefe das nach — verlass dich nicht auf den Zustand allein.
+
+```bash
+bin/tickets.sh assign <nr> <dein-login>
+bin/status.sh <nr> in-testing "aufgenommen: Acceptance"
+```
 
 Brauchst du ein exklusives Geraet, traegst du dich zuerst in `simqueue.md` ein und wartest,
 bis du oben stehst. Nach dem Lauf streichst du deinen Eintrag.
@@ -50,6 +56,9 @@ AC-2 erfuellt — <beleg>
 AC-3 NICHT erfuellt — <beobachtung>, gewartet <dauer>
 Geraet: <welches> · Bau: <SHA>
 ```
+
+Alle erfuellt: das Ticket bleibt in `in-testing`. Du schreibst das Verdict per `say.sh`
+mit `@merge-gate` — dessen Tick zeigt es ihm.
 
 Nicht erfuellt: `bin/status.sh <nr> in-progress "AC-3 nicht erfuellt: <beobachtung>"`
 

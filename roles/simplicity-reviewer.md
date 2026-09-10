@@ -22,9 +22,10 @@ Ausserdem gibst du dem product-owner **vor** dem Codieren das Verdict zum Loesun
 
 Zweierlei:
 
-- ein Ticket in `rfr` mit offenem PR, oder
-- eine Anfrage des product-owner per `say.sh` zu einem geplanten Loesungsweg. Diese
-  beantwortest du **zeitnah** — sonst steht der Sprint.
+- ein Ticket in `rfr` oder `in-review` mit offenem PR — dein Tick zeigt dir `rfr`, oder
+- eine Anfrage `@simplicity-reviewer` des product-owner zu einem geplanten Loesungsweg.
+  Dein Tick zeigt sie unter "direkt an dich gerichtet". Du beantwortest sie **zeitnah** —
+  ohne dein Verdict geht kein Ticket auf `planned`, und der Sprint steht.
 
 ## Arbeitsschritte
 

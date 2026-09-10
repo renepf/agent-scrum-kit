@@ -7,7 +7,7 @@ Auf dieser Maschine verifiziert am 2026-09-09.
 Ein Terminal je Rolle, alle im selben Ordner:
 
 ```bash
-cd "$KIT_WORKTREE_ROOT"
+cd <dein-projekt>/agent-scrum-kit     # im Kit-Ordner, nicht im Projekt
 export KIT_ROLE=engineer-a
 export KIT_HOST=claude-code
 claude
@@ -15,36 +15,38 @@ claude
 
 ## 2. Rollendatei laden
 
-Erster Prompt an die Session, woertlich:
+Zwei Eingaben je Session. Die erste liest einmal ein:
 
 ```
-Lies roles/engineer.md und uebernimm die Rolle engineer-a.
+Lies roles/_COMMON.md und roles/engineer.md und uebernimm die Rolle engineer-a.
+Fuehre dann bin/tick.sh aus und arbeite nach dem, was er dir zeigt.
+Ein Ticket zur Zeit. Spawne niemals einen Subagenten.
 ```
 
-Fuer Dauerbetrieb, damit die Rolle nicht auf Eingaben wartet:
+Die zweite haelt die Rolle im Dauerbetrieb. `/loop` ohne Intervall laesst das Modell sich
+selbst takten; jede Runde beginnt mit dem Tick und liest die Rollenblaetter nicht neu:
 
 ```
-/loop Arbeite deine Rolle laut roles/engineer.md weiter. Ein Ticket zur Zeit.
+/loop Fuehre bin/tick.sh aus und arbeite danach deine Rolle laut roles/engineer.md weiter. Ein Ticket zur Zeit. Kein Subagent.
 ```
 
 Der watchdog bekommt ein festes Intervall, weil seine Arbeit reines Messen ist:
 
 ```
-/loop 5m Fuehre eine watchdog-Runde aus: budget.sh, drei Blicke, commit.sh.
+/loop 5m Fuehre bin/tick.sh aus, dann eine watchdog-Runde laut roles/watchdog.md: budget.sh, die Blicke, commit.sh.
 ```
+
+Die vollstaendige Liste je Rolle steht in `README.md` im Abschnitt "Team starten".
 
 ## 3. Session-Kennung
 
-Die Kennung steht im Pfad des Scratchpad-Verzeichnisses, das die Session im Systemprompt
-genannt bekommt: das letzte Pfadsegment vor `/scratchpad`. Dieselbe Kennung ist der
-Dateiname des Transkripts unter `~/.claude/projects/<projekt-slug>/<kennung>.jsonl`.
+Claude Code setzt `CLAUDE_CODE_SESSION_ID` in jeder Session. Der Wert ist der Dateiname
+des Transkripts unter `~/.claude/projects/<projekt-slug>/<kennung>.jsonl`, das
+`bin/budget.sh` liest. Gemessen am 2026-09-10.
 
-`session-id.sh` leitet sie aus der juengsten Transkriptdatei ab. Genauer ist es, sie
-explizit zu setzen:
-
-```bash
-export KIT_SESSION_ID=<kennung aus dem Scratchpad-Pfad>
-```
+`session-id.sh` nimmt `KIT_SESSION_ID`, sonst `CLAUDE_CODE_SESSION_ID`, sonst scheitert es.
+Es leitet die Kennung **nie** aus der juengsten Transkriptdatei ab: bei parallelen Sessions
+gehoert die juengste Datei der Session, die zuletzt geschrieben hat, nicht der eigenen.
 
 ## 4. Empfohlene Einstellungen fuer Opus 5
 

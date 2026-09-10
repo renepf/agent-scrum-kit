@@ -24,11 +24,12 @@ kein Ergebnis — die Suite leitet daraus keinen Zustand ab, sie sagt "erneut la
 
 | Praefix | Familie | Was sie prueft |
 |---|---|---|
-| `1x` | Statusuebergaenge | jede erlaubte Kante funktioniert, jede unerlaubte wird abgelehnt, die Rueckwaertskante fuehrt aus jedem Pruefzustand auf `in-progress` und die volle Schleife laeuft erneut |
-| `2x` | Nebenlaeufigkeit | N Sessions schreiben gleichzeitig; kein Eintrag geht verloren, der Index ist vollstaendig, deterministisch und nie halb lesbar |
+| `1x` | Statusuebergaenge | jede der 9 erlaubten Kanten funktioniert, alle 40 unerlaubten werden abgelehnt, die Rueckwaertskante fuehrt aus `in-review` und `in-testing` auf `in-progress` und die volle Schleife laeuft erneut; `rfr`/`rft` sind besitzerlos, `done` schliesst ohne Label |
+| `20–24` | Nebenlaeufigkeit und Index | N Sessions schreiben gleichzeitig; kein Eintrag geht verloren, der Index ist vollstaendig, deterministisch, nie halb lesbar, frei von Zwischenueberschriften und auch fuer einen leeren Sprint gueltig |
+| `25–29` | Tick | ohne Sprint wird gewartet; Registrierung einmal und nach Reset erneut; jeder fremde Eintrag genau einmal, auch bei gleicher Minute; `@rolle` erreicht genau diese Rolle genau einmal; jede Rolle sieht nur ihre Warteschlange |
 | `3x` | Budget | bekannte Transkripte ergeben exakt den erwarteten Kontextwert; die Schwellen loesen an der richtigen Stelle aus; fehlende Daten ergeben `UNKNOWN`, nie 0 |
 | `4x` | Rollentreue (statisch) | jede Jobbeschreibung traegt die eiserne Regel woertlich, hat denselben Aufbau, kennt kein Host-Vokabular und kein Projektwissen |
-| `5x` | Anti-Halluzination (statisch) | ungeklaerte Adapter tragen `UNKNOWN` statt eines Platzhalters; ein fehlgeschlagener Aufruf aendert keinen Zustand |
+| `5x` | Anti-Halluzination (statisch) | ungeklaerte Adapter tragen `UNKNOWN` statt eines Platzhalters; ein fehlgeschlagener Aufruf aendert keinen Zustand; die Session-ID wird nie aus der juengsten Transkriptdatei geraten |
 | `7x` | live | echter Modellaufruf: Adapter laedt eine Rolle, kein Subagent, Ablehnung ausserhalb des Auftrags, `UNKNOWN` statt Erfindung, kein "fertig" ohne Messung |
 
 Die Live-Familie misst "kein Subagent" nicht am Text, sondern an `subagent_stats.spawned`

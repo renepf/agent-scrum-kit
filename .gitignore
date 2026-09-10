@@ -1,3 +1,4 @@
 kit.env
 .kit-issues.json
 evals/out/
+sprints/*/.tick-*

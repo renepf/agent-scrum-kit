@@ -18,11 +18,12 @@ KIT_REPO="eval/sandbox"
 KIT_WORKTREE_ROOT="$SANDBOX"
 KIT_BASE_BRANCH="development"
 KIT_LABEL_PREFIX="status:"
-KIT_STATES="open planned in-progress rfr in-review rft"
+KIT_STATES="backlog planned in-progress rfr in-review rft in-testing done"
 KIT_SPRINT_LABEL="sprint:current"
 KIT_ISSUE_BACKEND="file"
 KIT_ISSUE_FILE="$SANDBOX/issues.json"
 KIT_ROLES="product-owner engineer-a engineer-b qa-ruthless simplicity-reviewer security-engineer acceptance-tester merge-gate watchdog kit-maintainer"
+KIT_QUEUES="product-owner=* engineer-a=planned engineer-b=planned qa-ruthless=rfr simplicity-reviewer=rfr security-engineer=rfr acceptance-tester=rft merge-gate=in-testing"
 KIT_SPRINT_TICKETS=6
 KIT_TICKET_MINUTES=30
 KIT_WARN_TOKENS=250000

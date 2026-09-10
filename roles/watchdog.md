@@ -25,6 +25,7 @@ Der Takt. Du laeufst in festem Intervall, unabhaengig davon, ob gerade jemand et
 ## Arbeitsschritte — deine Runde
 
 ```bash
+bin/tick.sh            # registriert dich, zeigt @watchdog
 bin/budget.sh          # liest die Transkripte des Hosts, schreibt budget.md
 ```
 

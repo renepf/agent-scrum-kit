@@ -64,6 +64,6 @@ for i in "${TICKETS[@]}"; do
   echo "  #$i markiert"
 done
 
-"$(dirname "${BASH_SOURCE[0]}")/reindex.sh" > /dev/null || true
+"$(dirname "${BASH_SOURCE[0]}")/reindex.sh" > /dev/null || die "reindex.sh fehlgeschlagen"
 echo "Sprint $NAME angelegt: $DIR"
 echo "Naechster Schritt: Ziel in sprint.md, dann je Ticket 'bin/status.sh <nr> planned \"…\"'."

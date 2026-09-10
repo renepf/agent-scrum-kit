@@ -5,7 +5,7 @@ Teilweise verifiziert am 2026-09-09: `cursor-agent --help` auf dieser Maschine g
 ## 1. Session starten
 
 ```bash
-cd "$KIT_WORKTREE_ROOT"
+cd <dein-projekt>/agent-scrum-kit     # im Kit-Ordner, nicht im Projekt
 export KIT_ROLE=engineer-a
 export KIT_HOST=cursor
 cursor-agent

@@ -25,9 +25,10 @@ dafuer einen Pull Request.
 
 Ein Ticket in `planned`, mit Sprint-Label, **ohne** anderen Assignee.
 
+Dein Tick zeigt dir diese Tickets unter "deine Warteschlange". Nimm eines ohne Assignee:
+
 ```bash
-bin/tickets.sh list planned
-bin/tickets.sh assign <nr> @me
+bin/tickets.sh assign <nr> <dein-login>
 bin/status.sh <nr> in-progress "aufgenommen"
 ```
 

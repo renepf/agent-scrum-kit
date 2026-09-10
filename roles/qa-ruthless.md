@@ -22,8 +22,10 @@ Du suchst Fehler, nicht Bestaetigung.
 
 Ein Ticket in `rfr` mit offenem PR.
 
+Dein Tick zeigt dir `rfr`-Tickets unter "deine Warteschlange". Wer als erste der drei
+Pruefrollen aufnimmt, setzt `in-review`; die beiden anderen finden es dann dort.
+
 ```bash
-bin/tickets.sh list rfr
 bin/status.sh <nr> in-review "aufgenommen: QA"
 ```
 
@@ -46,7 +48,8 @@ nicht als "uebersprungen".
 
 Alle fuenf Fragen beantwortet, jede fehlende Zusicherung entweder getestet oder als Befund
 benannt. Du setzt `rft` **nur**, wenn auch `simplicity-reviewer` und `security-engineer`
-PASS gemeldet haben. Sonst wartest du.
+PASS gemeldet haben. Sonst wartest du. `rft` ist besitzerlos — daran erkennt der
+acceptance-tester, dass er dran ist.
 
 ## Verdict-Format
 

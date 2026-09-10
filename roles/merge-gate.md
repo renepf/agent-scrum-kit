@@ -20,8 +20,9 @@ Keinen. Du bist das Gate vor dem Schliessen.
 
 ## Aufnahmebedingung
 
-Ein Ticket in `rft`, zu dem `qa-ruthless`, `simplicity-reviewer`, `security-engineer` und
-`acceptance-tester` ihre Verdicts abgegeben haben. Fehlt eines, sagst du das und wartest.
+Ein Ticket in `in-testing`, zu dem `qa-ruthless`, `simplicity-reviewer`, `security-engineer`
+und `acceptance-tester` ihre Verdicts abgegeben haben. Dein Tick zeigt dir `in-testing` und
+die Ansprache `@merge-gate` des Testers. Fehlt ein Verdict, sagst du das und wartest.
 
 ## Arbeitsschritte
 
@@ -56,6 +57,8 @@ lokal: <n> Tests gruen, Lint sauber (gemessen <zeit>)
 CI: <status> (gemessen <zeit>)
 Basis: <frisch|nachgezogen>
 ```
+
+OK: Verdict im PR kommentieren, dann per `say.sh` mit `@product-owner` melden. Der PO merged.
 
 FAIL: `bin/status.sh <nr> in-progress "MERGE-GATE FAIL: <befund>"`
 

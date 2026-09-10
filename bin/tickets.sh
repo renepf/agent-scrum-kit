@@ -10,6 +10,8 @@
 #   bin/tickets.sh unassign <nr> <wer>
 #   bin/tickets.sh comment <nr> <text>
 #   bin/tickets.sh title <nr>
+#   bin/tickets.sh close <nr>
+#   bin/tickets.sh set-board <nr> <zustand>   # no-op ohne KIT_PROJECT_ID
 #
 # KIT_ISSUE_BACKEND=gh   -> echtes GitHub via gh
 # KIT_ISSUE_BACKEND=file -> lokale JSON-Datei, fuer Evals und Trockenlaeufe
@@ -73,9 +75,34 @@ elif cmd == "unassign":
 elif cmd == "comment":
     issue(args[0])["comments"].append(args[1])
     save()
+elif cmd == "close":
+    issue(args[0])["closed"] = True
+    save()
+elif cmd == "set-board":
+    # Das Datei-Backend hat kein Board. Die Label-Spalte ist hier die ganze Wahrheit.
+    pass
 else:
     sys.exit("FEHLER: unbekannter Befehl '%s'" % cmd)
 PY
+}
+
+# Board-Status setzen. Ohne KIT_PROJECT_ID: nichts zu tun, Labels sind die Wahrheit.
+gh_set_board() {
+  [ -n "${KIT_PROJECT_ID:-}" ] || return 0
+  local nr="$1" state="$2" opt="" pair content item
+  for pair in ${KIT_STATUS_OPTIONS:-}; do
+    [ "${pair%%=*}" = "$state" ] && opt="${pair#*=}"
+  done
+  [ -n "$opt" ] || die "KIT_STATUS_OPTIONS kennt keine Options-ID fuer '$state'"
+  [ -n "${KIT_STATUS_FIELD_ID:-}" ] || die "KIT_STATUS_FIELD_ID fehlt in kit.env"
+  content="$(gh issue view "$nr" --repo "$KIT_REPO" --json id -q .id)" || return 1
+  # addProjectV2ItemById ist idempotent: liegt das Issue schon auf dem Board, kommt die
+  # vorhandene Item-ID zurueck.
+  item="$(gh api graphql -f query='mutation($p:ID!,$c:ID!){addProjectV2ItemById(input:{projectId:$p,contentId:$c}){item{id}}}' \
+          -f p="$KIT_PROJECT_ID" -f c="$content" -q '.data.addProjectV2ItemById.item.id')" || return 1
+  [ -n "$item" ] || return 1
+  gh project item-edit --id "$item" --project-id "$KIT_PROJECT_ID" \
+    --field-id "$KIT_STATUS_FIELD_ID" --single-select-option-id "$opt" > /dev/null
 }
 
 gh_backend() {
@@ -89,6 +116,9 @@ gh_backend() {
     assign)    gh issue edit "$1" --repo "$KIT_REPO" --add-assignee "$2" > /dev/null ;;
     unassign)  gh issue edit "$1" --repo "$KIT_REPO" --remove-assignee "$2" > /dev/null ;;
     comment)   gh issue comment "$1" --repo "$KIT_REPO" --body "$2" > /dev/null ;;
+    close)     gh issue view "$1" --repo "$KIT_REPO" --json state -q .state | grep -q CLOSED \
+                 || gh issue close "$1" --repo "$KIT_REPO" > /dev/null ;;
+    set-board) gh_set_board "$1" "$2" ;;
     *)         die "unbekannter Befehl '$CMD'" ;;
   esac
 }

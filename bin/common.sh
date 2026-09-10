@@ -60,6 +60,15 @@ session_id() {
 
 now() { date '+%Y-%m-%d %H:%M'; }
 
+# Die Zustaende, die eine Rolle aufnimmt, aus KIT_QUEUES. Leer = nimmt nichts auf.
+queue_of() {
+  local pair
+  for pair in ${KIT_QUEUES:-}; do
+    [ "${pair%%=*}" = "$1" ] && { echo "${pair#*=}"; return; }
+  done
+  echo ""
+}
+
 # Alle Sessions laufen auf derselben Maschine im selben Ordner. Sie sehen die
 # Schreibvorgaenge der anderen sofort ueber das Dateisystem — Git wird zum Lesen NICHT
 # gebraucht. Deshalb committet und pusht genau EINE Rolle: der watchdog, im Takt.

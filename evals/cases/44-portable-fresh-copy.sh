@@ -33,7 +33,7 @@ PY
 # 3. Der volle Weg: preflight, Sprint, Ticket, Statuswechsel, Chat, Index.
 ( cd "$ZIEL" && export KIT_ROLE=product-owner KIT_SESSION_ID=kopie-test
   bin/preflight.sh > /dev/null 2>&1 || exit 11
-  bin/tickets.sh add-label 1 status:open > /dev/null 2>&1 || exit 12
+  bin/tickets.sh add-label 1 status:backlog > /dev/null 2>&1 || exit 12
   bin/sprint-new.sh erster-sprint 1 > /dev/null 2>&1 || exit 13
   bin/status.sh 1 planned "los" > /dev/null 2>&1 || exit 14
   bin/say.sh "#1 · Kopie laeuft" <<'EOF' > /dev/null 2>&1 || exit 15
