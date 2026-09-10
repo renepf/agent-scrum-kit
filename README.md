@@ -167,9 +167,11 @@ Fall liegt oder `evals/run.sh` einen Fall als `FAIL` meldet — siehe `evals/REA
 
 Das macht der product-owner selbst, nach seinem Rollenblatt:
 
-1. Stories in die Tickets schreiben — lösungsfrei, ELI5, eine Story je Ergebnis.
-2. Den Loesungsweg per `@simplicity-reviewer` als Frage in den Chat stellen, Verdict abwarten.
-3. `bin/sprint-new.sh <slug> <ticketnummern…>`
+1. Stories in die Tickets schreiben — loesungsfrei, ELI5, eine Story je Ergebnis.
+2. `bin/sprint-new.sh <slug> <ticketnummern…>` — die Tickets bleiben dabei auf `backlog`.
+   Erst dieser Schritt legt den Chat an; vorher scheitert jedes `say.sh` mit
+   `kein aktiver Sprint`.
+3. Den Loesungsweg per `@simplicity-reviewer` als Frage in den Chat stellen, Verdict abwarten.
 4. Je Ticket `bin/status.sh <nr> planned "Verdict: <kurz>"`.
 
 Ab hier brauchst du nichts mehr weiterzureichen. Ein Statuswechsel legt das Ticket in die

@@ -73,7 +73,9 @@ du den Satz heraus und schreibst ihn in den Chat.
 1. Kandidaten sichten: `bin/tick.sh` zeigt dir alle Zustaende.
 2. `KIT_SPRINT_TICKETS` Tickets waehlen, die ein Sprintziel ergeben und sich **nicht in
    denselben Dateien** ueberschneiden — zwei Engineers arbeiten parallel.
-3. `bin/sprint-new.sh <slug> <ticketnummern…>`, Ziel in `sprint.md` eintragen.
+3. `bin/sprint-new.sh <slug> <ticketnummern…>`, Ziel in `sprint.md` eintragen. Die Tickets
+   bleiben auf `backlog`. Erst dieser Schritt legt den Chat an — das Planungsgespraech aus
+   Schritt 2 oben findet also **nach** dem Sprintschnitt statt, nicht davor.
 4. Je Ticket nach dem Verdict: `bin/status.sh <nr> planned "Verdict: <kurz>"`.
 
 ### 4. Rollen selbst anstossen
