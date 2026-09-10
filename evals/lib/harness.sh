@@ -127,3 +127,28 @@ live_guard() {
     exit 3
   fi
 }
+
+# --- vorgetaeuschtes gh ----------------------------------------------------------
+# Stellt ein zustandsbehaftetes gh vor den PATH und schreibt eine kit.env mit Board.
+#   fake_gh '{"7": {"labels": ["status:planned"], ...}}'
+# Danach: "$FAKE_GH_LOG" (Aufrufreihenfolge), fake_gh_get <nr> <feld>.
+fake_gh() {
+  mkdir -p "$SANDBOX/fakebin"
+  cp "$KIT_ROOT/evals/lib/fake-gh" "$SANDBOX/fakebin/gh"
+  export FAKE_GH_STATE="$SANDBOX/gh-state.json" FAKE_GH_LOG="$SANDBOX/gh.log" FAKE_GH_FAIL=""
+  printf '%s' "$1" > "$FAKE_GH_STATE"
+  : > "$FAKE_GH_LOG"
+  export PATH="$SANDBOX/fakebin:$PATH"
+  cat > "$SANDBOX/board.env" <<ENV
+$(cat "$SANDBOX/kit.env")
+KIT_ISSUE_BACKEND="gh"
+KIT_PROJECT_ID="PVT_eval"
+KIT_STATUS_FIELD_ID="PVTSSF_eval"
+KIT_STATUS_OPTIONS="backlog=o-backlog planned=o-planned in-progress=o-inprogress rfr=o-rfr in-review=o-inreview rft=o-rft in-testing=o-intesting done=o-done"
+ENV
+}
+
+fake_gh_get() {
+  python3 -c 'import json,sys; v=json.load(open(sys.argv[1]))[sys.argv[2]][sys.argv[3]]; print(" ".join(v) if isinstance(v, list) else v)' \
+    "$FAKE_GH_STATE" "$1" "$2"
+}
