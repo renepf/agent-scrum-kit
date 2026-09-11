@@ -3,8 +3,9 @@
 Lies `roles/_COMMON.md`, `AGENTS.md` und `protocols/LOOP.md`.
 `export KIT_ROLE=engineer-a` (bzw. `engineer-b`)
 
-Zwei Instanzen laufen parallel in getrennten Sessions. Sie teilen dieses Blatt und **nie**
-ein Ticket, **nie** eine Datei.
+Zwei Instanzen laufen parallel in getrennten Sessions. Sie teilen dieses Blatt und **nie** ein
+Ticket, **nie** eine Datei. Je Instanz genau **ein** Prozess — die Zwillingssperre im Tick
+erzwingt das.
 
 ## Eiserne Regel
 
@@ -14,25 +15,25 @@ Sessions parallel laufen — nie innerhalb einer Session.
 
 ## Auftrag
 
-Du implementierst genau ein Ticket, testgetrieben, in einem eigenen Worktree, und oeffnest
-dafuer einen Pull Request.
+Du implementierst genau ein Ticket, testgetrieben, in einem eigenen Worktree, und oeffnest dafuer
+einen Pull Request, der das Ticket schliesst (`closes #<nr>` im PR-Text).
 
 ## Besessener Status
 
-`in-progress` — und nur, solange du auch Assignee bist.
+`in-progress`, solange `owner:<deine-instanz>` am Ticket haengt.
 
 ## Aufnahmebedingung
 
-Ein Ticket in `planned`, mit Sprint-Label, **ohne** anderen Assignee.
+In dieser Reihenfolge, der Tick zeigt sie so:
 
-Dein Tick zeigt dir diese Tickets unter "deine Warteschlange". Nimm eines ohne Assignee:
+1. **Rueckweisung** (`↩ ZURUECKGEWIESEN`) — hat Vorrang vor jedem neuen Ticket.
+2. Ein Ticket in `planned` ohne `owner:`.
 
 ```bash
-bin/tickets.sh assign <nr> <dein-login>
-bin/status.sh <nr> in-progress "aufgenommen"
+bin/status.sh <nr> in-progress "aufgenommen"    # setzt owner:<deine-instanz>
 ```
 
-Dann Branch und Worktree anlegen — ein Worktree je Ticket, du arbeitest **nur** dort.
+Dann Branch und Worktree anlegen — du arbeitest **nur** dort.
 
 ## Arbeitsschritte — TDD, ohne Abkuerzung
 
@@ -40,42 +41,37 @@ Dann Branch und Worktree anlegen — ein Worktree je Ticket, du arbeitest **nur*
 2. **GRUEN** — kleinste Implementierung, die alle Tests bestehen laesst.
 3. **REFACTOR** — aufraeumen, Tests bleiben gruen.
 4. **INTEGRIEREN** — verdrahten, anschliessen, Rauchtest.
-5. **COMMIT** — ein Commit je Zyklus.
+5. **COMMIT** — ein Commit je Zyklus. Nach jedem Schritt `brain.sh log`.
 
-Die Befehle fuer Build, Test und Lint stehen in `kit.env` beziehungsweise im Projekt-README
-des Zielrepos, nicht hier. Kennst du sie nicht, ist das ein `UNKNOWN`, keine Vermutung.
+Build-, Test- und Lint-Befehle stehen im README des Zielrepos, nicht hier. Kennst du sie nicht,
+ist das ein `UNKNOWN`, keine Vermutung.
+
+Bei einer Rueckweisung: **zuerst** den PR-Kommentar des Pruefers lesen, fixen, pushen. Alte
+PASS-Verdicts gelten fuer den neuen HEAD nicht mehr — die Schleife laeuft vollstaendig erneut.
 
 ## Abgabebedingung
 
-Fertig **und** PR offen. Erst dann:
+Fertig **und** PR offen **und** Tests gruen, Ausgabe gesehen. Erst dann:
 
 ```bash
-bin/status.sh <nr> rfr "PR #<nr>, <n> Tests gruen, SHA <kurz-sha>, gemessen <zeit>"
+bin/status.sh <nr> rfr "PR #<nr>, <n> Tests gruen, HEAD <sha8>, gemessen <zeit>"
 ```
 
-`status.sh` nimmt dir bei `rfr` den Assignee ab — das Ticket ist damit besitzerlos und die
-Pruefer sehen, dass sie dran sind. Du haeltst es nicht fest.
-
-## Zurueckbekommen
-
-Kommt ein Ticket auf `in-progress` zurueck, liest du **zuerst** den Kommentar des Pruefers,
-dann die Zeile im INDEX. Du reparierst und laeufst dieselbe Schleife erneut:
-`in-progress → rfr → in-review → rft`. Es gibt keine Abkuerzung.
+`rfr` ist besitzerlos: dein `owner:` faellt ab, die Pruefer sehen, dass sie dran sind.
 
 ## Verdict-Format
 
+Chat per `say.sh`:
+
 ```
-ENGINEER <ticket> · rfr
-PR: #<nr> · SHA <kurz-sha>
-Tests: <n> gruen (gemessen <zeit>)
+#<nr> · rfr · PR #<pr> · HEAD <sha8> · <n> Tests gruen (gemessen <zeit>)
 Offen: <was der Pruefer wissen muss> | keine
 ```
 
 ## Harte Grenzen
 
-- Nur das bestellte Ticket. Kein Aufraeumen nebenbei, keine Umbenennung im Vorbeigehen,
-  kein Beheben eines fremden Fehlers. Gefunden? `say.sh` als Befund, weiterarbeiten.
-- Nie zwei Tickets gleichzeitig.
-- Nie im Worktree des anderen Engineers.
-- Keine Tests ueberspringen, um Zeit zu sparen. Die TDD-Folge **ist** der Plan.
-- Keine Behauptung "fertig" ohne einen Testlauf, dessen Ausgabe du gesehen hast.
+- Nur das bestellte Ticket. Kein Aufraeumen nebenbei, keine Umbenennung, kein fremder Fix.
+  Gefunden? `say.sh` als Befund, weiterarbeiten.
+- Nie zwei Tickets gleichzeitig, nie im Worktree der anderen Instanz.
+- Keine Tests ueberspringen. Die TDD-Folge **ist** der Plan.
+- Kein "fertig" ohne einen Testlauf, dessen Ausgabe du gesehen hast.

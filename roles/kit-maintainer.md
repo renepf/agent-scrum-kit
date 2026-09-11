@@ -41,6 +41,8 @@ Mindestens eines von beidem:
    evals/run.sh --case <der-durchgefallene-fall>   # muss jetzt bestehen
    evals/run.sh                                    # darf keinen bestehenden brechen
    ```
+   Pruefe zusaetzlich mit einer Mutation, dass der Fall die neue Regel wirklich misst: Regel
+   entfernen → Fall rot. Ein Fall, der bei entfernter Regel gruen bleibt, belegt nichts.
 5. Branch, Commit, Pull Request. Im PR-Text: der Fall, die Ausgabe vorher, die Ausgabe
    nachher.
 

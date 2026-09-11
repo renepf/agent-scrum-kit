@@ -7,46 +7,34 @@ Auf dieser Maschine verifiziert am 2026-09-09.
 Ein Terminal je Rolle, alle im selben Ordner:
 
 ```bash
-cd <dein-projekt>/agent-scrum-kit     # im Kit-Ordner, nicht im Projekt
+cd "$KIT_WORKTREE_ROOT"
 export KIT_ROLE=engineer-a
-export KIT_HOST=claude-code
 claude
 ```
 
-## 2. Rollendatei laden
+## 2. Rollendatei laden und Dauerbetrieb
 
-Zwei Eingaben je Session. Die erste liest einmal ein:
-
-```
-Lies roles/_COMMON.md und roles/engineer.md und uebernimm die Rolle engineer-a.
-Fuehre dann bin/tick.sh aus und arbeite nach dem, was er dir zeigt.
-Ein Ticket zur Zeit. Spawne niemals einen Subagenten.
-```
-
-Die zweite haelt die Rolle im Dauerbetrieb. `/loop` ohne Intervall laesst das Modell sich
-selbst takten; jede Runde beginnt mit dem Tick und liest die Rollenblaetter nicht neu:
+Erster Prompt, woertlich, mit Intervall und Datei aus `roles/START-HERE.md`:
 
 ```
-/loop Fuehre bin/tick.sh aus und arbeite danach deine Rolle laut roles/engineer.md weiter. Ein Ticket zur Zeit. Kein Subagent.
+/loop 5m Fuehre bin/tick.sh aus. Liegt nichts fuer dich an, beende die Runde. Sonst arbeite deine
+Rolle laut roles/engineer.md: ein Ticket zur Zeit, aufgreifen heisst sofort den In-Status setzen,
+kein Subagent.
 ```
 
-Der watchdog bekommt ein festes Intervall, weil seine Arbeit reines Messen ist:
+`/loop` mit festem Intervall startet die Runde auch dann, wenn die Rolle gerade auf nichts wartet.
+Eine leere Runde endet nach dem Tick.
 
-```
-/loop 5m Fuehre bin/tick.sh aus, dann eine watchdog-Runde laut roles/watchdog.md: budget.sh, die Blicke, commit.sh.
-```
+## 3. Session-Kennung und Host-PID
 
-Die vollstaendige Liste je Rolle steht in `README.md` im Abschnitt "Team starten".
-
-## 3. Session-Kennung
-
-Claude Code setzt `CLAUDE_CODE_SESSION_ID` in jeder Session. Der Wert ist der Dateiname
-des Transkripts unter `~/.claude/projects/<projekt-slug>/<kennung>.jsonl`, das
-`bin/budget.sh` liest. Gemessen am 2026-09-10.
-
-`session-id.sh` nimmt `KIT_SESSION_ID`, sonst `CLAUDE_CODE_SESSION_ID`, sonst scheitert es.
-Es leitet die Kennung **nie** aus der juengsten Transkriptdatei ab: bei parallelen Sessions
-gehoert die juengste Datei der Session, die zuletzt geschrieben hat, nicht der eigenen.
+- **Session-Kennung:** Claude Code setzt `CLAUDE_CODE_SESSION_ID` in jeder Session. Der Wert ist der
+  Dateiname des Transkripts unter `~/.claude/projects/<projekt-slug>/<kennung>.jsonl`
+  (gemessen 2026-09-10). `session-id.sh` liest nur diese Variable. **Nicht** aus der juengsten
+  Transkriptdatei ableiten: bei neun parallelen Sessions gehoert sie der Session, die zuletzt
+  geschrieben hat.
+- **Host-PID** fuer die Zwillingssperre: `host-pid.sh` geht die Prozesskette hoch bis zum Prozess
+  `claude` (gemessen 2026-09-10: Skript → Shell des Werkzeugaufrufs → `claude`). Die PID bleibt ueber
+  alle Werkzeugaufrufe einer Session gleich.
 
 ## 4. Empfohlene Einstellungen fuer Opus 5
 

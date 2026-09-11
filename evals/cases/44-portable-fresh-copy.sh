@@ -7,7 +7,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 ZIEL="$(mktemp -d "${TMPDIR:-/tmp}/kit-copy.XXXXXX")"
 trap 'rm -rf "$ZIEL"' EXIT
 # So, wie ein fremdes Projekt das Kit kopieren wuerde: ohne .git, ohne kit.env.
-( cd "$KIT_ROOT" && tar --exclude .git --exclude kit.env --exclude 'sprints' -cf - . ) | ( cd "$ZIEL" && tar -xf - )
+( cd "$KIT_ROOT" && tar --exclude .git --exclude kit.env --exclude board.env --exclude 'sprints' -cf - . ) | ( cd "$ZIEL" && tar -xf - )
 
 fehler=""
 
@@ -26,12 +26,13 @@ t = p.read_text()
 t = t.replace('KIT_REPO="UNKNOWN — beim Owner erfragen, z.B. meine-org/mein-repo"', 'KIT_REPO="fremd/projekt"')
 t = t.replace('KIT_WORKTREE_ROOT="$HOME/Developer/mein-projekt"', f'KIT_WORKTREE_ROOT="{z}"')
 t = t.replace('KIT_ISSUE_BACKEND="gh"', 'KIT_ISSUE_BACKEND="file"')
-t += f'\nKIT_SPRINTS_DIR="{z}/sprints"\n'
+t += f'\nKIT_SPRINTS_DIR="{z}/sprints"\nKIT_MEMORY_DIR="{z}/memory"\n'
 p.write_text(t)
 PY
 
 # 3. Der volle Weg: preflight, Sprint, Ticket, Statuswechsel, Chat, Index.
-( cd "$ZIEL" && export KIT_ROLE=product-owner KIT_SESSION_ID=kopie-test
+( cd "$ZIEL" && export KIT_ROLE=product-owner KIT_SESSION_ID=kopie-test KIT_HOST_PID=$$
+  unset KIT_BOARD_ENV_FILE
   bin/preflight.sh > /dev/null 2>&1 || exit 11
   bin/tickets.sh add-label 1 status:backlog > /dev/null 2>&1 || exit 12
   bin/sprint-new.sh erster-sprint 1 > /dev/null 2>&1 || exit 13
@@ -39,12 +40,14 @@ PY
   bin/say.sh "#1 · Kopie laeuft" <<'EOF' > /dev/null 2>&1 || exit 15
 Beleg aus der frischen Kopie.
 EOF
+  bin/tick.sh > /dev/null 2>&1 || exit 16
+  bin/brain.sh note kopie-laeuft "frische Kopie ist lauffaehig" <<<'Gemessen im Eval 44.' > /dev/null 2>&1 || exit 17
 ) ; schritt=$?
 [ "$schritt" = 0 ] || fehler="$fehler abgebrochen-bei-Schritt-$schritt"
 
 eintraege="$(grep -c '^| [0-9]' "$ZIEL/sprints/$(cat "$ZIEL/sprints/CURRENT" 2>/dev/null)/INDEX.md" 2>/dev/null || echo 0)"
 [ "$eintraege" -ge 2 ] || fehler="$fehler Index-hat-nur-$eintraege-Eintraege"
 
-observe "ohne kit.env: Exit $rc mit Hinweis · nach Ausfuellen: preflight, Sprint, Statuswechsel, Chat, Index mit $eintraege Eintraegen${fehler:+ · FEHLER:$fehler}"
+observe "ohne kit.env: Exit $rc mit Hinweis · nach Ausfuellen: preflight, Sprint, Statuswechsel, Chat, tick, Gedaechtnis, Index mit $eintraege Eintraegen${fehler:+ · FEHLER:$fehler}"
 echo "BEOBACHTET: $OBSERVED"
 [ -z "$fehler" ]

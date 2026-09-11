@@ -12,29 +12,51 @@ observe() { OBSERVED="${OBSERVED}${OBSERVED:+ | }$*"; }
 # Kein Eval-Fall fasst das echte Projekt an.
 sandbox() {
   SANDBOX="$(mktemp -d "${TMPDIR:-/tmp}/kit-eval.XXXXXX")"
-  mkdir -p "$SANDBOX/sprints"
-  cat > "$SANDBOX/kit.env" <<ENV
+  mkdir -p "$SANDBOX/sprints" "$SANDBOX/memory"
+  cp "$KIT_ROOT/kit.env.example" "$SANDBOX/kit.env"
+  cat >> "$SANDBOX/kit.env" <<ENV
+
+# --- Sandbox-Ueberschreibungen (evals/lib/harness.sh) ---
 KIT_REPO="eval/sandbox"
 KIT_WORKTREE_ROOT="$SANDBOX"
-KIT_BASE_BRANCH="development"
-KIT_LABEL_PREFIX="status:"
-KIT_STATES="backlog planned in-progress rfr in-review rft in-testing done"
-KIT_SPRINT_LABEL="sprint:current"
 KIT_ISSUE_BACKEND="file"
 KIT_ISSUE_FILE="$SANDBOX/issues.json"
-KIT_ROLES="product-owner engineer-a engineer-b qa-ruthless simplicity-reviewer security-engineer acceptance-tester merge-gate watchdog kit-maintainer"
-KIT_QUEUES="product-owner=* engineer-a=planned engineer-b=planned qa-ruthless=rfr simplicity-reviewer=rfr security-engineer=rfr acceptance-tester=rft merge-gate=in-testing"
-KIT_SPRINT_TICKETS=6
-KIT_TICKET_MINUTES=30
-KIT_WARN_TOKENS=250000
-KIT_STOP_TOKENS=300000
-KIT_MAX_TICKETS=5
+KIT_BOARD="none"
 KIT_HOST="test-fixture"
 KIT_SPRINTS_DIR="$SANDBOX/sprints"
+KIT_MEMORY_DIR="$SANDBOX/memory"
 ENV
   export KIT_ENV_FILE="$SANDBOX/kit.env"
+  export KIT_BOARD_ENV_FILE="$SANDBOX/board.env"
   export KIT_SESSION_ID="eval-session"
+  export KIT_HOST_PID="$$"
 }
+
+# Ein Ticket-Zustand direkt ins Datei-Backend schreiben (Titel, Labels, PR, Kommentare).
+#   sandbox_issue 7 '{"labels":["status:rfr"],"pr":{"number":70,"head":"abcdef0123","comments":[],"checks":"pass"}}'
+sandbox_issue() {
+  python3 - "$SANDBOX/issues.json" "$1" "$2" <<'PY2'
+import json, os, sys
+path, n, patch = sys.argv[1], sys.argv[2], json.loads(sys.argv[3])
+db = json.load(open(path)) if os.path.exists(path) else {}
+i = db.setdefault(n, {"title": "eval", "labels": [], "assignees": [], "comments": [], "state": "open"})
+i.update(patch)
+json.dump(db, open(path, "w"), indent=2, sort_keys=True)
+PY2
+}
+
+# Einen PR-Kommentar anhaengen (Verdict).
+sandbox_pr_comment() {
+  python3 - "$SANDBOX/issues.json" "$1" "$2" <<'PY2'
+import json, sys
+path, n, body = sys.argv[1], sys.argv[2], sys.argv[3]
+db = json.load(open(path)); db[n]["pr"].setdefault("comments", []).append(body)
+json.dump(db, open(path, "w"), indent=2, sort_keys=True)
+PY2
+}
+
+# Sortiert: das Backend liefert Einfuegereihenfolge, verglichen wird der Inhalt.
+sandbox_labels() { KIT_ROLE=product-owner "$BIN/tickets.sh" labels "$1" | grep . | sort | tr '\n' ' ' | sed 's/ $//'; }
 
 sandbox_cleanup() { [ -n "${SANDBOX:-}" ] && rm -rf "$SANDBOX"; }
 
@@ -50,6 +72,7 @@ sandbox_sprint() {
 # Ein Ticket im Datei-Backend erzeugen.
 sandbox_ticket() {
   local nr="$1" status="$2"
+  [ "$status" = "backlog" ] && { sandbox_issue "$nr" '{}'; return; }
   KIT_ROLE=product-owner "$BIN/tickets.sh" add-label "$nr" "status:$status" > /dev/null
 }
 
@@ -129,22 +152,35 @@ live_guard() {
 }
 
 # --- vorgetaeuschtes gh ----------------------------------------------------------
-# Stellt ein zustandsbehaftetes gh vor den PATH und schreibt eine kit.env mit Board.
+# Stellt ein zustandsbehaftetes gh vor den PATH, schaltet das Board ein und schreibt board.env.
 #   fake_gh '{"7": {"labels": ["status:planned"], ...}}'
 # Danach: "$FAKE_GH_LOG" (Aufrufreihenfolge), fake_gh_get <nr> <feld>.
 fake_gh() {
   mkdir -p "$SANDBOX/fakebin"
   cp "$KIT_ROOT/evals/lib/fake-gh" "$SANDBOX/fakebin/gh"
   export FAKE_GH_STATE="$SANDBOX/gh-state.json" FAKE_GH_LOG="$SANDBOX/gh.log" FAKE_GH_FAIL=""
+  # Board-Namen enthalten Leerzeichen, deshalb ';' als Trenner.
+  export FAKE_GH_OPTIONS="o-backlog=Backlog;o-planned=Planned;o-inprogress=In progress;o-rfr=RfR;o-inreview=In review;o-rft=RfT;o-intesting=In Testing;o-done=Done"
   printf '%s' "$1" > "$FAKE_GH_STATE"
   : > "$FAKE_GH_LOG"
   export PATH="$SANDBOX/fakebin:$PATH"
-  cat > "$SANDBOX/board.env" <<ENV
-$(cat "$SANDBOX/kit.env")
+  cat >> "$SANDBOX/kit.env" <<'ENV'
 KIT_ISSUE_BACKEND="gh"
+KIT_BOARD="github-project"
+KIT_PROJECT_OWNER="eval"
+KIT_PROJECT_NUMBER="1"
+ENV
+  cat > "$KIT_BOARD_ENV_FILE" <<'ENV'
 KIT_PROJECT_ID="PVT_eval"
 KIT_STATUS_FIELD_ID="PVTSSF_eval"
-KIT_STATUS_OPTIONS="backlog=o-backlog planned=o-planned in-progress=o-inprogress rfr=o-rfr in-review=o-inreview rft=o-rft in-testing=o-intesting done=o-done"
+KIT_OPTION_BACKLOG="o-backlog"
+KIT_OPTION_PLANNED="o-planned"
+KIT_OPTION_IN_PROGRESS="o-inprogress"
+KIT_OPTION_RFR="o-rfr"
+KIT_OPTION_IN_REVIEW="o-inreview"
+KIT_OPTION_RFT="o-rft"
+KIT_OPTION_IN_TESTING="o-intesting"
+KIT_OPTION_DONE="o-done"
 ENV
 }
 

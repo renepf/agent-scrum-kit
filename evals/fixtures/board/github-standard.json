@@ -1,0 +1,30 @@
+{
+ "project": {
+  "id": "PVT_fixture"
+ },
+ "fields": [
+  {
+   "id": "PVTF_title",
+   "name": "Title"
+  },
+  {
+   "id": "PVTSSF_status",
+   "name": "Status",
+   "options": [
+    {
+     "id": "o0",
+     "name": "Todo"
+    },
+    {
+     "id": "o1",
+     "name": "In Progress"
+    },
+    {
+     "id": "o2",
+     "name": "Done"
+    }
+   ]
+  }
+ ],
+ "labels": []
+}

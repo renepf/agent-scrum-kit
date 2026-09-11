@@ -1,202 +1,197 @@
 # LOOP — Betriebsprotokoll des Agenten-Teams
 
-Host-unabhaengig. Wie eine Session **gestartet** wird, steht nicht hier, sondern in
-`adapters/<host>/README.md`.
+Host-unabhaengig. Wie eine Session **startet**, steht in `adapters/<host>/README.md`.
+Wie das Team eingerichtet wird, steht in `INSTALL.md`.
 
 ## 1. Grundsatz
 
 Jede Rolle ist eine eigene Session in einem eigenen Terminal, mit eigenem Kontextfenster.
-**Es werden keine Subagenten gespawnt.** Jede Session arbeitet im Haupt-Thread an genau
-einem Ticket zur Zeit.
+**Es werden keine Subagenten gespawnt.** Jede Session arbeitet im Haupt-Thread an genau einem
+Ticket zur Zeit, und je Rolle laeuft genau **ein** Prozess.
 
 Zwei Wahrheiten, strikt getrennt:
 
 | Was | Wo | Wer schreibt |
 |---|---|---|
-| **Ticketstatus** — wer ist dran, wo steht das Ticket | Issue: Status-Label + Assignee | die Rolle, die den Status besitzt |
+| **Ticketstatus** — wo steht das Ticket | Status-Feld des GitHub Projects (`KIT_BOARD=github-project`), Label als Spiegel | nur `bin/status.sh` |
+| **Besitz** — wer haelt es gerade | Label `owner:<rolle>` | nur `bin/status.sh` und `bin/claim.sh` |
 | **Begruendung, Befund, Querverkehr** | `sprints/<sprint>/chat/<rolle>.md` | jede Rolle nur ihre eigene Datei |
 
-Der Chat entscheidet **nie**, wer dran ist. Wer neu startet, liest Board und `INDEX.md` und
-weiss alles. Faellt der Chat aus, laeuft der Loop weiter.
+Der Chat entscheidet **nie**, wer dran ist. Faellt der Chat aus, laeuft der Loop weiter.
 
-## 2. Statusmodell
+Besitz haengt am Label, nicht am Assignee: alle Sessions teilen oft **einen** Account, und der
+Assignee kann `engineer-a` und `engineer-b` nicht unterscheiden.
 
-Die Zustaende kommen aus `kit.env` (`KIT_STATES`). Ist ein Projekt-Board konfiguriert
-(`KIT_PROJECT_ID`), ist das Board die Wahrheit und das Label `status:<zustand>` am Issue nur
-ein Spiegel fuer billiges Filtern. **Beides schreibt ausschliesslich `bin/status.sh`** —
-deshalb koennen sie nicht auseinanderlaufen. Board zuerst, Label danach; scheitert das Board,
-bleibt das Label stehen.
+## 2. Statusmodell — acht Zustaende
 
-| # | Zustand | Bedeutung | Owner | Weiter wenn |
-|---|---|---|---|---|
-| 1 | `backlog` | Ticket existiert, noch nicht geschnitten | **product-owner** | Story und ACs stehen, Loesungsweg abgestimmt |
-| 2 | `planned` | Verdict gesprochen, im Sprint | **product-owner** | ein Engineer nimmt es auf |
-| 3 | `in-progress` | Implementierung laeuft | **engineer-a** / **engineer-b** (Assignee) | Arbeit fertig **und** PR offen |
-| 4 | `rfr` | Ready for Review | **niemand** (Assignee leer) | eine Pruefrolle nimmt auf |
-| 5 | `in-review` | qa-ruthless, simplicity-reviewer, security-engineer pruefen | **die drei Pruefer** | alle drei PASS |
-| 6 | `rft` | Ready for Testing | **niemand** (Assignee leer) | der acceptance-tester nimmt auf |
-| 7 | `in-testing` | Acceptance-Test am laufenden Bau | **acceptance-tester** (product-owner liest mit) | alle ACs erfuellt, merge-gate OK, CI gruen |
-| 8 | `done` | gemergt und geschlossen, kein Label | **product-owner** | — |
+| # | Schluessel | Board | Bedeutung | Besitz (`owner:`) | Weiter wenn |
+|---|---|---|---|---|---|
+| 1 | `backlog` | Backlog | Ticket existiert, noch nicht geschnitten | — (product-owner) | Story + ACs stehen, Loesungsweg abgestimmt |
+| 2 | `planned` | Planned | im Sprint, bereit zur Aufnahme | **niemand** | ein Engineer nimmt auf |
+| 3 | `in-progress` | In progress | Implementierung laeuft | genau **ein** Engineer | fertig **und** PR offen |
+| 4 | `rfr` | RfR | Ready for Review — wartet | **niemand** | ein Pruefer nimmt auf |
+| 5 | `in-review` | In review | Pruefer arbeiten **aktiv**, parallel | qa-ruthless, simplicity-reviewer, security-engineer | alle drei PASS fuer den aktuellen HEAD |
+| 6 | `rft` | RfT | Ready for Testing — wartet | **niemand** | acceptance-tester nimmt auf |
+| 7 | `in-testing` | In Testing | Acceptance-Test am laufenden Bau | acceptance-tester | ACCEPTANCE PASS, MERGE-GATE OK, PO-Entscheid |
+| 8 | `done` | Done | gemergt und geschlossen, **kein** Label | — | — |
 
-`rfr` und `rft` sind **bewusst besitzerlos**: `status.sh` nimmt dort den Assignee ab. Das ist
-das sichtbare Zeichen, dass eine andere Rolle dran ist. Wer aufnimmt, setzt sich selbst als
-Assignee und schiebt weiter auf `in-review` beziehungsweise `in-testing`.
+**Ready heisst wartend, In heisst aktiv.** Wer ein Ticket aufgreift, setzt **sofort** den
+In-Status; ein weiterer Pruefer steigt mit `bin/claim.sh` ein.
 
-### Rueckwaertskante — die einzige
-
-Findet ein Pruefer in `in-review` oder der Tester in `in-testing` einen Fehler, geht das
-Ticket zurueck auf `in-progress`, Assignee wieder der urspruengliche Engineer. Danach laeuft
-**dieselbe Schleife von vorn**: `in-progress → rfr → in-review → rft → in-testing`. Es gibt
-keine Abkuerzung und kein "kleiner Fix, direkt durchwinken".
+### Erlaubte Kanten — genau diese
 
 ```
-backlog ─▶ planned ─▶ in-progress ─▶ rfr ─▶ in-review ─▶ rft ─▶ in-testing ─▶ done
-                           ▲                    │                    │
-                           └────────────────────┴────────────────────┘
-                                      Fehler gefunden
+backlog → planned → in-progress → rfr → in-review → rft → in-testing → done
+                        ▲                    │                    │
+                        └────────────────────┴────────────────────┘
+                                   Rueckwaertskante
 ```
 
-Erlaubt sind genau diese Kanten:
+| Kante | Wer darf | Pruefung vor dem Schreiben |
+|---|---|---|
+| `backlog → planned` | product-owner | — |
+| `planned → in-progress` | engineer-a, engineer-b | setzt `owner:<engineer>` |
+| `in-progress → rfr` | der Engineer mit `owner:` | fremder Besitz wird abgelehnt |
+| `rfr → in-review` | ein Pruefer | setzt `owner:<pruefer>`, weitere Pruefer bleiben |
+| `in-review → rft` | ein Pruefer | **Gate:** QA PASS, SIMPLICITY PASS, SECURITY PASS fuer den aktuellen HEAD |
+| `rft → in-testing` | acceptance-tester | — |
+| `in-testing → done` | product-owner, oder merge-gate mit `PO OK` fuer den aktuellen HEAD | normal ueber `bin/merge.sh` |
+| `in-review → in-progress` | ein Pruefer | `owner:` zurueck an den Engineer aus der Kommentarhistorie |
+| `in-testing → in-progress` | acceptance-tester, merge-gate, product-owner | dasselbe |
 
-```
-backlog → planned
-planned → in-progress
-in-progress → rfr
-rfr → in-review
-in-review → rft
-in-review → in-progress      (Rueckwaertskante)
-rft → in-testing
-in-testing → in-progress     (Rueckwaertskante)
-in-testing → done
-```
+Jeder andere Uebergang wird abgelehnt. Nach einer Rueckweisung laeuft **dieselbe Schleife von
+vorn**: in-progress → rfr → in-review → rft → in-testing. Keine Abkuerzung, kein "kleiner Fix".
 
-Alles andere lehnt `bin/status.sh` ab. Vor `done` liegt zusaetzlich das Gate des
-`merge-gate`: sein OK **und** gruene CI sind die Bedingung, unter der der product-owner
-merged. Das Gate ist kein eigener Zustand.
+### Reihenfolge in `bin/status.sh`
 
-### Statuswechsel — der exakte Befehl
+1. **Alles pruefen, bevor irgendetwas geschrieben wird:** Kante, Rolle, Besitz, Gate. Eine
+   abgelehnte Transition fasst weder Board noch Label noch Kommentar an.
+2. **Board zuerst**, dann den Wert **zuruecklesen**. Weicht er ab oder scheitert der Aufruf,
+   bricht das Skript ab, und das Label bleibt unveraendert.
+3. Label als Spiegel, `owner:`-Besitz, Issue-Kommentar mit Rolle, Session-ID und Zeit, Chat.
 
-```bash
-bin/status.sh <ticket> <zustand> "<einzeiler>"
-```
+### Verdicts gelten nur fuer einen HEAD
 
-Das Skript setzt Board (falls konfiguriert) und Label, regelt den Assignee, schliesst das
-Ticket bei `done` und schreibt einen Kommentar mit Rolle, Session-ID und Zeit. Kein Agent
-setzt Board oder Label von Hand.
+Ein Verdict ist ein PR-Kommentar, dessen erste Zeile mit `<VERDICT> — HEAD \`<sha8>\`` beginnt.
+Ein Push entwertet alle Verdicts fuer den alten HEAD. `status.sh` und `merge.sh` pruefen das
+maschinell.
 
-### Wer was sieht — der Tick
+### Letztes Wort: product-owner
 
-Jede Rolle ruft in jeder Runde `bin/tick.sh` auf. Welche Zustaende eine Rolle in ihrer
-Warteschlange sieht, steht in `KIT_QUEUES`:
-
-| Rolle | sieht |
-|---|---|
-| `product-owner` | alle Zustaende |
-| `engineer-a`, `engineer-b` | `planned` |
-| `qa-ruthless`, `simplicity-reviewer`, `security-engineer` | `rfr` |
-| `acceptance-tester` | `rft` |
-| `merge-gate` | `in-testing` |
-| `watchdog`, `kit-maintainer` | nichts |
-
-Uebergaben brauchen deshalb keinen Menschen: ein Statuswechsel legt das Ticket in die
-naechste Warteschlange, und `@<rolle>` im Chat erreicht eine Rolle beim naechsten Tick.
+Vor `done` stehen im PR, beide fuer den aktuellen HEAD: `MERGE-GATE OK` vom merge-gate, dann die
+Entscheidung des product-owner. Er merged selbst per `bin/merge.sh`, oder schreibt `PO OK`, womit
+merge-gate `bin/merge.sh` ausfuehren darf. `merge.sh` prueft die Freigaben, misst die CI **frisch**,
+merged, prueft `MERGED` und setzt `done`.
 
 ## 3. Cast — neun Sessions
 
-| # | Rolle | Auftrag | Besitzt Status |
-|---|---|---|---|
-| 1 | `product-owner` | Stories schreiben, Sprint schneiden, Verdict einholen, anstossen, mergen | `backlog`, `planned`, `done`, Merge |
-| 2 | `engineer-a` | Implementierung, TDD, PR | `in-progress` |
-| 3 | `engineer-b` | dasselbe, zweite Instanz | `in-progress` |
-| 4 | `qa-ruthless` | sucht, was nicht getestet ist; schreibt fehlende Tests | `in-review` |
-| 5 | `simplicity-reviewer` | sucht unnoetige Komplexitaet; liefert eine Loeschliste | `in-review` |
-| 6 | `security-engineer` | Eingaben, Deeplinks, Rechte, Krypto, Logs, Netz | `in-review` |
-| 7 | `acceptance-tester` | prueft die ACs am laufenden Bau | `in-testing` |
-| 8 | `merge-gate` | ganzheitlicher Review, CI, Freigabe — merged nie selbst | Gate vor Close |
-| 9 | `watchdog` | Tokenstand messen, Stopp-Flags, Schlange, committen | — |
+| Rolle | Auftrag | Nimmt auf (`KIT_QUEUE_MAP`) |
+|---|---|---|
+| `product-owner` | Sprint, Stories, ACs, Takt, letztes Wort | alle |
+| `engineer-a`, `engineer-b` | Implementierung, TDD, PR | `planned`, Rueckweisungen zuerst |
+| `qa-ruthless` | fehlende Tests, Mutationen, Acceptance-Tests | `rfr`, `in-review` |
+| `simplicity-reviewer` | Loeschliste, Verdict zum Loesungsweg vor `planned` | `rfr`, `in-review` |
+| `security-engineer` | Eingaben, Rechte, Krypto, Logs, Netz | `rfr`, `in-review` |
+| `acceptance-tester` | ACs am laufenden Bau | `rft` |
+| `merge-gate` | ganzheitlicher Review, CI, Freigabe | `in-testing` |
+| `watchdog` | Tokenstand, Zwillinge, Schlange, Commit | — |
 
-Dazu ausserhalb des Loops: `kit-maintainer` — schlaegt Aenderungen an Jobbeschreibungen
-als Pull Request vor. Siehe `roles/kit-maintainer.md`.
+Ausserhalb des Loops: `kit-maintainer` — Aenderungen an Jobbeschreibungen als Pull Request.
 
-**Merge-Hoheit liegt beim product-owner.** Er merged erst, wenn `merge-gate` sein OK
-kommentiert hat **und** die CI gruen ist.
+## 4. Loop-Reihenfolge
 
-## 4. Sprint
+### Start
 
-Ein Sprint umfasst `KIT_SPRINT_TICKETS` Tickets im Takt von `KIT_TICKET_MINUTES` Minuten,
-zwei Engineers parallel. Ueberzieht einer, startet sein naechstes Ticket am naechsten
-Rasterpunkt — der Raster verschiebt sich nie.
+1. `product-owner` und `simplicity-reviewer` zuerst: der product-owner braucht vor `planned` das
+   Verdict zum Loesungsweg, und erst `sprint-new.sh` legt `sprints/CURRENT` an.
+2. `watchdog`, damit Budget und Zwillinge ab dem ersten Ticket gemessen werden.
+3. Alle uebrigen sofort danach. Sie brauchen keinen Sonderfall: `tick.sh` meldet "kein aktiver
+   Sprint" und endet mit Exit 0; sobald der Sprint steht, registriert es sie beim naechsten Tick.
+
+### Jede Runde, jede Rolle
+
+1. `bin/tick.sh` — Registrierung und Zwillingssperre, nach Reset `brain.sh recall`.
+2. **Rueckweisungen zuerst** (Engineers).
+3. Eigene Tickets (`owner:<rolle>`) fortsetzen, bevor ein freies aufgenommen wird.
+4. Ein freies Ticket aus der eigenen Warteschlange aufnehmen — sofort den In-Status setzen.
+5. Nichts davon: Runde beenden.
+
+### Feste Intervalle
+
+| Rolle | Intervall | Grund |
+|---|---|---|
+| `watchdog` | 5 min | reines Messen, muss STOP und Zwillinge rechtzeitig sehen |
+| `engineer-a`, `engineer-b` | 5 min | `planned` und Rueckweisungen schnell aufgreifen |
+| `qa-ruthless`, `simplicity-reviewer`, `security-engineer` | 5 min | `rfr` ist der haeufigste Wartezustand; das `rft`-Gate darf nicht der Engpass sein |
+| `acceptance-tester` | 10 min | Geraeteschlange ist seriell, schnelleres Pollen bringt nichts |
+| `merge-gate` | 10 min | wartet auf `in-testing` und gruene CI, beides dauert |
+| `product-owner` | 10 min | haelt den Takt, sieht alle Zustaende |
+
+Runden ueberlappen innerhalb einer Session nicht. Ein Tick kostet rund zwei API-Aufrufe; neun
+Rollen im 5- bis 10-Minuten-Takt liegen weit unter 5 000 Aufrufen je Stunde.
+
+## 5. Sprint
+
+Ein Sprint umfasst `KIT_SPRINT_TICKETS` Tickets im Takt von `KIT_TICKET_MINUTES` Minuten, zwei
+Engineers parallel. Ueberzieht einer, startet sein naechstes Ticket am naechsten Rasterpunkt.
 
 ```
 sprints/S-<nnn>-<slug>/
-├── sprint.md      # Ziel, die Ticketnummern, Start, Definition of Done
-├── roster.md      # GENERIERT — Rolle, Session-ID, Startzeit
+├── sprint.md      # Ziel, Tickets, Start, Definition of Done
+├── roster.md      # GENERIERT — Rolle, Session-ID, Host, Host-PID
 ├── INDEX.md       # GENERIERT — alle Chat-Zeilen chronologisch, mit datei:zeile
 ├── budget.md      # GENERIERT — Kontextstand je Session (watchdog)
 ├── simqueue.md    # wer haelt gerade ein exklusives Geraet
+├── .lease-<rolle> # GENERIERT — Zwillingssperre: Session-ID, Host-PID, Zeit
 └── chat/<rolle>.md
 ```
 
-## 5. Chat — append-only, mit generiertem Index
+## 6. Chat — append-only, mit generiertem Index
 
-Jede Rolle schreibt **nur** ihre eigene Datei unter `chat/` und haengt nur an. Bestehende
-Zeilen werden **nie** editiert — die Zeilennummern im Index muessen fuer immer gueltig
-bleiben.
+Jede Rolle schreibt **nur** ihre eigene Datei und haengt nur an. Bestehende Zeilen werden **nie**
+editiert — die Zeilennummern im Index muessen fuer immer gueltig bleiben. `bin/say.sh` haengt unter
+Sperre an und baut `INDEX.md` **vollstaendig neu**, atomar (temporaer schreiben, dann umbenennen).
 
-```bash
-bin/say.sh "#<ticket> · <betreff>" <<'EOF'
-<rumpf>
-EOF
-```
+## 7. Nur eine Rolle committet
 
-`say.sh` haengt unter Sperre an, dann laeuft `reindex.sh`. In den Index kommen nur echte
-Eintragskoepfe `## <datum> <zeit> · …` — Zwischenueberschriften im Rumpf nicht. `INDEX.md` wird **immer
-vollstaendig neu gebaut**, nie fortgeschrieben, und atomar ersetzt: erst in eine temporaere
-Datei schreiben, dann umbenennen. Ein halb geschriebener Index kann so nie gelesen werden,
-und gleicher Input ergibt immer dieselbe Ausgabe.
+Alle Sessions laufen auf derselben Maschine im selben Ordner und sehen einander sofort. Git ist nur
+Historie. Neun parallele `git pull --rebase` waeren die einzige echte Konfliktquelle — deshalb
+committet ausschliesslich der `watchdog`, im Takt, per `bin/commit.sh`.
 
-Lesen kostet wenig: `bin/tick.sh` zeigt nur die Eintraege, die eine Rolle noch nicht
-gesehen hat, und nur bei einem Treffer springt sie per `sed -n '212,240p' chat/<rolle>.md` in
-die Quelle.
+## 8. Zwillingssperre
 
-## 6. Nur eine Rolle committet
+Je Rolle laeuft genau ein Prozess. `register.sh` (vom Tick aufgerufen) schreibt
+`.lease-<rolle>` mit Session-ID, Host-PID und Zeit. Lebt die eingetragene PID noch, ist die Sperre
+juenger als `KIT_LEASE_MINUTES` und ist die eigene PID eine andere, bricht der Tick mit
+"zweite Instanz" ab. Anlass: eine Session wurde zweimal fortgesetzt; zwei Prozesse derselben Rolle
+arbeiteten parallel, und `owner:<rolle>` trennt Rollen, nicht Zwillinge.
 
-Alle Sessions laufen auf derselben Maschine im selben Ordner und sehen einander sofort
-ueber das Dateisystem. Git ist nur Historie. Neun parallele `git pull --rebase` sind die
-einzige echte Konfliktquelle — deshalb committet ausschliesslich der `watchdog`, im Takt,
-per `bin/commit.sh`.
+Kann der Adapter die Host-PID nicht ermitteln, warnt die Sperre nur (`UNKNOWN`) und blockiert nicht.
 
-## 7. Tokenbudget und Reset
+## 9. Gedaechtnis
 
-Zwei Bremsen, unabhaengig voneinander:
+Der Chat ist das Gespraech eines Sprints. `memory/<rolle>/` ist das Gedaechtnis einer Rolle ueber
+Sprints und Resets hinweg, `memory/_shared/` das Wissen aller. Werkzeug `bin/brain.sh`, Regeln
+`memory/README.md`. Der Tick holt es nach jedem Reset automatisch zurueck.
 
-1. **Watchdog, echte Zahl.** `bin/budget.sh` liest die Transkripte des Hosts und schreibt
-   `budget.md`. Ab `KIT_WARN_TOKENS` nimmt die Rolle kein neues Ticket mehr an, ab
-   `KIT_STOP_TOKENS` steht `STOP <rolle>` in `budget.md`.
-2. **Notbremse, ohne Watchdog.** Nach `KIT_MAX_TICKETS` abgeschlossenen Tickets geht eine
-   Rolle ohnehin in den Ruhestand. Diese Regel gilt auch, wenn der Watchdog ausgefallen ist
-   oder der Host gar keine Transkripte schreibt.
+## 10. Tokenbudget und Reset
 
-**Kontextgroesse** heisst: der groesste Eingabestand eines **einzelnen** Turns
-(`input_tokens` + `cache_read_input_tokens` + `cache_creation_input_tokens`).
-Das ist die Zahl, die das Fenster fuellt — **nicht** die Summe ueber alle Turns.
+1. **Watchdog, echte Zahl.** `bin/budget.sh` liest die Transkripte des Hosts. Ab `KIT_WARN_TOKENS`
+   nimmt die Rolle kein neues Ticket an, ab `KIT_STOP_TOKENS` steht `STOP <rolle>` in `budget.md`.
+2. **Notbremse, ohne Watchdog.** Nach `KIT_MAX_TICKETS` Tickets ohnehin Ruhestand — auch wenn der
+   Watchdog ausfaellt oder der Host keine Transkripte schreibt.
 
-Ablauf beim Reset, immer an einer Ticketgrenze, nie mitten im Ticket:
+**Kontextgroesse** ist der groesste Eingabestand eines **einzelnen** Turns
+(`input_tokens` + `cache_read_input_tokens` + `cache_creation_input_tokens`), **nicht** die Summe.
 
-1. laufendes Ticket abschliessen oder den Status zurueckgeben
-2. Uebergabe in die eigene Chat-Datei: Ticket, Stand, SHA, was als naechstes ansteht
-3. Kontext leeren — **neue Session, nicht verdichten.** Verdichten verliert die
-   technischen Details, an denen die naechste Runde haengt.
-4. Rollenblatt neu laden, dann `bin/tick.sh` — er registriert die neue Session-ID von selbst
+Reset immer an einer Ticketgrenze: `brain.sh handover` → Kontext leeren (**neue Session, nicht
+verdichten**) → gleicher erster Prompt. Der naechste Tick registriert die neue Session-ID und zeigt
+die Uebergabe.
 
-## 8. Geraete-Schlange
+## 11. Geraete-Schlange und Ueberleben
 
-Exklusive Geraete (Emulator, Simulator, Testhardware) werden nie parallel benutzt. Wer eines
-braucht, traegt sich in `simqueue.md` ein und wartet, bis er oben steht. Ein Eintrag mit
-Status `HAELT`, aelter als 30 Minuten, wird vom Watchdog als verwaist entfernt.
+Exklusive Geraete werden nie parallel benutzt: Eintrag in `simqueue.md`, warten bis oben. Ein
+`HAELT`-Eintrag aelter als 30 Minuten wird vom Watchdog entfernt.
 
-## 9. Ueberleben
-
-Naehert sich das Konto-Limit, pausieren **alle** Sessions. Keine neuen Dispatches. Der
-Watchdog meldet das und gibt erst frei, wenn das Limit zurueckgesetzt ist. Das Limit wird
-nicht gestreift.
+Naehert sich das Konto-Limit, pausieren **alle** Sessions. Keine neuen Aufnahmen. Der Watchdog
+meldet es und gibt erst frei, wenn das Limit zurueckgesetzt ist.

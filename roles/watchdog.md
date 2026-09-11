@@ -29,7 +29,7 @@ bin/tick.sh            # registriert dich, zeigt @watchdog
 bin/budget.sh          # liest die Transkripte des Hosts, schreibt budget.md
 ```
 
-Dann drei Blicke:
+Dann vier Blicke:
 
 1. **Stopp-Flags.** Steht in `budget.md` eine Zeile `STOP <rolle>`, schreibst du **einmal**
    per `say.sh` einen Hinweis. Du zwingst niemanden — die Rolle liest `budget.md` an ihrer
@@ -38,6 +38,9 @@ Dann drei Blicke:
    30 Minuten, wird entfernt und gemeldet.
 3. **Stille Rolle.** Hat eine Rolle seit 45 Minuten nichts in ihre Chat-Datei geschrieben,
    meldest du das. Eine haengende Session ist ein Befund, keine Ruhe.
+4. **Zwillinge.** Zeigt `roster.md` fuer eine Rolle eine andere Host-PID als ihre Sperre
+   `.lease-<rolle>`, oder meldet eine Rolle "zweite Instanz", schreibst du das sofort per `say.sh`.
+   Zwei Prozesse derselben Rolle arbeiten sonst parallel am selben Ticket.
 
 Zum Schluss der Runde:
 
@@ -65,7 +68,7 @@ Du schlaegst **keine** Aenderung an der Jobbeschreibung vor. Das macht der `kit-
 
 ## Abgabebedingung
 
-Runde vollstaendig: `budget.md` geschrieben, drei Blicke getan, committet.
+Runde vollstaendig: `budget.md` geschrieben, vier Blicke getan, committet.
 
 ## Verdict-Format
 
@@ -75,6 +78,7 @@ Kontext: <rolle> <n> · <rolle> <n> · …
 Flags: STOP <rolle> | keine
 Schlange: <n> Eintraege, <n> verwaist entfernt
 Still: <rolle> seit <dauer> | keine
+Zwillinge: <rolle> PID <a>/<b> | keine
 ```
 
 ## Harte Grenzen

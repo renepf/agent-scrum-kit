@@ -4,7 +4,8 @@
 Zustand:  $FAKE_GH_STATE  (JSON: {"<nr>": {"labels": [], "assignees": [], "state": "OPEN",
                                          "comments": [], "board": null}})
 Protokoll: $FAKE_GH_LOG   (eine Zeile je Aufruf, in Aufrufreihenfolge)
-Fehler:   $FAKE_GH_FAIL   "graphql" | "item-edit" | "" — laesst genau diesen Aufruf scheitern
+Fehler:   $FAKE_GH_FAIL   "graphql" | "item-edit" | "readback" | "" — laesst genau diesen Aufruf scheitern
+Optionen: $FAKE_GH_OPTIONS "o-backlog=Backlog;o-planned=Planned;..." — Namen fuer das Zuruecklesen
 
 Nur die Aufrufe, die bin/preflight.sh und bin/tickets.sh wirklich machen. Alles andere
 scheitert laut, damit ein neuer Aufruf im Kit nicht still durchrutscht.
@@ -45,6 +46,17 @@ def die(msg):
 if args[:2] == ["api", "user"]:
     log("api user"); print("eval-bot"); sys.exit(0)
 
+if args[:2] == ["api", "graphql"] and any("fieldValueByName" in a for a in args):
+    # Zuruecklesen des Status-Feldes nach item-edit (bin/tickets.sh board-set).
+    item = [a for a in args if a.startswith("id=")][0][3:]
+    log(f"api graphql readback {item}")
+    if fail == "readback":
+        print("")          # Board zeigt nichts: tickets.sh muss nach 4 Versuchen abbrechen
+        sys.exit(0)
+    names = dict(kv.split("=", 1) for kv in os.environ.get("FAKE_GH_OPTIONS", "").split(";") if "=" in kv)
+    print(names.get(db[item.removeprefix("PVTI_")].get("board") or "", ""))
+    sys.exit(0)
+
 if args[:2] == ["api", "graphql"]:
     log("api graphql addProjectV2ItemById")
     if fail == "graphql":
@@ -72,6 +84,7 @@ if args[:1] == ["issue"] and len(args) >= 3:
         elif field == "id":        print("I_" + nr)
         elif field == "state":     print(i["state"])
         elif field == "title":     print(i.get("title", ""))
+        elif field == "comments":  print(json.dumps(i["comments"]))
         else: die(f"fake-gh: --json {field} nicht nachgebildet")
         sys.exit(0)
     if sub == "edit":

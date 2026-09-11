@@ -1,32 +1,45 @@
 # Team starten
 
-Die vollstaendige Startanleitung — Reihenfolge, erste Eingabe je Rolle, Dauerbetrieb,
-Reset — steht in `README.md`, Abschnitt 2. Wie eine Session auf deinem Host startet, steht in
-`adapters/<host>/README.md`. Dieses Blatt haelt nur fest, was hostunabhaengig gilt.
+Jede Rolle ist eine eigene Session in einem eigenen Terminalfenster. Wie eine Session auf deinem
+Host startet und wie der Dauerbetrieb dort heisst, steht in `adapters/<host>/README.md`.
+Die Einrichtung davor steht in `INSTALL.md`.
 
 ## Reihenfolge
 
-1. `product-owner` und `simplicity-reviewer` — der PO braucht das Verdict vor `planned`.
-2. `watchdog` — misst von Anfang an, committet als Einziger.
-3. alle uebrigen in beliebiger Reihenfolge.
+| Schritt | Terminal | `export KIT_ROLE=` | Rollendatei | Intervall |
+|---|---|---|---|---|
+| 1 | 1 | `product-owner` | `roles/product-owner.md` | 10 min |
+| 1 | 2 | `simplicity-reviewer` | `roles/simplicity-reviewer.md` | 5 min |
+| 2 | 3 | `watchdog` | `roles/watchdog.md` | 5 min |
+| 3 | 4 | `engineer-a` | `roles/engineer.md` | 5 min |
+| 3 | 5 | `engineer-b` | `roles/engineer.md` | 5 min |
+| 3 | 6 | `qa-ruthless` | `roles/qa-ruthless.md` | 5 min |
+| 3 | 7 | `security-engineer` | `roles/security-engineer.md` | 5 min |
+| 3 | 8 | `acceptance-tester` | `roles/acceptance-tester.md` | 10 min |
+| 3 | 9 | `merge-gate` | `roles/merge-gate.md` | 10 min |
 
-## Rollen und Blaetter
+Warum so: der product-owner braucht vor `planned` das Verdict des simplicity-reviewer, und erst
+sein `sprint-new.sh` legt den Sprint an. Der watchdog misst ab dem ersten Ticket. Alle anderen
+duerfen sofort starten — ihr Tick meldet "kein aktiver Sprint" und endet normal.
 
-| Rolle | Blatt | Warteschlange |
-|---|---|---|
-| `product-owner` | `roles/product-owner.md` | alle Zustaende |
-| `simplicity-reviewer` | `roles/simplicity-reviewer.md` | `rfr` |
-| `watchdog` | `roles/watchdog.md` | keine |
-| `engineer-a` | `roles/engineer.md` | `planned` |
-| `engineer-b` | `roles/engineer.md` | `planned` |
-| `qa-ruthless` | `roles/qa-ruthless.md` | `rfr` |
-| `security-engineer` | `roles/security-engineer.md` | `rfr` |
-| `acceptance-tester` | `roles/acceptance-tester.md` | `rft` |
-| `merge-gate` | `roles/merge-gate.md` | `in-testing` |
+Der `kit-maintainer` laeuft nicht mit. Er startet nur, wenn in `evals/findings/` etwas liegt oder
+ein Eval-Fall durchfaellt.
 
-Jede Session beginnt mit `roles/_COMMON.md` und ihrem Blatt, dann `bin/tick.sh` — und
-danach in **jeder** Runde zuerst `bin/tick.sh`. Wartet eine Rolle auf den ersten Sprint, ist
-das kein Fehler: der Tick meldet es und registriert sie nach dem Sprintschnitt von selbst.
+## Prompt je Runde, host-neutral
 
-Der `kit-maintainer` laeuft nicht mit. Er startet nur, wenn in `evals/findings/` ein Fall
-liegt oder ein Eval-Fall durchfaellt.
+```
+Fuehre bin/tick.sh aus. Liegt nichts fuer dich an, beende die Runde. Sonst arbeite deine Rolle
+laut <rollendatei>: ein Ticket zur Zeit, aufgreifen heisst sofort den In-Status setzen, kein Subagent.
+```
+
+watchdog zusaetzlich: `… danach bin/budget.sh, vier Blicke, bin/commit.sh.`
+
+## Wenn eine Session an ihrem Limit ist
+
+`bin/brain.sh handover` schreiben, Kontext leeren (**neue Session, nicht verdichten**), denselben
+Prompt erneut. Der naechste Tick registriert die neue Session-ID und zeigt die Uebergabe.
+
+## Wenn der Tick "zweite Instanz" meldet
+
+Diese Rolle laeuft schon in einem anderen Prozess. Die neue Session beenden, nicht die alte.
+Erst wenn die alte wirklich beendet ist, uebernimmt die neue beim naechsten Tick.

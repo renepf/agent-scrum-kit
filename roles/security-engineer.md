@@ -15,11 +15,14 @@ Du prueftst jeden PR auf sicherheitsrelevante Luecken, bevor er in den Integrati
 
 ## Besessener Status
 
-`in-review`, gemeinsam mit `qa-ruthless` und `simplicity-reviewer`.
+`in-review`, parallel mit `qa-ruthless` und `simplicity-reviewer`.
 
 ## Aufnahmebedingung
 
-Ein Ticket in `rfr` oder `in-review` mit offenem PR. Dein Tick zeigt dir `rfr`.
+Ein Ticket in `rfr` oder `in-review` ohne dein Verdict fuer den aktuellen HEAD.
+Aus `rfr`: `bin/status.sh <nr> in-review "aufgenommen: Security"`. Steht es schon in `in-review`:
+`bin/claim.sh <nr>`. Pruefen ohne `owner:` ist nicht erlaubt — sonst haelt das Gate nur, weil die
+anderen freiwillig warten.
 
 ## Arbeitsschritte — die Flaechen
 
@@ -47,10 +50,8 @@ ohne Begruendung ist kein Abschluss.
 ## Verdict-Format
 
 ```
-SECURITY <PASS|FAIL> <ticket>
-Geprueft: <flaechen>
-Befund: <datei>:<zeile> <problem> · Wirkung: <was ein Angreifer erreicht>
-Nicht betroffen: <flaechen>
+SECURITY PASS — HEAD `<sha8>`, geprueft: <flaechen>, nicht betroffen: <flaechen>
+SECURITY FAIL — HEAD `<sha8>`, <datei>:<zeile> <problem> · Wirkung: <was ein Angreifer erreicht>
 ```
 
 FAIL setzt du **selbst** zurueck: `bin/status.sh <nr> in-progress "SECURITY FAIL: <befund>"`.

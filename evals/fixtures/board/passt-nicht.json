@@ -1,0 +1,90 @@
+{
+ "project": {
+  "id": "PVT_fixture"
+ },
+ "fields": [
+  {
+   "id": "PVTF_title",
+   "name": "Title"
+  },
+  {
+   "id": "PVTSSF_status",
+   "name": "Status",
+   "options": [
+    {
+     "id": "o0",
+     "name": "Todo"
+    },
+    {
+     "id": "o1",
+     "name": "Backlog"
+    },
+    {
+     "id": "o2",
+     "name": "Planned"
+    },
+    {
+     "id": "o3",
+     "name": "RfR"
+    },
+    {
+     "id": "o4",
+     "name": "In progress"
+    },
+    {
+     "id": "o5",
+     "name": "In review"
+    },
+    {
+     "id": "o6",
+     "name": "RfT"
+    },
+    {
+     "id": "o7",
+     "name": "Done"
+    }
+   ]
+  }
+ ],
+ "labels": [
+  {
+   "name": "status:backlog"
+  },
+  {
+   "name": "status:planned"
+  },
+  {
+   "name": "status:in-progress"
+  },
+  {
+   "name": "status:rfr"
+  },
+  {
+   "name": "status:in-review"
+  },
+  {
+   "name": "status:rft"
+  },
+  {
+   "name": "status:in-testing"
+  },
+  {
+   "name": "owner:engineer-a"
+  },
+  {
+   "name": "owner:engineer-b"
+  },
+  {
+   "name": "owner:simplicity-reviewer"
+  },
+  {
+   "name": "owner:security-engineer"
+  },
+  {
+   "name": "owner:acceptance-tester"
+  },
+  {
+   "name": "sprint:current"
+  }
+ ]
+}

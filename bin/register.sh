@@ -1,30 +1,54 @@
 #!/usr/bin/env bash
-# Rolle + Session-ID in roster.md eintragen. Beim Start jeder Session und nach jedem Reset.
+# Rolle + Session-ID in roster.md eintragen und die Rolle fuer DIESE Instanz sperren.
+# Beim Start jeder Session, nach jedem Reset — tick.sh ruft es bei Bedarf selbst.
 #
 #   export KIT_ROLE=engineer-a
 #   bin/register.sh                 # Session-ID vom Host-Adapter
 #   bin/register.sh <session-id>    # oder explizit
+#
+# Zwillingssperre (Lease): je Rolle eine Datei sprints/<aktiv>/.lease-<rolle> mit
+# Session-ID, Host-PID und Zeit. Laeuft bereits eine ANDERE lebende Instanz derselben Rolle,
+# bricht register.sh ab. Anlass: eine Session wurde zweimal fortgesetzt, zwei Prozesse
+# derselben Rolle arbeiteten parallel — owner:<rolle> trennt Rollen, nicht Zwillinge.
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 SPRINT="$(sprint_dir)"
 R="$(role)"
 SID="${1:-$(session_id)}"
 ROSTER="$SPRINT/roster.md"
+LEASE="$SPRINT/.lease-$R"
+HPID="$(host_pid)"
+NOW_EPOCH="$(date +%s)"
 
-write_roster() {
-  local head body
-  head='| Zeit | Rolle | Session-ID | Host |'
-  body="$( { [ -f "$ROSTER" ] && grep '^| 2' "$ROSTER" | grep -v "^| .* | $R | " || true; } )"
+check_and_take_lease() {
+  if [ -f "$LEASE" ]; then
+    local l_sid l_pid l_epoch age
+    IFS='|' read -r l_sid l_pid l_epoch < "$LEASE" || true
+    age=$(( NOW_EPOCH - ${l_epoch:-0} ))
+    if [ "$age" -lt $(( KIT_LEASE_MINUTES * 60 )) ] && [ -n "$l_pid" ] && [ "$l_pid" != "-" ] \
+       && kill -0 "$l_pid" 2>/dev/null; then
+      if [ -z "$HPID" ]; then
+        echo "WARNUNG: Host-PID UNKNOWN (adapters/$KIT_HOST/host-pid.sh) — Zwillingssperre kann nicht pruefen, ob PID $l_pid dieselbe Instanz ist." >&2
+      elif [ "$l_pid" != "$HPID" ]; then
+        die "zweite Instanz von '$R': Host-PID $l_pid (Session $l_sid) laeuft noch und tickte vor $((age / 60)) min. Diese Instanz (PID $HPID, Session $SID) beenden — zwei Prozesse derselben Rolle arbeiten sonst parallel."
+      fi
+    fi
+  fi
+  printf '%s|%s|%s\n' "$SID" "${HPID:--}" "$NOW_EPOCH" | atomic_write "$LEASE"
+
+  local body
+  body="$( { [ -f "$ROSTER" ] && grep '^| 2' "$ROSTER" | grep -v "^| [^|]* | $R | " || true; } )"
   {
     printf '# roster · %s\n\n' "$(basename "$SPRINT")"
     printf 'GENERIERT von bin/register.sh. Eine Zeile je Rolle, juengster Eintrag gilt.\n\n'
-    printf '%s\n|---|---|---|---|\n' "$head"
+    printf '| Zeit | Rolle | Session-ID | Host | Host-PID |\n|---|---|---|---|---|\n'
     [ -n "$body" ] && printf '%s\n' "$body"
-    printf '| %s | %s | %s | %s |\n' "$(now)" "$R" "$SID" "$KIT_HOST"
+    printf '| %s | %s | %s | %s | %s |\n' "$(now)" "$R" "$SID" "$KIT_HOST" "${HPID:-UNKNOWN}"
   } | atomic_write "$ROSTER"
 }
 
-# Sperre: neun Sessions registrieren sich beim Start fast gleichzeitig.
-with_lock "$ROSTER.lock" write_roster
+# Eine Sperre um Pruefen+Nehmen: zwei Zwillinge, die im selben Moment starten, duerfen nicht
+# beide die Pruefung bestehen.
+with_lock "$LEASE.lock" check_and_take_lease
 
-echo "$R registriert · session $SID · host $KIT_HOST"
+echo "$R registriert · session $SID · host $KIT_HOST · pid ${HPID:-UNKNOWN}"
