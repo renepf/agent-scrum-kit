@@ -19,12 +19,19 @@ schlimmste Fehler, den dieses Repo machen kann.
 | `pi` | UNKNOWN — Startbefehl, Sessionkennung und Werkzeugnamen beim Owner erfragen |
 | `hermes` | UNKNOWN — Startbefehl, Sessionkennung und Werkzeugnamen beim Owner erfragen |
 
-Jeder Adapter liefert drei ausfuehrbare Dateien:
+Jeder Adapter liefert drei ausfuehrbare Pflichtdateien:
 
 - `session-id.sh` — druckt die Session-Kennung auf stdout, oder scheitert mit Exitcode ≠ 0.
   **Scheitern ist erlaubt. Raten nicht.**
 - `host-pid.sh` — druckt die PID des Host-Prozesses dieser Session, fuer die Zwillingssperre.
   Scheitert er, warnt die Sperre nur (`UNKNOWN`) und blockiert nicht.
+
+Optional, nur wo der Adapter es weiss:
+
+- `host-alive.sh <pid>` — Exit 0 nur, wenn unter der PID ein **Host**-Prozess lebt. Ohne diese Datei
+  gilt `kill -0`, und eine neu vergebene PID eines fremden Prozesses zaehlt als lebende Rolle.
+- `is-background.sh` — Exit 0, wenn die Session eine Hintergrund-Session ist, die die Rolle nur geerbt
+  hat. Dann schweigt der Start-Hook und `bin/tick.sh` endet mit Exit 3.
 - `transcript-path.sh <session-id>` — druckt die Pfade der Transkripte, einen je Zeile.
   Schreibt der Host keine Transkripte, ist die Datei nicht ausfuehrbar oder scheitert —
   dann traegt `budget.md` `UNKNOWN` ein und die Rolle faellt auf die Notbremse zurueck

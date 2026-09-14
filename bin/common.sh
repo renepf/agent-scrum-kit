@@ -82,6 +82,15 @@ session_id() {
   "$probe" || die "adapters/$KIT_HOST/session-id.sh hat keine Session-ID geliefert — Fehlschlag, nicht raten."
 }
 
+# Lebt unter dieser PID ein Host-Prozess? Nicht nur "lebt irgendein Prozess": eine PID wird nach dem
+# Ende neu vergeben (Referenz 2026-09-14: ein Anker zeigte spaeter auf cfprefsd). Welcher Prozessname
+# ein Host ist, weiss nur der Adapter; ohne adapters/<host>/host-alive.sh bleibt es bei kill -0.
+host_alive() {
+  local pid="$1" probe="$KIT_ROOT/adapters/$KIT_HOST/host-alive.sh"
+  [ -n "$pid" ] && [ "$pid" != "-" ] || return 1
+  if [ -x "$probe" ]; then "$probe" "$pid"; else kill -0 "$pid" 2>/dev/null; fi
+}
+
 # PID des Host-Prozesses dieser Session (fuer die Zwillingssperre). Leer = unbekannt.
 host_pid() {
   if [ -n "${KIT_HOST_PID:-}" ]; then echo "$KIT_HOST_PID"; return; fi

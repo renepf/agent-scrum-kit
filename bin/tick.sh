@@ -24,6 +24,20 @@ SID="$(session_id)"
 STATE="$SPRINT/.tick-$R"
 P="$KIT_LABEL_PREFIX"; O="$KIT_OWNER_PREFIX"
 
+# Hintergrund-Session: hat KIT_ROLE geerbt, ist aber keine Rolle — kein Anker, kein Tick.
+BG="$KIT_ROOT/adapters/$KIT_HOST/is-background.sh"
+if [ -x "$BG" ] && "$BG"; then
+  echo "[$R] Hintergrund-Session — keine Rolle, kein Tick. Nichts tun."
+  exit 3
+fi
+
+# Anker toter oder neu vergebener PIDs wegraeumen. Sonst haelt die Zwillingssperre einen fremden
+# Prozess fuer eine laufende Rolle.
+for f in "$PID_ROLES"/*; do
+  [ -f "$f" ] || continue
+  host_alive "$(basename "$f")" || rm -f "$f"
+done
+
 # Rollen-Anker bei JEDEM Tick — nicht erst bei Neuregistrierung. Sonst fehlt er genau dann,
 # wenn er gebraucht wird: nach dem ersten Kontext-Reset.
 anchor_role "$R"
@@ -146,11 +160,12 @@ PY2
 if [ -f "$SPRINT/budget.md" ]; then
   MINE="$(grep "^| $R |" "$SPRINT/budget.md" || true)"
   [ -z "$MINE" ] || { echo "── dein Budget ──"; echo "$MINE"; }
+  case "$MINE" in *Warnung*) echo "  Warnung: kein neues Ticket annehmen. Deinen Loop NICHT beenden — weiter ticken." ;; esac
   if grep -q "^STOP $R\$" "$SPRINT/budget.md"; then
     if [ "${KIT_ROLE_LOOP:-}" = "1" ]; then
-      echo "  ⚠ STOP: an der naechsten Ticketgrenze brain.sh handover, dann bin/restart-self.sh stop — die Waechter-Schleife startet dich frisch."
+      echo "  ⚠ STOP: an der naechsten Ticketgrenze brain.sh handover, dann bin/restart-self.sh stop — die Waechter-Schleife startet dich frisch. Deinen Loop NICHT beenden."
     else
-      echo "  ⚠ STOP: an der naechsten Ticketgrenze brain.sh handover und eine Zeile per say.sh. Diese Session laeuft nicht unter der Waechter-Schleife: den Menschen um einen Neustart bitten."
+      echo "  ⚠ STOP: an der naechsten Ticketgrenze brain.sh handover und eine Zeile per say.sh. Diese Session laeuft nicht unter der Waechter-Schleife: den Menschen um einen Neustart bitten. Deinen Loop NICHT beenden — weiter ticken."
     fi
   fi
 fi

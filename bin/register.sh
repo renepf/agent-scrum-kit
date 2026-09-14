@@ -25,8 +25,7 @@ check_lease() {
     local l_sid l_pid l_epoch age
     IFS='|' read -r l_sid l_pid l_epoch < "$LEASE" || true
     age=$(( NOW_EPOCH - ${l_epoch:-0} ))
-    if [ "$age" -lt $(( KIT_LEASE_MINUTES * 60 )) ] && [ -n "$l_pid" ] && [ "$l_pid" != "-" ] \
-       && kill -0 "$l_pid" 2>/dev/null; then
+    if [ "$age" -lt $(( KIT_LEASE_MINUTES * 60 )) ] && host_alive "$l_pid"; then
       if [ -z "$HPID" ]; then
         echo "WARNUNG: Host-PID UNKNOWN (adapters/$KIT_HOST/host-pid.sh) — Zwillingssperre kann nicht pruefen, ob PID $l_pid dieselbe Instanz ist." >&2
       elif [ "$l_pid" != "$HPID" ]; then

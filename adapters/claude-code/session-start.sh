@@ -21,6 +21,7 @@ if [ -z "$R" ]; then
   [ -n "$HP" ] && [ -f "$KIT_ROOT/.pid-roles/$HP" ] && R="$(cat "$KIT_ROOT/.pid-roles/$HP")"
 fi
 [ -n "$R" ] || exit 0
+"$KIT_ROOT/adapters/claude-code/is-background.sh" && exit 0
 
 case "$R" in engineer-a|engineer-b) FILE=engineer.md ;; *) FILE="$R.md" ;; esac
 [ -f "$KIT_ROOT/roles/$FILE" ] || exit 0
@@ -37,6 +38,7 @@ Sofort, in dieser Reihenfolge:
 4. Pruefe, ob dein Loop laeuft (CronList). Wenn nicht:
    /loop $IV Fuehre bin/tick.sh aus. Liegt nichts fuer dich an, beende die Runde. Sonst arbeite deine Rolle laut roles/$FILE: ein Ticket zur Zeit, aufgreifen heisst sofort den In-Status setzen, kein Subagent.$EXTRA
 
+Nie AskUserQuestion und nie CronDelete fuer deinen eigenen Loop: Rueckfragen nur per bin/say.sh mit @owner, sicheren Standard nennen, weiter ticken.
 Die Skripte kennen deine Rolle auch ohne KIT_ROLE ueber den Anker in .pid-roles/."
 
 if [ "${1:-}" = "--wake" ]; then

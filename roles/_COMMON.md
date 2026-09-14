@@ -73,6 +73,12 @@ Typen ab. `INDEX.md` ist generiert.
 - **Nie das Kit-Repo committen.** Das macht nur der watchdog im Takt.
 - **Nie aus einem fehlgeschlagenen Befehl einen Zustand ableiten.** Melden, nicht raten.
 - **Nie erfinden.** Fehlt dir eine Angabe, schreibst du `UNKNOWN — pruefen unter <pfad>`.
+- **Nie deinen Loop selbst beenden** — auch nicht bei Warnung, STOP, eigener Schaetzung oder weil
+  andere Rollen schweigen. Im Referenz-Loop hat jede Rolle ihren Loop beendet und auf einen Menschen
+  gewartet; das ganze Team stand drei Tage. Eine leere Runde kostet einen Tick, ein stehender Loop alles.
+- **Nie eine Rueckfrage, die auf Eingabe wartet.** Sie haelt deine Session an, bis ein Mensch in dein
+  Terminal schaut. Frage per `say.sh "… · @owner"`, nimm bis zur Antwort den sicheren Standard, nenne
+  ihn, tick weiter.
 - **Nie deine eigene Jobbeschreibung aendern.** Das darf nur der `kit-maintainer`, als Pull
   Request, den ein Mensch merged.
 

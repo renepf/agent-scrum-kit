@@ -33,6 +33,12 @@ Eine leere Runde endet nach dem Tick.
   `sessionId`), dann `CLAUDE_CODE_SESSION_ID`. Gemessen 2026-09-14 in sauberer Umgebung: nach `/clear`
   traegt die Registry die neue ID bei gleicher PID. Ob `CLAUDE_CODE_SESSION_ID` ebenfalls wechselt, ist
   in sauberer Umgebung **nicht gemessen**. Nie aus der juengsten Transkriptdatei ableiten.
+- **Lebender Host:** `host-alive.sh <pid>` prueft den Prozessnamen `claude`. Eine PID wird nach dem
+  Ende neu vergeben; ein Anker darf dann nicht als laufende Rolle gelten. `bin/tick.sh` raeumt Anker
+  toter oder neu vergebener PIDs bei jedem Tick weg.
+- **Hintergrund-Sessions:** `is-background.sh` erkennt `CLAUDE_CODE_SESSION_KIND=bg`. Solche Sessions
+  erben `KIT_ROLE`, sind aber keine Rolle. **Nicht** `CLAUDE_CODE_CHILD_SESSION` pruefen: die Variable
+  steht in der Werkzeug-Umgebung jeder Session (Referenz-Messung 2026-09-14).
 - **Rolle ueber `/clear`:** `bin/tick.sh` schreibt bei jedem Tick `.pid-roles/<host-pid>`. Ohne
   `KIT_ROLE` liest `bin/common.sh` die Rolle dort.
 - **Start-Hook:** `settings.json` haengt `session-start.sh` zweimal an `SessionStart`: einmal fuer den

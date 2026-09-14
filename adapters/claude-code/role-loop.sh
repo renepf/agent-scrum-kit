@@ -23,7 +23,7 @@ LOG="$STATE/$R.log"; STOP="$STATE/$R.stop"
 for f in "$PID_ROLES"/*; do
   [ -f "$f" ] || continue
   p="$(basename "$f")"
-  if [ "$(cat "$f")" = "$R" ] && kill -0 "$p" 2>/dev/null; then
+  if [ "$(cat "$f")" = "$R" ] && host_alive "$p"; then
     die "Rolle $R laeuft schon (Host-PID $p). Nicht doppelt starten."
   fi
 done

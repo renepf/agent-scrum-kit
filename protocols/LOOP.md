@@ -168,6 +168,14 @@ arbeiteten parallel, und `owner:<rolle>` trennt Rollen, nicht Zwillinge.
 
 Kann der Adapter die Host-PID nicht ermitteln, warnt die Sperre nur (`UNKNOWN`) und blockiert nicht.
 
+"Lebt" heisst: unter der PID laeuft ein **Host**-Prozess (`adapters/<host>/host-alive.sh`), nicht nur
+irgendein Prozess — PIDs werden neu vergeben. Jeder Tick raeumt Anker toter oder neu vergebener PIDs
+weg. Eine Hintergrund-Session, die die Rolle nur geerbt hat, tickt nicht (`is-background.sh`).
+
+Eine Rolle beendet ihren Loop **nie** selbst, auch nicht bei Warnung oder STOP, und stellt keine
+Rueckfrage, die auf Eingabe wartet. Beides hat im Betrieb eines Referenz-Loops das ganze Team
+angehalten (`evals/findings/2026-09-14-lehren-aus-dem-referenz-loop.md`).
+
 ## 9. Gedaechtnis
 
 Der Chat ist das Gespraech eines Sprints. `memory/<rolle>/` ist das Gedaechtnis einer Rolle ueber
