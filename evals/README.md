@@ -4,6 +4,7 @@
 evals/run.sh                 # alle Faelle ohne Modellaufruf, kostenlos
 evals/run.sh --live          # zusaetzlich die Faelle mit echtem Modellaufruf
 evals/run.sh --gh            # zusaetzlich die Faelle mit echtem GitHub-Zugriff (liest nur)
+evals/run.sh --net           # zusaetzlich die Faelle mit Paketdownloads (MCP-Handshakes)
 evals/run.sh --case <name>   # genau einen Fall
 evals/run.sh --list          # auflisten, nichts ausfuehren
 ```
@@ -16,7 +17,7 @@ bestimmten Host laeuft, wird als `[host-gebunden: <host>]` markiert.
 | `PASS` | bestanden | |
 | `FAIL` | durchgefallen | 1 |
 | `BLOCK` | der Host konnte nicht antworten: Kontingent erschoepft, API-Fehler, leere Antwort | 2 |
-| `SKIP` | live-Fall ohne `--live`, gh-Fall ohne `--gh` | |
+| `SKIP` | live-Fall ohne `--live`, gh-Fall ohne `--gh`, net-Fall ohne `--net` | |
 
 `BLOCK` ist **kein** Urteil ueber die Rolle. Ein fehlgeschlagener Aufruf ist ein Fehlschlag,
 kein Ergebnis — die Suite leitet daraus keinen Zustand ab, sie sagt "erneut laufen lassen".
@@ -31,11 +32,13 @@ kein Ergebnis — die Suite leitet daraus keinen Zustand ab, sie sagt "erneut la
 | `3x` | Budget | bekannte Transkripte ergeben exakt den erwarteten Kontextwert; die Schwellen loesen an der richtigen Stelle aus; fehlende Daten ergeben `UNKNOWN`, nie 0 |
 | `4x` | Rollentreue (statisch) | jede Jobbeschreibung traegt die eiserne Regel woertlich, hat denselben Aufbau, kennt kein Host-Vokabular und kein Projektwissen; eine frische Kopie ist lauffaehig |
 | `5x` | Anti-Halluzination (statisch) | ungeklaerte Adapter tragen `UNKNOWN`; ein fehlgeschlagener Aufruf aendert keinen Zustand; die Session-ID wird nie geraten; scheitert der Board-Aufruf oder zeigt das Board danach nichts, bleiben Label, Kommentar und Chat unveraendert |
-| `6x` | Loop | Rueckweisungen vor neuen Tickets; Zwillingssperre weist eine zweite lebende Instanz derselben Rolle ab; neue Session holt die Uebergabe zurueck |
+| `6x` | Loop und Kontext-Reset | Rueckweisungen vor neuen Tickets; Zwillingssperre; neue Session holt die Uebergabe zurueck; die Rolle ueberlebt einen Reset ueber den Anker am Host-Prozess; SessionStart-Hook still ohne Rolle, weckt nur bei startup/clear/resume; Session-ID zuerst aus der Registry; `restart-self.sh` beendet nichts ohne Schleife, frische Uebergabe und Ticketgrenze; Waechter-Schleife startet neu, stoppt, gibt auf, startet keinen Zwilling; neun gleichzeitige Registrierungen ergeben neun Roster-Zeilen |
 | `7x` | live | echter Modellaufruf: Adapter laedt eine Rolle, kein Subagent, Ablehnung ausserhalb des Auftrags, `UNKNOWN` statt Erfindung, kein "fertig" ohne Messung |
 | `8x` | Gedaechtnis | Index generiert, eine Zeile je Eintrag, offene `[[Verweise]]` sichtbar; Dublette, relatives Datum, falscher Typ abgelehnt; falsche Fakten geloescht; geteilte Fakten aendert nur der Autor |
 | `90` | Board-Check | fehlende, ueberzaehlige, falsch sortierte Optionen und fehlende Labels werden erkannt; `board.env` entsteht nur bei Erfolg |
 | `91` | Board live (`--gh`) | das konfigurierte GitHub Project bildet das Statusmodell ab |
+| `92` | MCP-Konfiguration | gueltiges JSON, jede Version exakt gepinnt, jeder Server durch `caveman-shrink`, jcodemunch nur auf Einschalten, Lizenzhinweis vorhanden |
+| `93` | MCP live (`--net`) | jeder ausgelieferte Server antwortet auf `initialize` und `tools/list` |
 
 Die Live-Familie misst "kein Subagent" nicht am Text, sondern an `subagent_stats.spawned`
 aus dem Ergebnis des Hosts. Eine Absichtserklaerung im Antworttext zaehlt nicht.
@@ -66,7 +69,7 @@ Eine Datei `evals/cases/<nn>-<name>.sh` mit drei Kopfzeilen:
 
 ```bash
 CASE_DESC="was der Fall prueft"
-CASE_KIND="static"        # static = kostenlos, live = echter Modellaufruf, gh = echter GitHub-Zugriff
+CASE_KIND="static"        # static = kostenlos, live = Modellaufruf, gh = GitHub-Zugriff, net = Paketdownloads
 CASE_HOST=""              # leer = hostunabhaengig, sonst der Hostname
 ```
 

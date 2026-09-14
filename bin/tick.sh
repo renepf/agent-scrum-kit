@@ -24,6 +24,10 @@ SID="$(session_id)"
 STATE="$SPRINT/.tick-$R"
 P="$KIT_LABEL_PREFIX"; O="$KIT_OWNER_PREFIX"
 
+# Rollen-Anker bei JEDEM Tick — nicht erst bei Neuregistrierung. Sonst fehlt er genau dann,
+# wenn er gebraucht wird: nach dem ersten Kontext-Reset.
+anchor_role "$R"
+
 # --- 1. Registrierung + Zwillingssperre --------------------------------------
 NEW_SESSION=0
 grep -q "| $R | $SID |" "$SPRINT/roster.md" 2>/dev/null || NEW_SESSION=1
@@ -142,6 +146,12 @@ PY2
 if [ -f "$SPRINT/budget.md" ]; then
   MINE="$(grep "^| $R |" "$SPRINT/budget.md" || true)"
   [ -z "$MINE" ] || { echo "── dein Budget ──"; echo "$MINE"; }
-  ! grep -q "^STOP $R\$" "$SPRINT/budget.md" || echo "  ⚠ STOP: an der naechsten Ticketgrenze brain.sh handover, dann Kontext leeren"
+  if grep -q "^STOP $R\$" "$SPRINT/budget.md"; then
+    if [ "${KIT_ROLE_LOOP:-}" = "1" ]; then
+      echo "  ⚠ STOP: an der naechsten Ticketgrenze brain.sh handover, dann bin/restart-self.sh stop — die Waechter-Schleife startet dich frisch."
+    else
+      echo "  ⚠ STOP: an der naechsten Ticketgrenze brain.sh handover und eine Zeile per say.sh. Diese Session laeuft nicht unter der Waechter-Schleife: den Menschen um einen Neustart bitten."
+    fi
+  fi
 fi
 exit 0

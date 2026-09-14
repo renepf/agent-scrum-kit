@@ -55,9 +55,18 @@ sprint_dir() {
   echo "$SPRINTS_DIR/$name"
 }
 
-# Die Rolle kommt aus der Umgebung des Terminals: export KIT_ROLE=engineer-a
+# Rollen-Anker: .pid-roles/<host-pid> enthaelt die Rolle des Host-Prozesses dieser Session.
+# Ein Kontext-Reset im Host (z.B. /clear bei claude-code) beendet den Prozess nicht, vergibt aber
+# eine neue Session-ID und loescht die Rolle aus dem Kontext. Die PID ueberlebt — der Anker auch.
+PID_ROLES="$KIT_ROOT/.pid-roles"
+
+# Die Rolle: zuerst KIT_ROLE aus der Umgebung, sonst der Anker des Host-Prozesses.
 role() {
-  [ -n "${KIT_ROLE:-}" ] || die "KIT_ROLE ist nicht gesetzt. Im Terminal: export KIT_ROLE=<rolle>"
+  if [ -z "${KIT_ROLE:-}" ]; then
+    local hp; hp="$(host_pid)"
+    [ -n "$hp" ] && [ -f "$PID_ROLES/$hp" ] && KIT_ROLE="$(cat "$PID_ROLES/$hp")"
+  fi
+  [ -n "${KIT_ROLE:-}" ] || die "Rolle unbekannt: weder KIT_ROLE gesetzt noch Anker in .pid-roles/ fuer diesen Host-Prozess. Einmal mit KIT_ROLE=<rolle> bin/tick.sh ausfuehren."
   case " $KIT_ROLES " in
     *" $KIT_ROLE "*) echo "$KIT_ROLE" ;;
     *) die "unbekannte Rolle '$KIT_ROLE'. Erlaubt: $KIT_ROLES" ;;
@@ -81,6 +90,14 @@ host_pid() {
 }
 
 now() { date '+%Y-%m-%d %H:%M'; }
+
+# Anker fuer die eigene Rolle setzen, wenn er fehlt oder abweicht. Ohne Host-PID: nichts.
+anchor_role() {
+  local r="$1" hp; hp="$(host_pid)"
+  [ -n "$hp" ] || return 0
+  [ "$(cat "$PID_ROLES/$hp" 2>/dev/null)" = "$r" ] && return 0
+  mkdir -p "$PID_ROLES"; printf '%s\n' "$r" | atomic_write "$PID_ROLES/$hp"
+}
 
 # Alle Sessions laufen auf derselben Maschine im selben Ordner. Sie sehen die
 # Schreibvorgaenge der anderen sofort ueber das Dateisystem — Git wird zum Lesen NICHT

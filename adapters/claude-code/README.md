@@ -25,16 +25,28 @@ kein Subagent.
 `/loop` mit festem Intervall startet die Runde auch dann, wenn die Rolle gerade auf nichts wartet.
 Eine leere Runde endet nach dem Tick.
 
-## 3. Session-Kennung und Host-PID
+## 3. Session-Kennung, Host-PID, Kontext-Reset
 
-- **Session-Kennung:** Claude Code setzt `CLAUDE_CODE_SESSION_ID` in jeder Session. Der Wert ist der
-  Dateiname des Transkripts unter `~/.claude/projects/<projekt-slug>/<kennung>.jsonl`
-  (gemessen 2026-09-10). `session-id.sh` liest nur diese Variable. **Nicht** aus der juengsten
-  Transkriptdatei ableiten: bei neun parallelen Sessions gehoert sie der Session, die zuletzt
-  geschrieben hat.
-- **Host-PID** fuer die Zwillingssperre: `host-pid.sh` geht die Prozesskette hoch bis zum Prozess
-  `claude` (gemessen 2026-09-10: Skript → Shell des Werkzeugaufrufs → `claude`). Die PID bleibt ueber
-  alle Werkzeugaufrufe einer Session gleich.
+- **Host-PID:** `host-pid.sh` geht die Prozesskette hoch bis zum Prozess `claude`. Die PID bleibt ueber
+  alle Werkzeugaufrufe einer Session gleich — **und ueber `/clear` hinweg**.
+- **Session-Kennung:** `session-id.sh` liest zuerst `~/.claude/sessions/<host-pid>.json` (Feld
+  `sessionId`), dann `CLAUDE_CODE_SESSION_ID`. Gemessen 2026-09-14 in sauberer Umgebung: nach `/clear`
+  traegt die Registry die neue ID bei gleicher PID. Ob `CLAUDE_CODE_SESSION_ID` ebenfalls wechselt, ist
+  in sauberer Umgebung **nicht gemessen**. Nie aus der juengsten Transkriptdatei ableiten.
+- **Rolle ueber `/clear`:** `bin/tick.sh` schreibt bei jedem Tick `.pid-roles/<host-pid>`. Ohne
+  `KIT_ROLE` liest `bin/common.sh` die Rolle dort.
+- **Start-Hook:** `settings.json` haengt `session-start.sh` zweimal an `SessionStart`: einmal fuer den
+  Rollenanker als Kontext, einmal mit `--wake` (asyncRewake), das die Session nach `startup`, `clear`
+  und `resume` ohne Eingabe weckt. Gemessen: Start ohne Prompt registriert sich; nach `/clear` liest
+  die Session ihre Rolle neu, tickt (neue ID im Roster) und findet ihren laufenden `/loop`.
+- **Waechter-Schleife:** `role-loop.sh <rolle>` startet `claude -n <rolle> --settings … --mcp-config
+  .mcp.json` und startet neu, sobald es endet. Stoppen: `touch .role-loop/<rolle>.stop`. Gemessen nur
+  mit vorgetaeuschtem `claude` (Fall 68).
+
+**Messfalle fuer Tests:** Wer `claude` aus einer laufenden claude-Session heraus startet, vererbt
+`CLAUDE_CODE_CHILD_SESSION=1`, `CLAUDE_PID` und den Messaging-Socket. Die gestartete Session schrieb
+dann weder Registry noch Transkript am ueblichen Ort. Testsessions deshalb mit `env -i` und nur
+`HOME PATH USER LANG TERM KIT_ROLE` starten (so in Fall 75 und 76).
 
 ## 4. Empfohlene Einstellungen fuer Opus 5
 
@@ -62,3 +74,75 @@ nicht gegen die Claude-Code-Dokumentation geprueft.
    Gegenwert. Deshalb verlangt `AGENTS.md` eine **Messung**, keine Nachpruefschleife.
 6. **Regeldateien schlank halten.** Ueber 300 Zeilen verschlechtern das Ergebnis messbar.
    `AGENTS.md` bleibt bewusst darunter, Details liegen in Unterordnern mit Routing-Tabelle.
+
+## 4a. Dialoge, die einen unbeaufsichtigten Start blockieren
+
+Gemessen am 2026-09-14 an einer interaktiven Session in einem frischen Kit-Ordner:
+
+- **Vertrauensdialog beim ersten Start in einem Ordner.** Die Vorauswahl ist `❯ No, exit` — ein
+  blindes Enter beendet claude. Einmal von Hand `Yes, I trust this folder` waehlen, bevor Rollen
+  unter `role-loop.sh` laufen; sonst haengt jeder Neustart an diesem Dialog. Mit `-p` erscheint er
+  nicht.
+- **`/exit` mit laufendem `/loop`.** claude fragt `Background work is running … 1. Exit and stop
+  tasks / 2. Stay`. Wer eine Rolle von Hand beendet, bestaetigt mit `1`. `bin/restart-self.sh`
+  betrifft das nicht: es beendet den Prozess per `kill -TERM`.
+- **Start ohne Eingabe.** Mit `--settings adapters/claude-code/settings.json` weckt der Hook
+  `session-start.sh --wake` (asyncRewake) die Session nach dem Vertrauensdialog von selbst: sie las
+  `roles/_COMMON.md` und `roles/engineer.md`, fuehrte `bin/tick.sh` aus, registrierte sich und legte
+  ihren 5-Minuten-Loop per `CronCreate` an — ohne einen einzigen eingegebenen Prompt.
+- In `-p` meldet derselbe Weck-Hook `outcome: error` (exit 2, Ankertext auf stderr). Die Session
+  laeuft trotzdem normal durch; der Kontext-Hook liefert den Anker dort als `additionalContext`.
+
+## 5. MCP-Server
+
+Das Kit liefert MCP-Server in zwei Dateien aus. Jeder laeuft durch `caveman-shrink@0.1.0` (MIT), einen
+stdio-Proxy aus dem caveman-Projekt, der die Tool-Beschreibungen kuerzt. Alle Versionen sind exakt
+gepinnt; gemessen am 2026-09-14 per `initialize` + `tools/list`:
+
+| Server | Datei | Paket | Lizenz | Tools | Beschreibungen roh → gekuerzt |
+|---|---|---|---|---|---|
+| context7 | `.mcp.json` | `@upstash/context7-mcp@4.1.0` (npx) | MIT | 2 | 2435 → 2351 Zeichen |
+| graphify | `.mcp.json` | `graphifyy[mcp]==0.9.57` (uvx) | Apache-2.0 | 10 | 1229 → 1187 Zeichen |
+| jcodemunch | `adapters/claude-code/mcp/jcodemunch.json` | `jcodemunch-mcp==1.108.318` (uvx) | Dual-Use, siehe unten | 6 | — |
+
+Voraussetzungen: `npx` (Node) und `uvx` (uv). graphify liest `graphify-out/graph.json` relativ zum
+Kit-Ordner; ohne Graph startet der Server trotzdem (gemessen). Den Graph baut `graphify update <pfad>`.
+
+`graphifyy` braucht das Extra `[mcp]`: ohne es endet `graphify-mcp` mit
+`ModuleNotFoundError: No module named 'mcp'` (gemessen an einer `uv tool install graphifyy`).
+
+Start mit MCP:
+
+```bash
+claude -n "$KIT_ROLE" --settings adapters/claude-code/settings.json --mcp-config .mcp.json
+```
+
+### jcodemunch — nur auf Einschalten
+
+`jcodemunch-mcp` steht unter der **jCodeMunch-MCP Dual-Use License 1.1**, nicht unter einer
+Open-Source-Lizenz. Klausel 3: die Software darf nicht "in any product, service, or workflow that
+generates revenue, is offered commercially, or is used within a for-profit organization to support
+revenue-generating activities" genutzt werden. Kostenlos ist nur nicht-kommerzielle Nutzung;
+kommerziell braucht es die Erlaubnis des Autors (J. Gravelle,
+https://github.com/jgravelle/jcodemunch-mcp). Das Kit verteilt keinen Code, nur einen Startbefehl —
+ob deine Nutzung erlaubt ist, musst du selbst pruefen. Deshalb ist es nicht in `.mcp.json`.
+
+Einschalten:
+
+```bash
+claude … --mcp-config .mcp.json adapters/claude-code/mcp/jcodemunch.json
+```
+
+Die vom Server gemeldete Version ist unzuverlaessig (`==1.27.0` meldet sich als 1.30.0 mit 50 Tools);
+gepinnt ist 1.108.318, eine Router-Fassung mit 6 Tools und rund 2400 Zeichen Beschreibung.
+
+### caveman als Plugin
+
+`caveman` selbst ist kein MCP-Server, sondern ein Plugin aus Hooks und Skills. Die Befehle unten
+entsprechen `claude plugin marketplace add --help` und `claude plugin install --help`; ausgefuehrt
+wurden sie auf der Messmaschine nicht, dort war das Plugin schon installiert (**ungeprueft**):
+
+```bash
+claude plugin marketplace add JuliusBrussee/caveman
+claude plugin install caveman@caveman
+```

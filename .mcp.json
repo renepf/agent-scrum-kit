@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "caveman-shrink@0.1.0", "npx", "-y", "@upstash/context7-mcp@4.1.0"]
+    },
+    "graphify": {
+      "command": "npx",
+      "args": ["-y", "caveman-shrink@0.1.0", "uvx", "--from", "graphifyy[mcp]==0.9.57", "graphify-mcp", "graphify-out/graph.json"]
+    }
+  }
+}

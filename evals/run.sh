@@ -4,17 +4,19 @@
 #   evals/run.sh                 # alle Faelle ausser den live-Faellen
 #   evals/run.sh --live          # zusaetzlich die Faelle mit echtem Modellaufruf
 #   evals/run.sh --gh            # zusaetzlich die Faelle mit echtem GitHub-Zugriff (lesen)
+#   evals/run.sh --net           # zusaetzlich die Faelle mit Paketdownloads (MCP-Handshakes)
 #   evals/run.sh --case <name>   # genau einen Fall
 #   evals/run.sh --list          # nur auflisten
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LIVE=0; GH=0; ONLY=""; LIST=0
+LIVE=0; GH=0; NET=0; ONLY=""; LIST=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --live) LIVE=1 ;;
     --gh) GH=1 ;;
+    --net) NET=1 ;;
     --case) ONLY="${2:-}"; shift ;;
     --list) LIST=1 ;;
     -h|--help) sed -n '2,9p' "$0"; exit 0 ;;
@@ -27,7 +29,7 @@ PASS=0; FAIL=0; SKIP=0; BLOCKED=0
 FAILED_CASES=""
 
 printf '%s\n' "── agent-scrum-kit · Eval-Suite ────────────────────────────────"
-printf 'live-Faelle: %s · gh-Faelle: %s\n\n' "$([ "$LIVE" = 1 ] && echo "an" || echo "aus (--live)")" "$([ "$GH" = 1 ] && echo "an" || echo "aus (--gh)")"
+printf 'live-Faelle: %s · gh-Faelle: %s\n\n' "$([ "$LIVE" = 1 ] && echo "an" || echo "aus (--live)")" "$([ "$GH" = 1 ] && echo "an" || echo "aus (--gh)")"; printf 'net-Faelle: %s\n\n' "$([ "$NET" = 1 ] && echo "an" || echo "aus (--net)")"
 
 for f in "$HERE"/cases/*.sh; do
   name="$(basename "$f" .sh)"
@@ -43,6 +45,10 @@ for f in "$HERE"/cases/*.sh; do
     continue
   fi
 
+  if [ "$KIND" = "net" ] && [ "$NET" != 1 ]; then
+    printf '  \033[33mSKIP\033[0m  %-30s %s\n' "$name" "braucht --net"
+    SKIP=$((SKIP + 1)); continue
+  fi
   if [ "$KIND" = "gh" ] && [ "$GH" != 1 ]; then
     printf '  \033[33mSKIP\033[0m  %-30s %s\n' "$name" "braucht --gh"
     SKIP=$((SKIP + 1)); continue

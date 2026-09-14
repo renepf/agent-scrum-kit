@@ -80,7 +80,9 @@ Typen ab. `INDEX.md` ist generiert.
 
 `Warnung` im Tick: kein neues Ticket. `STOP`: an der naechsten Ticketgrenze `brain.sh handover`
 (Ticket, Stand, SHA, naechster Schritt, offene Fragen) plus eine Zeile per `say.sh`, dann Kontext
-leeren — **neue Session, nicht verdichten**. Spaetestens nach `KIT_MAX_TICKETS` Tickets.
+leeren — **nicht verdichten**. Laeufst du unter der Waechter-Schleife (der Tick sagt es dir), heisst
+das `bin/restart-self.sh stop`; sonst bittest du den Menschen um den Reset. Nach einem Reset kennt der
+Tick deine Rolle weiter und zeigt dir die Uebergabe. Spaetestens nach `KIT_MAX_TICKETS` Tickets.
 
 ## Ton
 

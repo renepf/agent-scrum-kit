@@ -2,3 +2,5 @@ kit.env
 board.env
 .kit-issues.json
 evals/out/
+.pid-roles/
+.role-loop/

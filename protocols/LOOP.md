@@ -184,9 +184,13 @@ Sprints und Resets hinweg, `memory/_shared/` das Wissen aller. Werkzeug `bin/bra
 **Kontextgroesse** ist der groesste Eingabestand eines **einzelnen** Turns
 (`input_tokens` + `cache_read_input_tokens` + `cache_creation_input_tokens`), **nicht** die Summe.
 
-Reset immer an einer Ticketgrenze: `brain.sh handover` → Kontext leeren (**neue Session, nicht
-verdichten**) → gleicher erster Prompt. Der naechste Tick registriert die neue Session-ID und zeigt
-die Uebergabe.
+Reset immer an einer Ticketgrenze: `brain.sh handover` → Kontext leeren (**nicht verdichten**).
+Der Host-Prozess darf dabei weiterleben: die Rolle haengt am Anker `.pid-roles/<host-pid>`, nicht am
+Kontext. Der naechste Tick erkennt die neue Session-ID, registriert sie und zeigt die Uebergabe.
+
+Autonom geht das unter der Waechter-Schleife des Hosts: `bin/restart-self.sh` beendet den
+Host-Prozess nur, wenn (1) die Session unter der Schleife laeuft, (2) eine Uebergabe juenger als
+10 Minuten existiert und (3) kein Sprint-Ticket `owner:<rolle>` traegt. Sonst beendet es nichts.
 
 ## 11. Geraete-Schlange und Ueberleben
 

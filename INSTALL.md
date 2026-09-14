@@ -152,12 +152,43 @@ board.env geschrieben: 10 IDs
 Aendert jemand spaeter die Optionen des Boards, aendern sich ihre IDs. Dann erneut
 `bin/board-check.sh --write`.
 
+## 3a. MCP-Server und Plugin
+
+Das Kit liefert zwei MCP-Server fest aus und einen auf Einschalten. Jeder laeuft durch den Proxy
+`caveman-shrink@0.1.0`, der die Tool-Beschreibungen kuerzt. Voraussetzung: `npx` (Node) und `uvx` (uv).
+
+| Datei | Server | Standard |
+|---|---|---|
+| `.mcp.json` | context7, graphify | an |
+| `adapters/claude-code/mcp/jcodemunch.json` | jcodemunch | **aus** — Lizenz nur nicht-kommerziell, siehe `adapters/claude-code/README.md` Abschnitt 5 |
+
+Pruefen, dass jeder Server startet und antwortet (laedt die Pakete herunter):
+
+```bash
+evals/run.sh --net --case 93-mcp-handshake
+```
+
+graphify braucht einen Graphen unter `graphify-out/graph.json` im Kit-Ordner. Ohne ihn startet der
+Server, findet aber nichts. Den Graphen des Projekts bauen:
+
+```bash
+uvx --from 'graphifyy[mcp]==0.9.57' graphify update "$KIT_WORKTREE_ROOT"   # ungeprueft mit diesem Pfad; gemessen nur 'graphify update .'
+```
+
+Das caveman-Plugin (Hooks und Skills, kein MCP) ist optional:
+
+```bash
+claude plugin marketplace add JuliusBrussee/caveman     # ungeprueft: nur --help gelesen
+claude plugin install caveman@caveman                    # ungeprueft: nur --help gelesen
+```
+
 ## 4. Evals
 
 ```bash
 evals/run.sh                # statische Faelle, ohne Netz, ohne Modell
 evals/run.sh --gh           # zusaetzlich: dein Board gegen das Statusmodell (liest nur)
 evals/run.sh --live         # zusaetzlich: echte Modellaufrufe gegen claude-code (kostet Tokens)
+evals/run.sh --net          # zusaetzlich: MCP-Handshakes, laedt npm- und PyPI-Pakete
 ```
 
 Exitcode 0 = alles gruen, 1 = echter Fehlschlag, 2 = blockiert (Host oder GitHub nicht erreichbar,
@@ -167,6 +198,18 @@ Kontingent erschoepft — kein Urteil ueber das Kit).
 
 `roles/START-HERE.md`: Reihenfolge, Intervalle, Prompt. Der host-spezifische Befehl fuer den
 Dauerbetrieb steht in `adapters/<host>/README.md`.
+
+Jede Session startet mit Hook-Settings und MCP-Konfiguration:
+
+```bash
+cd <dein-projekt>/agent-scrum-kit
+export KIT_ROLE=<rolle>
+claude -n "$KIT_ROLE" --settings adapters/claude-code/settings.json --mcp-config .mcp.json
+```
+
+Beim **allerersten** Start in diesem Ordner fragt claude, ob du ihm vertraust. Die Vorauswahl ist
+`No, exit` — waehle `Yes, I trust this folder`. Erst danach laufen die Hooks, und erst danach
+startet eine Rolle unter `adapters/claude-code/role-loop.sh` ohne Menschen neu.
 
 Einmal von Hand, bevor die Loops laufen:
 

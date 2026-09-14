@@ -20,7 +20,7 @@ LEASE="$SPRINT/.lease-$R"
 HPID="$(host_pid)"
 NOW_EPOCH="$(date +%s)"
 
-check_and_take_lease() {
+check_lease() {
   if [ -f "$LEASE" ]; then
     local l_sid l_pid l_epoch age
     IFS='|' read -r l_sid l_pid l_epoch < "$LEASE" || true
@@ -35,7 +35,9 @@ check_and_take_lease() {
     fi
   fi
   printf '%s|%s|%s\n' "$SID" "${HPID:--}" "$NOW_EPOCH" | atomic_write "$LEASE"
+}
 
+write_roster() {
   local body
   body="$( { [ -f "$ROSTER" ] && grep '^| 2' "$ROSTER" | grep -v "^| [^|]* | $R | " || true; } )"
   {
@@ -47,8 +49,14 @@ check_and_take_lease() {
   } | atomic_write "$ROSTER"
 }
 
-# Eine Sperre um Pruefen+Nehmen: zwei Zwillinge, die im selben Moment starten, duerfen nicht
-# beide die Pruefung bestehen.
-with_lock "$LEASE.lock" check_and_take_lease
+# Zwei Sperren, nacheinander, nie verschachtelt:
+#   $LEASE.lock   — je Rolle: zwei Zwillinge, die im selben Moment starten, bestehen nicht beide.
+#   $ROSTER.lock  — fuer alle Rollen: roster.md ist geteilt. Mit nur der Rollen-Sperre verloren neun
+#                   gleichzeitig startende Sessions 5 von 9 Zeilen (Starttest 2026-09-14).
+# Nicht verschachtelt, weil with_lock seine Aufraeum-trap setzt: eine innere Sperre ueberschreibt die
+# trap der aeusseren, und ein die() in der Zwillingspruefung liess dann die Lease-Sperre liegen.
+with_lock "$LEASE.lock" check_lease
+with_lock "$ROSTER.lock" write_roster
+anchor_role "$R"
 
 echo "$R registriert · session $SID · host $KIT_HOST · pid ${HPID:-UNKNOWN}"

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "jcodemunch": {
+      "command": "npx",
+      "args": ["-y", "caveman-shrink@0.1.0", "uvx", "--from", "jcodemunch-mcp==1.108.318", "jcodemunch-mcp"]
+    }
+  }
+}

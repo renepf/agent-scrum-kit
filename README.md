@@ -12,7 +12,7 @@ cd <dein-projekt> && git clone https://github.com/renepf/agent-scrum-kit && cd a
 cp kit.env.example kit.env                  # 1. Repo, Pfade, Board eintragen
 bin/board-setup.sh && bin/board-check.sh --write   # 2. Board + Labels einrichten, Abbildung pruefen
 bin/preflight.sh && evals/run.sh --gh       # 3. alles muss gruen sein
-export KIT_ROLE=product-owner && claude     # 4. je Terminal eine Rolle, im Kit-Ordner, erst PO und simplicity-reviewer
+export KIT_ROLE=product-owner && claude -n product-owner --settings adapters/claude-code/settings.json --mcp-config .mcp.json   # 4. je Terminal eine Rolle
 # 5. erste Eingabe:  Lies roles/_COMMON.md und roles/product-owner.md und uebernimm die Rolle product-owner.
 # 6. zweite Eingabe: /loop 10m Fuehre bin/tick.sh aus. Liegt nichts fuer dich an, beende die Runde. Sonst arbeite
 #                    deine Rolle laut roles/product-owner.md. Kein Subagent.   (Intervall je Rolle: Tabelle 2.3)
@@ -191,19 +191,23 @@ seit 45 Minuten, haengt ihre Session.
 ### 3.2 Wenn eine Session an ihrem Limit ist
 
 `budget.md` traegt `STOP <rolle>`, und der Tick dieser Rolle zeigt es ihr. An der naechsten
-Ticketgrenze schreibt sie ihre Uebergabe per `bin/brain.sh handover` und eine Zeile per
-`bin/say.sh`. Dann:
+Ticketgrenze schreibt sie ihre Uebergabe per `bin/brain.sh handover` und eine Zeile per `bin/say.sh`.
+Danach gibt es zwei Wege; beide sind gemessen (2026-09-14, saubere Umgebung):
 
-1. Session beenden (`/exit`) — **nicht** `/compact`. Verdichten verliert die technischen
-   Details, an denen die naechste Runde haengt. Auch nicht `/clear`: die Session-Kennung kommt
-   aus `CLAUDE_CODE_SESSION_ID`, und ob dieser Wert nach `/clear` wechselt, ist nicht geprueft.
-   Ein neuer Prozess hat sicher eine neue Kennung.
-2. Im selben Terminal `claude` neu starten. `KIT_ROLE` ist dort noch gesetzt.
-3. Dieselben zwei Eingaben wie beim ersten Start. Der Tick registriert die neue Session-ID
-   von selbst, zeigt die Uebergabe (`brain.sh recall`), und der watchdog findet sie wieder.
+**`/clear` in der laufenden Session.** Der Prozess bleibt, die Session-ID wechselt. Der
+SessionStart-Hook weckt die Session ohne Eingabe; sie liest ihr Rollenblatt, `bin/tick.sh`
+registriert die neue ID und zeigt die Uebergabe, und der `/loop` laeuft weiter (die Session fand ihn
+per `CronList` und legte keinen zweiten an). Die Rolle kommt aus dem Anker `.pid-roles/<pid>`, die
+neue Session-ID aus `~/.claude/sessions/<pid>.json`. **Nicht `/compact`** — Verdichten verliert die
+technischen Details, an denen die naechste Runde haengt.
 
-Unabhaengig vom watchdog geht jede Rolle nach `KIT_MAX_TICKETS` Tickets ohnehin so in den
-Ruhestand.
+**Unter der Waechter-Schleife, ohne Menschen.** Startet die Rolle ueber
+`adapters/claude-code/role-loop.sh <rolle>`, beendet sie sich selbst mit `bin/restart-self.sh stop`,
+sobald Uebergabe (juenger als 10 min) und Ticketgrenze stehen; die Schleife startet `claude` frisch,
+der Hook weckt es. Der Neustart selbst ist nur mit einem vorgetaeuschten `claude` gemessen (Fall 68),
+nicht mit einem echten.
+
+Unabhaengig vom watchdog geht jede Rolle nach `KIT_MAX_TICKETS` Tickets ohnehin so in den Ruhestand.
 
 ### 3.3 Wenn der Tick "zweite Instanz" meldet
 
@@ -235,9 +239,10 @@ Aendert sich `roles/_COMMON.md`, betrifft das alle neun Sessions.
 | `INSTALL.md` | Einrichtung Schritt fuer Schritt, mit gemessenen Ausgaben und Fehlertabelle |
 | `protocols/LOOP.md` | Statusmodell, Kanten, Gates, Loop-Reihenfolge, Tick, Chat, Zwillingssperre, Budget |
 | `adapters/<host>/` | wie eine Session startet, eine Rolle laedt, ihre Kennung meldet |
-| `bin/` | `tick.sh`, `status.sh`, `claim.sh`, `merge.sh`, `say.sh`, `reindex.sh`, `brain.sh`, `budget.sh`, `register.sh`, `sprint-new.sh`, `commit.sh`, `board-setup.sh`, `board-check.sh`, `preflight.sh`, `tickets.sh` |
+| `bin/` | `tick.sh`, `status.sh`, `claim.sh`, `merge.sh`, `say.sh`, `reindex.sh`, `brain.sh`, `budget.sh`, `register.sh`, `restart-self.sh`, `sprint-new.sh`, `commit.sh`, `board-setup.sh`, `board-check.sh`, `preflight.sh`, `tickets.sh` |
 | `evals/` | die Suite, die prueft, ob das alles haelt |
 | `memory/` | Gedaechtnis je Rolle plus geteilt, eine Datei je Fakt, generierter Index |
+| `.mcp.json` | MCP-Server context7 und graphify, beide durch `caveman-shrink`; jcodemunch auf Einschalten unter `adapters/claude-code/mcp/` |
 | `kit.env` | **alles Projektwissen.** Kein Skript kennt dein Projekt, nur diese Datei |
 
 ## Die drei Regeln, die alles tragen

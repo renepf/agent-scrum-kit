@@ -34,6 +34,12 @@ laut <rollendatei>: ein Ticket zur Zeit, aufgreifen heisst sofort den In-Status 
 
 watchdog zusaetzlich: `… danach bin/budget.sh, vier Blicke, bin/commit.sh.`
 
+## Ohne Menschen neu starten
+
+Laeuft eine Rolle unter der Waechter-Schleife ihres Hosts (`adapters/<host>/role-loop.sh`), beendet
+sie sich bei `STOP` selbst mit `bin/restart-self.sh stop` und die Schleife startet sie frisch. Das
+Skript beendet nichts, solange Uebergabe oder Ticketgrenze fehlen.
+
 ## Wenn eine Session an ihrem Limit ist
 
 `bin/brain.sh handover` schreiben, Kontext leeren (**neue Session, nicht verdichten**), denselben
