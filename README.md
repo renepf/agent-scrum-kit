@@ -204,8 +204,10 @@ technischen Details, an denen die naechste Runde haengt.
 **Unter der Waechter-Schleife, ohne Menschen.** Startet die Rolle ueber
 `adapters/claude-code/role-loop.sh <rolle>`, beendet sie sich selbst mit `bin/restart-self.sh stop`,
 sobald Uebergabe (juenger als 10 min) und Ticketgrenze stehen; die Schleife startet `claude` frisch,
-der Hook weckt es. Der Neustart selbst ist nur mit einem vorgetaeuschten `claude` gemessen (Fall 68),
-nicht mit einem echten.
+der Hook weckt es. Gemessen mit echtem `claude` (Fall 77, 2026-09-14): die Rolle schrieb ihre Uebergabe
+und rief `restart-self.sh stop`, der alte Prozess endete nach 62 s (`rc=143`), die Schleife startete
+`claude` neu, und 18 s spaeter stand die Rolle mit neuer PID und neuer Session-ID im Roster — ohne
+Eingabe. Der Vertrauensdialog erscheint nur beim allerersten Start im Ordner, nicht beim Neustart.
 
 Unabhaengig vom watchdog geht jede Rolle nach `KIT_MAX_TICKETS` Tickets ohnehin so in den Ruhestand.
 

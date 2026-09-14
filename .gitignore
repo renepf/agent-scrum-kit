@@ -4,3 +4,4 @@ board.env
 evals/out/
 .pid-roles/
 .role-loop/
+.claude/settings.local.json

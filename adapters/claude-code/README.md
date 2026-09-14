@@ -40,8 +40,14 @@ Eine leere Runde endet nach dem Tick.
   und `resume` ohne Eingabe weckt. Gemessen: Start ohne Prompt registriert sich; nach `/clear` liest
   die Session ihre Rolle neu, tickt (neue ID im Roster) und findet ihren laufenden `/loop`.
 - **Waechter-Schleife:** `role-loop.sh <rolle>` startet `claude -n <rolle> --settings … --mcp-config
-  .mcp.json` und startet neu, sobald es endet. Stoppen: `touch .role-loop/<rolle>.stop`. Gemessen nur
-  mit vorgetaeuschtem `claude` (Fall 68).
+  .mcp.json` und startet neu, sobald es endet. Stoppen: `touch .role-loop/<rolle>.stop`. Gemessen mit
+  vorgetaeuschtem `claude` (Fall 68: Neustart, Stopp, Aufgeben, Zwilling) und mit echtem `claude`
+  (Fall 77: Selbst-Neustart per `restart-self.sh`, neue PID und Session-ID ohne Eingabe). Das
+  Vertrauen in den Ordner speichert claude in `~/.claude.json` (`hasTrustDialogAccepted`), deshalb
+  haengt der Neustart nicht am Dialog.
+- **Absturzschutz beachten:** endet `claude` dreimal in Folge nach weniger als 60 s, gibt die Schleife
+  auf. Eine Rolle, die sich direkt nach dem Wecken erneut zuruecksetzt, zaehlt dabei als schneller
+  Abbruch.
 
 **Messfalle fuer Tests:** Wer `claude` aus einer laufenden claude-Session heraus startet, vererbt
 `CLAUDE_CODE_CHILD_SESSION=1`, `CLAUDE_PID` und den Messaging-Socket. Die gestartete Session schrieb
