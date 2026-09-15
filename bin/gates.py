@@ -283,6 +283,14 @@ def read(path):
         raise LedgerError("%s: not valid UTF-8 at byte %d" % (path, e.start))
 
 
+def checked(text):
+    """The parsed ledger; a formal error raises LedgerError, which main() prints in one line."""
+    doc = parse(text)
+    if doc["errors"]:
+        raise LedgerError(" · ".join(doc["errors"]))
+    return doc
+
+
 def cmd_contract(ledger_path, fresh):
     try:
         doc = parse(read(ledger_path))
@@ -394,11 +402,7 @@ def cmd_overlap(only):
             continue
         label, owns = line.split("\t", 1)
         if owns.startswith("@"):
-            try:
-                owns = ", ".join(parse(read(owns[1:]))["owns"])
-            except OSError:
-                print("Ledger nicht lesbar: " + owns[1:])
-                return 1
+            owns = ", ".join(parse(read(owns[1:]))["owns"])
         claims.append((label, split_owns(owns)))
     conflicts = []
     for i, (la, ga) in enumerate(claims):
@@ -417,10 +421,6 @@ def cmd_overlap(only):
 def definition_digest(gate):
     raw = json.dumps([gate["check"] or "", gate["expect"] or "", gate["cwd"] or ""])
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
-
-
-def stamp():
-    return time.strftime("%Y-%m-%dT%H:%M")
 
 
 def gate_problem(gate, head8):
@@ -469,10 +469,7 @@ def write_results(path, text, doc, results):
 
 def cmd_run(path, head8, cwd, role, timeout):
     text = read(path)
-    doc = parse(text)
-    if doc["errors"]:
-        print(" · ".join(doc["errors"]))
-        return 2
+    doc = checked(text)
     results, report = {}, []
     for gate in doc["gates"]:
         if gate["check"] is None or gate["id"] in doc["abandoned"]:
@@ -493,7 +490,7 @@ def cmd_run(path, head8, cwd, role, timeout):
             why = "nicht startbar: %s" % e
         if why is None:
             results[gate["id"]] = (True, "v1 head=%s def=%s exit=0 expect=matched out=%s at=%s by=%s" % (
-                head8, definition_digest(gate), hashlib.sha256(combined.encode("utf-8")).hexdigest()[:12], stamp(), role))
+                head8, definition_digest(gate), hashlib.sha256(combined.encode("utf-8")).hexdigest()[:12], time.strftime("%Y-%m-%dT%H:%M"), role))
             report.append("%s gruen" % gate["id"])
         else:
             results[gate["id"]] = (False, "pending")
@@ -508,10 +505,7 @@ def cmd_run(path, head8, cwd, role, timeout):
 
 def cmd_attest(path, gid, head8, role, beleg):
     text = read(path)
-    doc = parse(text)
-    if doc["errors"]:
-        print(" · ".join(doc["errors"]))
-        return 2
+    doc = checked(text)
     gate = next((g for g in doc["gates"] if g["id"] == gid), None)
     beleg = " ".join(beleg.split())
     problem = ("Gate %s gibt es im Ledger nicht" % gid if gate is None else
@@ -521,20 +515,13 @@ def cmd_attest(path, gid, head8, role, beleg):
     if problem:
         print(problem)
         return 1
-    write_results(path, text, doc, {gid: (True, "manual head=%s by=%s at=%s — %s" % (head8, role, stamp(), beleg))})
+    write_results(path, text, doc, {gid: (True, "manual head=%s by=%s at=%s — %s" % (head8, role, time.strftime("%Y-%m-%dT%H:%M"), beleg))})
     print("%s belegt fuer HEAD %s" % (gid, head8))
     return 0
 
 
 def cmd_unmet(path, head8, mode):
-    try:
-        doc = parse(read(path))
-    except OSError:
-        print("kein Ledger unter %s" % path)
-        return 1
-    if doc["errors"]:
-        print(" · ".join(doc["errors"]))
-        return 1
+    doc = checked(read(path))
     problems = []
     for gate in doc["gates"]:
         if gate["id"] in doc["abandoned"] or (mode == "runnable" and gate["check"] is None):
@@ -573,7 +560,7 @@ def lint_findings(doc, body):
     for g in live:
         gid, title, check, expect = g["id"], g["title"], g["check"], g["expect"]
         if check is not None:
-            kind, value = g.get("expectation") or ("text", expect)
+            kind, value = g["expectation"]
             if FIXED_OUTPUT_COMMAND.match(check):
                 found.append(("FEHLER", gid, "tautological-check",
                               "CHECK gibt festen Text aus ('%s') — ein Orakel misst das Ergebnis selbst" % check))
@@ -605,11 +592,7 @@ def lint_findings(doc, body):
 
 
 def cmd_lint(path):
-    try:
-        doc = parse(read(path))
-    except OSError:
-        print("FEHLER Ledger [parse]: kein Ledger unter %s" % path)
-        return 1
+    doc = parse(read(path))
     body = sys.stdin.read()
     found = [("FEHLER", "Ledger", "parse", e) for e in doc["errors"]] or lint_findings(doc, body)
     for level, gid, rule, message in found:
@@ -618,11 +601,7 @@ def cmd_lint(path):
 
 
 def cmd_qa_lines(path, head8):
-    try:
-        doc = parse(read(path))
-    except OSError:
-        print("kein Ledger unter %s" % path)
-        return 1
+    doc = parse(read(path))
     lines = []
     for body in json.loads(sys.stdin.read() or "[]"):
         rows = body.splitlines()
@@ -641,12 +620,9 @@ def cmd_abandoned(path):
     """Ein aufgegebenes Gate ist eine sichtbare Uebergabe, nie ein erledigtes. Ohne Ledger: nichts aufgegeben —
     dass ein Ledger fehlt, prueft unmet."""
     try:
-        doc = parse(read(path))
+        doc = checked(read(path))
     except OSError:
         return 0
-    if doc["errors"]:
-        print(" · ".join(doc["errors"]))
-        return 1
     if doc["abandoned"]:
         print("HANDOFF REQUIRED: %s · der product-owner entscheidet: das AC per Folgeticket aus Issue und Ledger nehmen, "
               "oder das Ticket zurueckschicken" % ", ".join("%s (%s)" % kv for kv in doc["abandoned"].items()))

@@ -19,10 +19,7 @@ HEAD8="${PR_LINE##* }"
 case "$CMD" in
   run)
     HERE="$(git rev-parse HEAD 2>/dev/null)" || die "$(pwd) ist kein Git-Arbeitsbaum — Gates laufen im Arbeitsbaum des PR"
-    case "$HERE" in
-      "$HEAD8"*) ;;
-      *) die "#$TICKET: Arbeitsbaum steht auf ${HERE:0:8}, der PR auf $HEAD8 — erst den HEAD des PR auschecken" ;;
-    esac
+    [ "${HERE:0:8}" = "$HEAD8" ] || die "#$TICKET: Arbeitsbaum steht auf ${HERE:0:8}, der PR auf $HEAD8 — erst den HEAD des PR auschecken"
     with_lock "$TICKETS_DIR/$TICKET/.gates.lock" \
       python3 "$BIN_DIR/gates.py" run "$LEDGER" "$HEAD8" "$(pwd)" "$R" "${KIT_GATE_TIMEOUT:-600}"
     ;;
