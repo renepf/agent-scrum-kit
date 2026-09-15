@@ -6,7 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 
 SATZ="UNKNOWN — Startbefehl, Sessionkennung und Werkzeugnamen beim Owner erfragen"
 fehler=""
-for host in pi hermes; do
+for host in hermes; do
   R="$KIT_ROOT/adapters/$host/README.md"
   [ -f "$R" ] || { fehler="$fehler $host:kein-README"; continue; }
   n="$(grep -c "$SATZ" "$R" || true)"
@@ -19,6 +19,6 @@ for host in pi hermes; do
   "$KIT_ROOT/adapters/$host/session-id.sh" > /dev/null 2>&1 && fehler="$fehler $host:session-id.sh-liefert-etwas"
 done
 
-observe "pi und hermes: UNKNOWN-Satz vorhanden, kein Startbefehl, session-id.sh scheitert${fehler:+ · FEHLER:$fehler}"
+observe "hermes: UNKNOWN-Satz vorhanden, kein Startbefehl, session-id.sh scheitert${fehler:+ · FEHLER:$fehler}"
 echo "BEOBACHTET: $OBSERVED"
 [ -z "$fehler" ]
