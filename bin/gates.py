@@ -263,9 +263,17 @@ def issue_acs(body):
     return acs
 
 
+class LedgerError(Exception):
+    """A ledger that cannot be decoded. main() reports it as one line."""
+
+
 def read(path):
-    with open(path, encoding="utf-8") as fh:
-        return fh.read()
+    with open(path, "rb") as fh:
+        data = fh.read()
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError as e:
+        raise LedgerError("%s: not valid UTF-8 at byte %d" % (path, e.start))
 
 
 def cmd_contract(ledger_path, fresh):
@@ -654,7 +662,12 @@ def main(argv):
     if run is None:
         sys.stderr.write(__doc__.split("Aufruf")[-1])
         return 2
-    return run(argv[1:])
+    try:
+        return run(argv[1:])
+    except (OSError, LedgerError, UnicodeDecodeError) as e:
+        # Fail closed in one line: every caller stops on the exit code before it writes anything.
+        print("gates.py %s: %s" % (argv[0], e))
+        return 1
 
 
 if __name__ == "__main__":
