@@ -25,6 +25,7 @@ KIT_BOARD="none"
 KIT_HOST="test-fixture"
 KIT_SPRINTS_DIR="$SANDBOX/sprints"
 KIT_MEMORY_DIR="$SANDBOX/memory"
+KIT_TICKETS_DIR="$SANDBOX/tickets"
 ENV
   export KIT_ENV_FILE="$SANDBOX/kit.env"
   export KIT_BOARD_ENV_FILE="$SANDBOX/board.env"
@@ -59,6 +60,22 @@ PY2
 sandbox_labels() { KIT_ROLE=product-owner "$BIN/tickets.sh" labels "$1" | grep . | sort | tr '\n' ' ' | sed 's/ $//'; }
 
 sandbox_cleanup() { [ -n "${SANDBOX:-}" ] && rm -rf "$SANDBOX"; }
+
+# Ein Gate-Ledger fuer ein Ticket schreiben, Text auf stdin.
+sandbox_ledger() { mkdir -p "$SANDBOX/tickets/$1"; cat > "$SANDBOX/tickets/$1/GATES.md"; }
+
+# Ein Ticket planbar machen: Issue mit AC-1, Ledger mit genau einem Gate dafuer.
+sandbox_plannable() {
+  sandbox_issue "$1" '{"body":"AC-1: das Ergebnis ist beobachtbar"}'
+  sandbox_ledger "$1" <<'LEDGER'
+# Gates: eval
+
+- [ ] AC-1: das Ergebnis ist beobachtbar
+  CHECK: python3 tools/check_result.py
+  EXPECT: ergebnis geprueft
+  EVIDENCE: pending
+LEDGER
+}
 
 # Einen Sprint im Sandkasten anlegen, ohne den PO-Pfad zu durchlaufen.
 sandbox_sprint() {

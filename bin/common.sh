@@ -41,6 +41,8 @@ KIT_STATES="$(printf '%s\n' "$KIT_STATUS_MAP" | grep '|' | cut -d'|' -f1 | tr '\
 SPRINTS_DIR="${KIT_SPRINTS_DIR:-$KIT_ROOT/sprints}"
 CURRENT_FILE="$SPRINTS_DIR/CURRENT"
 MEMORY_DIR="${KIT_MEMORY_DIR:-$KIT_ROOT/memory}"
+# Gate-Ledger je Ticket: $TICKETS_DIR/<nr>/GATES.md (Format: bin/gates.py).
+TICKETS_DIR="${KIT_TICKETS_DIR:-$KIT_ROOT/tickets}"
 
 # Board-Name zu einem Statusschluessel.
 board_name() { printf '%s\n' "$KIT_STATUS_MAP" | grep "^$1|" | cut -d'|' -f2; }

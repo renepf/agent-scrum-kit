@@ -49,7 +49,7 @@ backlog → planned → in-progress → rfr → in-review → rft → in-testing
 
 | Kante | Wer darf | Pruefung vor dem Schreiben |
 |---|---|---|
-| `backlog → planned` | product-owner | — |
+| `backlog → planned` | product-owner | **Ledger:** `tickets/<nr>/GATES.md` hat je `AC-<n>` des Issues ein Gate |
 | `planned → in-progress` | engineer-a, engineer-b | setzt `owner:<engineer>` |
 | `in-progress → rfr` | der Engineer mit `owner:` | fremder Besitz wird abgelehnt |
 | `rfr → in-review` | ein Pruefer | setzt `owner:<pruefer>`, weitere Pruefer bleiben |
@@ -75,6 +75,29 @@ vorn**: in-progress → rfr → in-review → rft → in-testing. Keine Abkuerzu
 Ein Verdict ist ein PR-Kommentar, dessen erste Zeile mit `<VERDICT> — HEAD \`<sha8>\`` beginnt.
 Ein Push entwertet alle Verdicts fuer den alten HEAD. `status.sh` und `merge.sh` pruefen das
 maschinell.
+
+### Gate-Ledger je Ticket
+
+Vor `planned` hat jedes Ticket einen pruefbaren Vertrag unter `tickets/<nr>/GATES.md` (Ort:
+`KIT_TICKETS_DIR`). Das Issue nennt jedes Acceptance-Kriterium als eigene Zeile
+`AC-<n>: <beobachtbares ergebnis>`, das Ledger hat fuer jede dieser IDs ein Gate. Format und Regeln
+stammen aus unlazy (MIT), die Einzelheiten stehen in `bin/gates.py`.
+
+```
+# Gates: #<nr> <titel>
+
+- [ ] AC-1: <ergebnis>
+  CHECK: <befehl, der das Ergebnis direkt misst>
+  EXPECT: <text, den nur der Erfolg druckt>
+  EVIDENCE: pending
+
+- [ ] AC-2: <ergebnis, das nur ein Mensch am laufenden Bau sieht>
+  EVIDENCE: pending
+```
+
+| Pruefung | Wo | Lehnt ab, wenn |
+|---|---|---|
+| Deckung | `status.sh <nr> planned` | das Ledger fehlt oder ist formal kaputt, das Issue nennt keine AC, eine AC hat kein Gate, das Ledger nennt eine AC, die das Issue nicht kennt |
 
 ### Letztes Wort: product-owner
 

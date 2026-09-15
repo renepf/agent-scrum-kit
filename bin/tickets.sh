@@ -8,6 +8,7 @@
 #   assignees <nr>            · unassign <nr> <wer>
 #   comment <nr> <text>       · comments <nr>   (JSON-Liste der Kommentartexte)
 #   title <nr>                · close <nr>
+#   body <nr>                 Issue-Text (Story und AC-Zeilen)
 #   pr <nr>                   "<pr-nummer> <head-sha8>" des verknuepften PRs, sonst Exit 1
 #   pr-comments <pr>          JSON-Liste der Kommentartexte
 #   pr-checks <pr>            Exit 0 nur wenn alle Checks gruen
@@ -72,6 +73,8 @@ elif cmd == "assignees":
     print("\n".join(issue(args[0])["assignees"]))
 elif cmd == "title":
     print(issue(args[0])["title"])
+elif cmd == "body":
+    print(issue(args[0]).get("body", ""))
 elif cmd == "comments":
     print(json.dumps(issue(args[0])["comments"]))
 elif cmd == "add-label":
@@ -118,6 +121,7 @@ gh_backend() {
     labels)      gh issue view "$1" --repo "$KIT_REPO" --json labels -q '.labels[].name' ;;
     assignees)   gh issue view "$1" --repo "$KIT_REPO" --json assignees -q '.assignees[].login' ;;
     title)       gh issue view "$1" --repo "$KIT_REPO" --json title -q .title ;;
+    body)        gh issue view "$1" --repo "$KIT_REPO" --json body -q .body ;;
     comments)    gh issue view "$1" --repo "$KIT_REPO" --json comments -q '[.comments[].body]' ;;
     add-label)   gh issue edit "$1" --repo "$KIT_REPO" --add-label "$2" > /dev/null ;;
     rm-label)    gh issue edit "$1" --repo "$KIT_REPO" --remove-label "$2" > /dev/null ;;

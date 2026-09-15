@@ -11,6 +11,7 @@ for fall in "in-review:qa-ruthless" "in-testing:acceptance-tester"; do
   pz="${fall%%:*}"; pruefer="${fall##*:}"; n=$((n0 += 1))
   # PR-Nummer je Ticket eindeutig — zwei Tickets am selben PR wuerden einander die Verdicts leihen.
   sandbox_issue "$n" "{\"pr\":{\"number\":$n,\"head\":\"feedbeef00\",\"comments\":[],\"checks\":\"pass\"}}"
+  sandbox_plannable "$n"
   KIT_ROLE=product-owner "$BIN/status.sh" "$n" planned x > /dev/null 2>&1
   KIT_ROLE=engineer-b "$BIN/status.sh" "$n" in-progress x > /dev/null 2>&1
   KIT_ROLE=engineer-b "$BIN/status.sh" "$n" rfr x > /dev/null 2>&1

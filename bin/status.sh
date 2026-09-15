@@ -54,6 +54,14 @@ OWNER=""; KEEP=""
 case "$NEW" in
   backlog|planned)
     [ "$R" = "product-owner" ] || die "'$NEW' setzt nur der product-owner, nicht $R"
+    if [ "$NEW" = "planned" ]; then
+      # Kein Code ohne pruefbaren Vertrag: jede AC des Issues hat ein Gate im Ledger.
+      LEDGER="$TICKETS_DIR/$TICKET/GATES.md"
+      [ -f "$LEDGER" ] || die "#$TICKET: planned abgelehnt — kein Ledger unter $LEDGER. Je AC ein Gate, Format in bin/gates.py"
+      BODY="$("$T" body "$TICKET")" || die "#$TICKET: Issue-Text nicht lesbar — Fehlschlag, kein Zustand"
+      GATE_MSG="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" planned "$LEDGER" 2>&1)" \
+        || die "#$TICKET: planned abgelehnt — $GATE_MSG"
+    fi
     ;;
   in-progress)
     if in_list "$R" "$ENGINEERS"; then

@@ -30,17 +30,20 @@ oder ein Sprint, dessen Tickets alle `done` sind.
 2. Kandidaten sichten: `bin/tickets.sh list <label>`.
 3. `KIT_SPRINT_TICKETS` Tickets waehlen, die ein Sprintziel ergeben und sich **nicht in denselben
    Dateien** ueberschneiden — zwei Engineers arbeiten parallel.
-4. Je Ticket in das Issue: `Als <rolle> moechte ich <ziel>, damit <nutzen>.`, dann nummerierte,
-   pruefbare ACs **ohne Loesungsvorgabe**.
-5. `bin/sprint-new.sh <slug> <ticketnummern…>`, Ziel in `sprint.md`. Die Tickets bleiben dabei auf
+4. Je Ticket in das Issue: `Als <rolle> moechte ich <ziel>, damit <nutzen>.`, dann je Kriterium
+   eine eigene Zeile `AC-<n>: <beobachtbares ergebnis>`, **ohne Loesungsvorgabe**.
+5. Je Ticket das Ledger `tickets/<nr>/GATES.md` (Format: `protocols/LOOP.md`, Gate-Ledger): je AC
+   ein Gate. Ein Gate misst das Ergebnis mit einem Befehl (`CHECK` und `EXPECT`) oder ist manuell.
+   Kennst du den Befehl nicht, fragst du per `say.sh`, statt einen zu erfinden.
+6. `bin/sprint-new.sh <slug> <ticketnummern…>`, Ziel in `sprint.md`. Die Tickets bleiben dabei auf
    `backlog`. **Erst dieser Schritt legt den Chat an** — vorher scheitert jedes `say.sh` mit
    `kein aktiver Sprint`.
-6. **Verdict einholen, bevor irgendwer codiert:** `say.sh` an `@simplicity-reviewer` mit dem
+7. **Verdict einholen, bevor irgendwer codiert:** `say.sh` an `@simplicity-reviewer` mit dem
    geplanten Loesungsweg. Ohne `SOLUTION-VERDICT` kein `planned`. Dann je Ticket
-   `bin/status.sh <nr> planned "Verdict: <kurz>"`.
-7. Takt halten: `KIT_TICKET_MINUTES` je Ticket. Ueberzieht ein Engineer, startet sein naechstes
+   `bin/status.sh <nr> planned "Verdict: <kurz>"` — es lehnt ab, solange eine AC ohne Gate ist.
+8. Takt halten: `KIT_TICKET_MINUTES` je Ticket. Ueberzieht ein Engineer, startet sein naechstes
    Ticket am naechsten Rasterpunkt.
-8. In `in-testing` liest du beim acceptance-tester mit. Ein nicht erfuelltes AC schickt zurueck:
+9. In `in-testing` liest du beim acceptance-tester mit. Ein nicht erfuelltes AC schickt zurueck:
    `bin/status.sh <nr> in-progress "AC-3 nicht erfuellt: <beobachtung>"`.
 
 ## Abgabebedingung

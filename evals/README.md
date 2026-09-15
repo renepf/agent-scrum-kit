@@ -27,6 +27,7 @@ kein Ergebnis — die Suite leitet daraus keinen Zustand ab, sie sagt "erneut la
 | Praefix | Familie | Was sie prueft |
 |---|---|---|
 | `10–17` | Statusuebergaenge | volle Schleife backlog → done ueber `merge.sh`; alle 40 unerlaubten Kanten abgelehnt, Zustand unveraendert; Rueckwaertskante aus `in-review` und `in-testing` zurueck an den urspruenglichen Engineer; `owner:`-Besitz, `rfr`/`rft` besitzerlos; `rft`-Gate: drei PASS fuer den aktuellen HEAD; eine abgelehnte Transition schreibt nichts; product-owner hat das letzte Wort, CI frisch gemessen; Board vor Label, mit Zuruecklesen |
+| `18` | Gate-Ledger | `planned` nur mit Ledger, das jede AC des Issues deckt; fehlendes Ledger, formal kaputtes Ledger, unbekannte AC und ein Issue ohne AC werden abgelehnt, ohne etwas zu schreiben |
 | `20–24` | Nebenlaeufigkeit und Index | N Sessions schreiben gleichzeitig; kein Eintrag geht verloren, der Index ist vollstaendig, deterministisch, nie halb lesbar, frei von Zwischenueberschriften und auch fuer einen leeren Sprint gueltig |
 | `25–29` | Tick | ohne Sprint wird gewartet; Registrierung einmal und nach Reset erneut; jeder fremde Eintrag genau einmal, auch bei gleicher Minute; `@rolle` erreicht genau diese Rolle genau einmal; jede Rolle sieht nur ihre Warteschlange |
 | `3x` | Budget | bekannte Transkripte ergeben exakt den erwarteten Kontextwert; die Schwellen loesen an der richtigen Stelle aus; fehlende Daten ergeben `UNKNOWN`, nie 0 |

@@ -158,12 +158,14 @@ Fall liegt oder `evals/run.sh` einen Fall als `FAIL` meldet — siehe `evals/REA
 
 Das macht der product-owner selbst, nach seinem Rollenblatt:
 
-1. Stories in die Tickets schreiben — loesungsfrei, ELI5, eine Story je Ergebnis.
-2. `bin/sprint-new.sh <slug> <ticketnummern…>` — die Tickets bleiben dabei auf `backlog`.
+1. Stories in die Tickets schreiben — loesungsfrei, ELI5, eine Story je Ergebnis, je Kriterium
+   eine Zeile `AC-<n>: <beobachtbares ergebnis>`.
+2. Je Ticket das Ledger `tickets/<nr>/GATES.md`: je AC ein Gate (`protocols/LOOP.md`, Gate-Ledger).
+3. `bin/sprint-new.sh <slug> <ticketnummern…>` — die Tickets bleiben dabei auf `backlog`.
    Erst dieser Schritt legt den Chat an; vorher scheitert jedes `say.sh` mit
    `kein aktiver Sprint`.
-3. Den Loesungsweg per `@simplicity-reviewer` als Frage in den Chat stellen, Verdict abwarten.
-4. Je Ticket `bin/status.sh <nr> planned "Verdict: <kurz>"`.
+4. Den Loesungsweg per `@simplicity-reviewer` als Frage in den Chat stellen, Verdict abwarten.
+5. Je Ticket `bin/status.sh <nr> planned "Verdict: <kurz>"`. Ohne Gate fuer jede AC lehnt es ab.
 
 Am Ende jedes Tickets hat der product-owner das letzte Wort: `bin/merge.sh <nr>` merged erst,
 wenn `MERGE-GATE OK` fuer den aktuellen HEAD im PR steht und die CI frisch gemessen gruen ist.
@@ -244,7 +246,8 @@ Aendert sich `roles/_COMMON.md`, betrifft das alle neun Sessions.
 | `INSTALL.md` | Einrichtung Schritt fuer Schritt, mit gemessenen Ausgaben und Fehlertabelle |
 | `protocols/LOOP.md` | Statusmodell, Kanten, Gates, Loop-Reihenfolge, Tick, Chat, Zwillingssperre, Budget |
 | `adapters/<host>/` | wie eine Session startet, eine Rolle laedt, ihre Kennung meldet |
-| `bin/` | `tick.sh`, `status.sh`, `claim.sh`, `merge.sh`, `say.sh`, `reindex.sh`, `brain.sh`, `budget.sh`, `register.sh`, `restart-self.sh`, `sprint-new.sh`, `commit.sh`, `board-setup.sh`, `board-check.sh`, `preflight.sh`, `tickets.sh` |
+| `bin/` | `tick.sh`, `status.sh`, `claim.sh`, `merge.sh`, `say.sh`, `reindex.sh`, `brain.sh`, `budget.sh`, `register.sh`, `restart-self.sh`, `sprint-new.sh`, `commit.sh`, `board-setup.sh`, `board-check.sh`, `preflight.sh`, `tickets.sh`, `gates.py` |
+| `tickets/<nr>/GATES.md` | Gate-Ledger je Ticket: je AC ein Gate, Format und Regeln aus unlazy (MIT) |
 | `evals/` | die Suite, die prueft, ob das alles haelt |
 | `memory/` | Gedaechtnis je Rolle plus geteilt, eine Datei je Fakt, generierter Index |
 | `.mcp.json` | MCP-Server context7 und graphify, beide durch `caveman-shrink`; jcodemunch auf Einschalten unter `adapters/claude-code/mcp/` |

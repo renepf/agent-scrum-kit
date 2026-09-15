@@ -6,6 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 sandbox; trap sandbox_cleanup EXIT
 sandbox_sprint > /dev/null
 sandbox_issue 7 '{"assignees":["ein-account"],"pr":{"number":70,"head":"77777777aa","comments":["QA PASS — HEAD `77777777`","SIMPLICITY PASS — HEAD `77777777`","SECURITY PASS — HEAD `77777777`"]}}'
+sandbox_plannable 7
 
 fehler=""
 KIT_ROLE=product-owner "$BIN/status.sh" 7 planned x > /dev/null 2>&1
