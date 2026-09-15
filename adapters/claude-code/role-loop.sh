@@ -3,7 +3,11 @@
 # Zusammen mit bin/restart-self.sh der autonome Ersatz fuer /clear: die Rolle beendet sich an einer
 # Ticketgrenze selbst, die Schleife startet sie frisch, der SessionStart-Hook weckt sie.
 #
-#   adapters/claude-code/role-loop.sh <rolle>
+#   adapters/claude-code/role-loop.sh <rolle> [--after <host-pid>]
+#
+# --after <pid>: bin/restart-self.sh oeffnet die Schleife in einem zellij-Tab, BEVOR sich die alte Session
+#                beendet. Die Schleife wartet bis 120 s, bis unter der PID kein Host mehr lebt — sonst
+#                griffe die Zwillingssperre unten und beide stuenden.
 #
 # Stoppen:        touch .role-loop/<rolle>.stop   (dann claude normal beenden)
 # Log:            .role-loop/<rolle>.log
@@ -18,6 +22,12 @@ case " $KIT_ROLES " in *" $R "*) ;; *) die "unbekannte Rolle '$R'. Erlaubt: $KIT
 
 STATE="$KIT_ROOT/.role-loop"; mkdir -p "$STATE"
 LOG="$STATE/$R.log"; STOP="$STATE/$R.stop"
+
+if [ "${2:-}" = "--after" ] && [ -n "${3:-}" ]; then
+  echo "$(now) · warte auf Ende von Host-PID $3" >> "$LOG"
+  for _ in $(seq 1 "${KIT_LOOP_AFTER_SECONDS:-120}"); do host_alive "$3" || break; sleep 1; done
+  host_alive "$3" && die "Host-PID $3 lebt nach ${KIT_LOOP_AFTER_SECONDS:-120} s noch — nicht doppelt starten"
+fi
 
 # Keine zweite Instanz derselben Rolle.
 for f in "$PID_ROLES"/*; do

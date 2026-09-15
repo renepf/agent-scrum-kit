@@ -196,9 +196,17 @@ Reset immer an einer Ticketgrenze: `brain.sh handover` → Kontext leeren (**nic
 Der Host-Prozess darf dabei weiterleben: die Rolle haengt am Anker `.pid-roles/<host-pid>`, nicht am
 Kontext. Der naechste Tick erkennt die neue Session-ID, registriert sie und zeigt die Uebergabe.
 
-Autonom geht das unter der Waechter-Schleife des Hosts: `bin/restart-self.sh` beendet den
-Host-Prozess nur, wenn (1) die Session unter der Schleife laeuft, (2) eine Uebergabe juenger als
-10 Minuten existiert und (3) kein Sprint-Ticket `owner:<rolle>` traegt. Sonst beendet es nichts.
+Autonom geht das mit `bin/restart-self.sh`. Es beendet den Host-Prozess nur, wenn (1) eine Uebergabe
+juenger als 10 Minuten existiert und (2) diese Uebergabe jedes Sprint-Ticket mit `owner:<rolle>` als
+`#<nr>` nennt — mitten im Ticket zuruecksetzen ist damit erlaubt, die Uebergabe traegt dann Stand, SHA
+und naechsten Schritt. Neu gestartet wird auf einem von zwei Wegen:
+
+- **unter der Waechter-Schleife** (`adapters/<host>/role-loop.sh`): Prozess beenden, die Schleife startet neu;
+- **in zellij ohne Schleife**: einen Tab `<rolle> (loop)` mit `role-loop.sh <rolle> --after <pid>` oeffnen und
+  den Prozess erst beenden, wenn die Schleife nachweislich laeuft. Die Schleife wartet, bis unter der
+  alten PID kein Host mehr lebt.
+
+Gibt es keinen der beiden Wege, oder scheitert das Oeffnen des Tabs, beendet das Skript nichts.
 
 ## 11. Geraete-Schlange und Ueberleben
 

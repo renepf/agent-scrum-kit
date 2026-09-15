@@ -86,8 +86,10 @@ Typen ab. `INDEX.md` ist generiert.
 
 `Warnung` im Tick: kein neues Ticket. `STOP`: an der naechsten Ticketgrenze `brain.sh handover`
 (Ticket, Stand, SHA, naechster Schritt, offene Fragen) plus eine Zeile per `say.sh`, dann Kontext
-leeren — **nicht verdichten**. Laeufst du unter der Waechter-Schleife (der Tick sagt es dir), heisst
-das `bin/restart-self.sh stop`; sonst bittest du den Menschen um den Reset. Nach einem Reset kennt der
+leeren — **nicht verdichten**. `bin/restart-self.sh stop` setzt dich selbst zurueck, sobald eine
+Waechter-Schleife oder ein Terminal-Multiplexer dich neu starten kann (der Tick sagt es dir); sonst bittest
+du den Menschen. Mitten im Ticket ist das erlaubt: dann nennt die Uebergabe jedes gehaltene `#<nr>` mit
+Stand, SHA und naechstem Schritt — ohne das lehnt das Skript ab. Nach einem Reset kennt der
 Tick deine Rolle weiter und zeigt dir die Uebergabe. Spaetestens nach `KIT_MAX_TICKETS` Tickets.
 
 ## Ton

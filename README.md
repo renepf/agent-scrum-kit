@@ -201,10 +201,13 @@ per `CronList` und legte keinen zweiten an). Die Rolle kommt aus dem Anker `.pid
 neue Session-ID aus `~/.claude/sessions/<pid>.json`. **Nicht `/compact`** — Verdichten verliert die
 technischen Details, an denen die naechste Runde haengt.
 
-**Unter der Waechter-Schleife, ohne Menschen.** Startet die Rolle ueber
-`adapters/claude-code/role-loop.sh <rolle>`, beendet sie sich selbst mit `bin/restart-self.sh stop`,
-sobald Uebergabe (juenger als 10 min) und Ticketgrenze stehen; die Schleife startet `claude` frisch,
-der Hook weckt es. Gemessen mit echtem `claude` (Fall 77, 2026-09-14): die Rolle schrieb ihre Uebergabe
+**Ohne Menschen, per `bin/restart-self.sh stop`.** Die Rolle schreibt ihre Uebergabe (juenger als 10 min);
+haelt sie noch Tickets, nennt die Uebergabe jedes `#<nr>` mit Stand, SHA und naechstem Schritt — ein
+Neustart mitten im Ticket ist erlaubt (Fall 67). Laeuft sie unter `adapters/claude-code/role-loop.sh`,
+beendet sie sich und die Schleife startet `claude` frisch. Laeuft sie ohne Schleife in zellij, oeffnet
+das Skript einen Tab `<rolle> (loop)` mit `role-loop.sh <rolle> --after <pid>` und beendet sich erst,
+wenn die Schleife laeuft; die wartet auf das Ende der alten Session (Fall 59, mit vorgetaeuschtem zellij
+gemessen, nicht in einem echten zellij). Gemessen mit echtem `claude` (Fall 77, 2026-09-14): die Rolle schrieb ihre Uebergabe
 und rief `restart-self.sh stop`, der alte Prozess endete nach 62 s (`rc=143`), die Schleife startete
 `claude` neu, und 18 s spaeter stand die Rolle mit neuer PID und neuer Session-ID im Roster — ohne
 Eingabe. Der Vertrauensdialog erscheint nur beim allerersten Start im Ordner, nicht beim Neustart.

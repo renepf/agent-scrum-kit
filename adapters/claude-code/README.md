@@ -45,8 +45,10 @@ Eine leere Runde endet nach dem Tick.
   Rollenanker als Kontext, einmal mit `--wake` (asyncRewake), das die Session nach `startup`, `clear`
   und `resume` ohne Eingabe weckt. Gemessen: Start ohne Prompt registriert sich; nach `/clear` liest
   die Session ihre Rolle neu, tickt (neue ID im Roster) und findet ihren laufenden `/loop`.
-- **Waechter-Schleife:** `role-loop.sh <rolle>` startet `claude -n <rolle> --settings … --mcp-config
-  .mcp.json` und startet neu, sobald es endet. Stoppen: `touch .role-loop/<rolle>.stop`. Gemessen mit
+- **Waechter-Schleife:** `role-loop.sh <rolle> [--after <pid>]` startet `claude -n <rolle> --settings … --mcp-config
+  .mcp.json` und startet neu, sobald es endet. Mit `--after` wartet sie bis 120 s, bis unter der PID kein
+  `claude` mehr lebt — so oeffnet `bin/restart-self.sh` sie in einem zellij-Tab, bevor sich die alte Session
+  beendet. Stoppen: `touch .role-loop/<rolle>.stop`. Gemessen mit
   vorgetaeuschtem `claude` (Fall 68: Neustart, Stopp, Aufgeben, Zwilling) und mit echtem `claude`
   (Fall 77: Selbst-Neustart per `restart-self.sh`, neue PID und Session-ID ohne Eingabe). Das
   Vertrauen in den Ordner speichert claude in `~/.claude.json` (`hasTrustDialogAccepted`), deshalb

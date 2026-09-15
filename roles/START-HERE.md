@@ -36,9 +36,11 @@ watchdog zusaetzlich: `… danach bin/budget.sh, vier Blicke, bin/commit.sh.`
 
 ## Ohne Menschen neu starten
 
-Laeuft eine Rolle unter der Waechter-Schleife ihres Hosts (`adapters/<host>/role-loop.sh`), beendet
-sie sich bei `STOP` selbst mit `bin/restart-self.sh stop` und die Schleife startet sie frisch. Das
-Skript beendet nichts, solange Uebergabe oder Ticketgrenze fehlen.
+Bei `STOP` setzt sich eine Rolle selbst mit `bin/restart-self.sh stop` zurueck. Laeuft sie unter der
+Waechter-Schleife ihres Hosts (`adapters/<host>/role-loop.sh`), startet die Schleife sie frisch; laeuft sie
+in einem Terminal-Multiplexer ohne Schleife, oeffnet das Skript die Schleife in einem neuen Tab. Mitten im
+Ticket ist das erlaubt, wenn die Uebergabe jedes gehaltene Ticket nennt. Fehlt die Uebergabe, ein
+genanntes Ticket oder ein Neustartweg, beendet das Skript nichts.
 
 ## Wenn eine Session an ihrem Limit ist
 

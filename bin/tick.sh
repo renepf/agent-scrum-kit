@@ -163,9 +163,13 @@ if [ -f "$SPRINT/budget.md" ]; then
   case "$MINE" in *Warnung*) echo "  Warnung: kein neues Ticket annehmen. Deinen Loop NICHT beenden — weiter ticken." ;; esac
   if grep -q "^STOP $R\$" "$SPRINT/budget.md"; then
     if [ "${KIT_ROLE_LOOP:-}" = "1" ]; then
-      echo "  ⚠ STOP: an der naechsten Ticketgrenze brain.sh handover, dann bin/restart-self.sh stop — die Waechter-Schleife startet dich frisch. Deinen Loop NICHT beenden."
+      echo "  ⚠ STOP: brain.sh handover (jedes gehaltene #<nr> mit Stand, SHA, naechstem Schritt), dann bin/restart-self.sh stop — die Waechter-Schleife startet dich frisch. Deinen Loop NICHT beenden."
     else
-      echo "  ⚠ STOP: an der naechsten Ticketgrenze brain.sh handover und eine Zeile per say.sh. Diese Session laeuft nicht unter der Waechter-Schleife: den Menschen um einen Neustart bitten. Deinen Loop NICHT beenden — weiter ticken."
+      if [ -n "${ZELLIJ_SESSION_NAME:-}" ]; then
+        echo "  ⚠ STOP: brain.sh handover (jedes gehaltene #<nr> mit Stand, SHA, naechstem Schritt), dann bin/restart-self.sh stop — es oeffnet die Waechter-Schleife in einem neuen zellij-Tab. Deinen Loop NICHT beenden."
+      else
+        echo "  ⚠ STOP: brain.sh handover und eine Zeile per say.sh. Weder Waechter-Schleife noch zellij: den Menschen um einen Neustart bitten. Deinen Loop NICHT beenden — weiter ticken."
+      fi
     fi
   fi
 fi
