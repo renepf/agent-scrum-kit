@@ -53,7 +53,7 @@ backlog → planned → in-progress → rfr → in-review → rft → in-testing
 | `planned → in-progress` | engineer-a, engineer-b | setzt `owner:<engineer>` |
 | `in-progress → rfr` | der Engineer mit `owner:` | fremder Besitz wird abgelehnt; **Umfang:** jede Datei des PR liegt in der freigegebenen OWNS-Revision |
 | `rfr → in-review` | ein Pruefer | setzt `owner:<pruefer>`, weitere Pruefer bleiben |
-| `in-review → rft` | ein Pruefer | **Gate:** QA PASS, SIMPLICITY PASS, SECURITY PASS fuer den aktuellen HEAD; jedes ausfuehrbare Gate des Ledgers lief fuer diesen HEAD gruen |
+| `in-review → rft` | ein Pruefer | **Gate:** QA PASS, SIMPLICITY PASS, SECURITY PASS fuer den aktuellen HEAD; jedes ausfuehrbare Gate des Ledgers lief fuer diesen HEAD gruen; Lint ohne Fehler; je ausfuehrbarem Gate eine QA-Mutationszeile |
 | `rft → in-testing` | acceptance-tester | — |
 | `in-testing → done` | product-owner, oder merge-gate mit `PO OK` fuer den aktuellen HEAD | normal ueber `bin/merge.sh`; jedes Gate fuer den aktuellen HEAD gruen oder belegt |
 | `in-review → in-progress` | ein Pruefer | `owner:` zurueck an den Engineer aus der Kommentarhistorie |
@@ -133,6 +133,8 @@ verhindern kann das Kit es nicht.
 |---|---|---|
 | Deckung | `status.sh <nr> planned` | das Ledger fehlt oder ist formal kaputt, das Issue nennt keine AC, eine AC hat kein Gate, das Ledger nennt eine AC, die das Issue nicht kennt, das Ledger nennt kein oder ein unzulaessiges `OWNS:`, ein Gate ist schon abgehakt oder per `ABANDON` aufgegeben |
 | Ueberlappung | `status.sh <nr> planned`, `bin/revise.sh`, `bin/sprint-new.sh` | ein OWNS-Glob kann dieselbe Datei meinen wie die Freigabe eines anderen offenen Sprint-Tickets; bei `sprint-new.sh` wie das Ledger eines anderen Tickets im Schnitt |
+| Lint | `status.sh <nr> planned`, `status.sh <nr> rft` | ein Orakel kann nicht fallen: `CHECK` gibt festen Text aus, `EXPECT` ist ein Wort wie `ok` oder `fertig`, ein `EXPECT`-Regex sieht aus wie ein Pfad, `EXPECT` ist nur eine Zahl aus dem Issue. Hinweise lehnen nicht ab und stehen im planned-Kommentar: manuelles Gate, Zahl im Titel eines manuellen Gates, Taetigkeit statt Ergebnis, ueberwiegend manuelles Ledger |
+| QA-Mutation je Gate | `status.sh <nr> rft` | fuer ein ausfuehrbares Gate steht in keinem `QA PASS` fuer den aktuellen HEAD eine Zeile `<gate>: Mutation <was> → rot` |
 | Gruen fuer HEAD | `status.sh <nr> rft` | ein ausfuehrbares Gate hat keinen gruenen Beleg fuer den aktuellen HEAD, oder seine Definition hat sich seit dem Lauf geaendert |
 | Belegt vor Merge | `bin/merge.sh <nr>` | wie oben, dazu ein manuelles Gate ohne Beleg fuer den aktuellen HEAD |
 | Umfang | `status.sh <nr> rfr` | kein oder mehr als ein verknuepfter PR, keine Freigabe am Issue, die Dateiliste ist leer oder nicht lesbar, eine Datei des PR liegt ausserhalb der hoechsten freigegebenen Revision |

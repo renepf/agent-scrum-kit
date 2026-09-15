@@ -22,7 +22,8 @@ gate() { printf -- '- [ ] %s: %s\n  CHECK: python3 tools/check_export.py %s\n  E
 
 sandbox_issue 31 '{"body":"Als Nutzer moechte ich meine Liste exportieren.\n\n1. AC-1: Export legt eine Datei an\n2. AC-2: eine leere Liste ergibt eine leere Datei\n3. AC-3: ein Schreibfehler erscheint als Meldung"}'
 
-abgelehnt a-ohne-Ledger 31 '*kein Ledger*'
+# Genau die Deckungspruefung meldet es — nicht erst der Lint, der ein fehlendes Ledger ebenfalls ablehnt.
+abgelehnt a-ohne-Ledger 31 '*planned abgelehnt — kein Ledger*'
 { kopf; gate AC-1 datei; gate AC-2 leer; } | sandbox_ledger 31
 abgelehnt b-AC-ohne-Gate 31 '*ohne Gate*AC-3*'
 { kopf; gate AC-1 datei; gate AC-2 leer; gate AC-3 meldung; gate AC-9 gibt-es-nicht; } | sandbox_ledger 31

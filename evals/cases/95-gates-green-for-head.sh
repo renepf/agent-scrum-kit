@@ -27,7 +27,8 @@ head1="$(git -C "$P" rev-parse HEAD)"; h1="${head1:0:8}"
 
 pr() { # <head> <labels-json>
   sandbox_issue 51 "{\"labels\":$2,\"pr\":{\"number\":510,\"head\":\"$1\",\"comments\":[],\"checks\":\"pass\",\"state\":\"OPEN\",\"files\":[\"export.txt\"]}}"
-  for v in "QA PASS" "SIMPLICITY PASS" "SECURITY PASS" "MERGE-GATE OK"; do sandbox_pr_comment 51 "$v — HEAD \`${1:0:8}\`, eval"; done
+  for v in "QA PASS" "SIMPLICITY PASS" "SECURITY PASS" "MERGE-GATE OK"; do sandbox_pr_comment 51 "$v — HEAD \`${1:0:8}\`, eval
+AC-1: Mutation Zeilenpruefung aus → rot"; done
 }
 ledger() { # <check> <expect>
   sandbox_ledger 51 <<LEDGER

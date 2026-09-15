@@ -64,6 +64,11 @@ Aufruf (von bin/status.sh und bin/revise.sh):
                                  ein manuelles Gate fuer <head8> belegen
     gates.py unmet <ledger> <head8> runnable|all
                                  Exit 0 = jedes (ausfuehrbare) Gate hat einen gueltigen Beleg fuer <head8>
+    gates.py lint <ledger>       Issue-Text auf stdin. Zeilen "FEHLER|HINWEIS <gate> [<regel>]: ...";
+                                 Exit 1, sobald ein FEHLER dabei ist. Fuehrt kein CHECK aus.
+    gates.py qa-lines <ledger> <head8>
+                                 PR-Kommentare (JSON-Liste) auf stdin. Exit 0 = jedes ausfuehrbare Gate hat in
+                                 einem "QA PASS" fuer <head8> eine Zeile "<gate>: Mutation <was> → rot"
 
 Ein Beleg gilt fuer genau einen HEAD und eine Definition (CHECK, EXPECT, CWD). Ein Push oder eine
 geaenderte Zeile macht ihn ungueltig. Gruen heisst: Exit 0 und EXPECT in stdout plus stderr.
@@ -523,7 +528,96 @@ def cmd_unmet(path, head8, mode):
     return 0
 
 
+# Gate-Lint nach unlazy scripts/gate-lint.mjs: lexikalische Zeichen fuer Orakel, die nicht fallen koennen.
+# Die ersten vier Regeln lehnen ab, der Rest ist ein Hinweis. Deutsche Woerter ergaenzt.
+FIXED_OUTPUT_COMMAND = re.compile(r"^\s*(?:(?:echo|printf)(?:\s+[^&|;]*)?|true|:|exit\s+0)\s*$", re.I)
+WEAK_EXPECT = {
+    "ok", "okay", "done", "pass", "passed", "success", "successful", "succeeded", "complete", "completed",
+    "finished", "yes", "true", "0", "good", "fine", "working",
+    "fertig", "erledigt", "bestanden", "erfolgreich", "erfolg", "gruen", "grün", "ja", "gut", "passt", "laeuft", "läuft",
+}
+ACTIVITY_TITLE = re.compile(
+    r"^(work(ing)? on|improve|enhance|handle|support|ensure|make sure|try|attempt|look (at|into)|investigate|consider"
+    r"|review|refactor|clean ?up|polish|update|tidy|address|deal with|add support)\b"
+    r"|\b(verbessern|optimieren|ueberarbeiten|überarbeiten|aufraeumen|aufräumen|sicherstellen|unterstuetzen|unterstützen"
+    r"|behandeln|anpassen|untersuchen|pruefen|prüfen|refaktorieren)\b", re.I)
+NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)?")
+
+
+def lint_findings(doc, body):
+    issue_numbers = set(NUMBER_RE.findall(body))
+    live = [g for g in doc["gates"] if g["id"] not in doc["abandoned"]]
+    found = []
+    for g in live:
+        gid, title, check, expect = g["id"], g["title"], g["check"], g["expect"]
+        if check is not None:
+            kind, value = g.get("expectation") or ("text", expect)
+            if FIXED_OUTPUT_COMMAND.match(check):
+                found.append(("FEHLER", gid, "tautological-check",
+                              "CHECK gibt festen Text aus ('%s') — ein Orakel misst das Ergebnis selbst" % check))
+            if expect.strip().lower() in WEAK_EXPECT:
+                found.append(("FEHLER", gid, "weak-expect",
+                              "EXPECT '%s' steht auch in Fehlerausgaben — eine Zeile verlangen, die nur der Erfolg druckt" % expect))
+            if kind == "regex" and re.search(r"(^|[^\\])/", value.pattern):
+                found.append(("FEHLER", gid, "path-read-as-regex",
+                              "EXPECT '%s' ist ein regulaerer Ausdruck, Punkte sind Platzhalter — innere / escapen "
+                              "oder die umschliessenden / weglassen" % expect))
+            if kind == "text" and re.fullmatch(r"[\d\s.,:%/-]+", expect.strip()) and \
+                    all(x in issue_numbers for x in NUMBER_RE.findall(expect)):
+                found.append(("FEHLER", gid, "copied-number",
+                              "EXPECT '%s' ist nur eine Zahl aus dem Issue — das Skript misst sie an der Quelle und "
+                              "druckt eine eigene Erfolgszeile" % expect))
+        else:
+            found.append(("HINWEIS", gid, "manual-gate",
+                          "kein CHECK: das Ergebnis beurteilt ein Mensch, der Beleg ist nur so gut wie der Leser"))
+            if re.search(r"\d", title):
+                found.append(("HINWEIS", gid, "unmeasured-number", "der Titel nennt eine Zahl, die nichts misst: '%s'" % title))
+        if ACTIVITY_TITLE.search(title):
+            found.append(("HINWEIS", gid, "activity-not-outcome",
+                          "der Titel nennt eine Taetigkeit, kein Ergebnis, das ein Fremder beurteilen kann: '%s'" % title))
+    runnable = sum(1 for g in live if g["check"] is not None)
+    if live and runnable / len(live) < 0.5:
+        found.append(("HINWEIS", "Ledger", "mostly-manual",
+                      "%d von %d Gates sind ausfuehrbar — ein ueberwiegend manuelles Ledger ist Prosa mit Kaestchen" % (runnable, len(live))))
+    return found
+
+
+def cmd_lint(path):
+    try:
+        doc = parse(read(path))
+    except OSError:
+        print("FEHLER Ledger [parse]: kein Ledger unter %s" % path)
+        return 1
+    body = sys.stdin.read()
+    found = [("FEHLER", "Ledger", "parse", e) for e in doc["errors"]] or lint_findings(doc, body)
+    for level, gid, rule, message in found:
+        print("%s %s [%s]: %s" % (level, gid, rule, message))
+    return 1 if any(level == "FEHLER" for level, _, _, _ in found) else 0
+
+
+def cmd_qa_lines(path, head8):
+    try:
+        doc = parse(read(path))
+    except OSError:
+        print("kein Ledger unter %s" % path)
+        return 1
+    lines = []
+    for body in json.loads(sys.stdin.read() or "[]"):
+        rows = body.splitlines()
+        if rows and rows[0].startswith("QA PASS") and head8 in rows[0]:
+            lines.extend(rows[1:])
+    missing = [g["id"] for g in doc["gates"] if g["check"] is not None and g["id"] not in doc["abandoned"]
+               and not any(re.match(r"^\s*%s: Mutation \S.*(→|->) rot\s*$" % re.escape(g["id"]), row) for row in lines)]
+    if missing:
+        print("QA PASS fuer HEAD %s nennt keine Mutation fuer: %s — je ausfuehrbarem Gate eine Zeile "
+              "'<gate>: Mutation <was> → rot'" % (head8, ", ".join(missing)))
+        return 1
+    return 0
+
+
 COMMANDS = {
+    ("lint", 1): lambda a: cmd_lint(a[0]),
+    ("qa-lines", 2): lambda a: cmd_qa_lines(*a),
     ("run", 5): lambda a: cmd_run(*a),
     ("attest", 5): lambda a: cmd_attest(*a),
     ("unmet", 3): lambda a: cmd_unmet(*a),

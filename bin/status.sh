@@ -50,7 +50,7 @@ case "$EDGES" in
 esac
 
 # --- 0. Rolle, Besitz, Gate — vor jedem Schreibzugriff ---------------------------
-OWNER=""; KEEP=""; OWNS_LEDGER=""
+OWNER=""; KEEP=""; OWNS_LEDGER=""; LINT_MSG=""
 case "$NEW" in
   backlog|planned)
     [ "$R" = "product-owner" ] || die "'$NEW' setzt nur der product-owner, nicht $R"
@@ -59,6 +59,10 @@ case "$NEW" in
       BODY="$("$T" body "$TICKET")" || die "#$TICKET: Issue-Text nicht lesbar — Fehlschlag, kein Zustand"
       OWNS_LEDGER="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" planned "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
         || die "#$TICKET: planned abgelehnt — $OWNS_LEDGER"
+      # Kein Orakel, das nicht fallen kann. Hinweise lehnen nicht ab, sie stehen im Kommentar.
+      LINT_MSG="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" lint "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
+        || die "#$TICKET: planned abgelehnt — Lint:
+$LINT_MSG"
       # Kein Ueberlappen: kein Pfad, den ein anderes freigegebenes Ticket des Sprints schon haelt.
       CLAIMS="$(sprint_claims "$TICKET")" || exit 1
       OVERLAP="$(printf '#%s\t%s\n%s\n' "$TICKET" "$OWNS_LEDGER" "$CLAIMS" | python3 "$BIN_DIR/gates.py" overlap "#$TICKET" 2>&1)" \
@@ -110,6 +114,15 @@ print(hits[-1] if hits else "")
     # Die Verdicts ersetzen den Abgleich nicht: jedes ausfuehrbare Gate lief fuer diesen HEAD gruen.
     GATE_MSG="$(python3 "$BIN_DIR/gates.py" unmet "$TICKETS_DIR/$TICKET/GATES.md" "$VERDICT_HEAD8" runnable 2>&1)" \
       || die "#$TICKET: rft abgelehnt — $GATE_MSG"
+    # Ein CHECK kann seit planned abgeschwaecht und dafuer gruen gelaufen sein: der Lint laeuft erneut.
+    BODY="$("$T" body "$TICKET")" || die "#$TICKET: Issue-Text nicht lesbar — Fehlschlag, kein Zustand"
+    LINT_RFT="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" lint "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
+      || die "#$TICKET: rft abgelehnt — Lint:
+$LINT_RFT"
+    # QA nennt je ausfuehrbarem Gate die Mutation, die genau dieses Gate rot macht.
+    PR_COMMENTS="$("$T" pr-comments "$VERDICT_PR")" || die "PR #$VERDICT_PR: Kommentare nicht lesbar — Fehlschlag, kein Zustand"
+    QA_MSG="$(printf '%s' "$PR_COMMENTS" | python3 "$BIN_DIR/gates.py" qa-lines "$TICKETS_DIR/$TICKET/GATES.md" "$VERDICT_HEAD8" 2>&1)" \
+      || die "#$TICKET: rft abgelehnt — $QA_MSG"
     ;;
   in-testing)
     [ "$R" = "acceptance-tester" ] || die "'in-testing' nimmt nur der acceptance-tester auf, nicht $R"
@@ -157,7 +170,10 @@ fi
 
 ${NOTE:-_kein Kommentar_}${OWNS_LEDGER:+
 
-OWNS Revision 1: \`$OWNS_LEDGER\`}"
+OWNS Revision 1: \`$OWNS_LEDGER\`}${LINT_MSG:+
+
+Lint-Hinweise:
+$LINT_MSG}"
 
 [ "$NEW" != "done" ] || "$T" close "$TICKET"
 

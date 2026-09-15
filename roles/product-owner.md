@@ -35,7 +35,8 @@ oder ein Sprint, dessen Tickets alle `done` sind.
    eine eigene Zeile `AC-<n>: <beobachtbares ergebnis>`, **ohne Loesungsvorgabe**.
 5. Je Ticket das Ledger `tickets/<nr>/GATES.md` (Format: `protocols/LOOP.md`, Gate-Ledger): je AC
    ein Gate. Ein Gate misst das Ergebnis mit einem Befehl (`CHECK` und `EXPECT`) oder ist manuell.
-   Kennst du den Befehl nicht, fragst du per `say.sh`, statt einen zu erfinden. Dazu `OWNS:` mit
+   Kennst du den Befehl nicht, fragst du per `say.sh`, statt einen zu erfinden. `planned` lehnt ein
+   Orakel ab, das nicht fallen kann: fester `echo`, `EXPECT: ok`, nur eine Zahl aus dem Issue. Dazu `OWNS:` mit
    den Pfaden, die das Ticket aendern darf. `planned` haelt sie als Revision 1 am Issue fest; eine
    Erweiterung gibst nur du frei: `bin/revise.sh <nr> "<globs>" "<grund>"`.
 6. `bin/sprint-new.sh <slug> <ticketnummern…>`, Ziel in `sprint.md`. Die Tickets bleiben dabei auf

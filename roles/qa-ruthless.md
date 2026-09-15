@@ -49,9 +49,14 @@ nicht gruen gelaufen ist. Wer `rft` setzt, laesst vorher `bin/gates.sh run <nr>`
 ## Verdict-Format
 
 ```
-QA PASS — HEAD `<sha8>`, <n> Tests ergaenzt, Mutation <was> → rot, gemessen <zeit>
+QA PASS — HEAD `<sha8>`, <n> Tests ergaenzt, gemessen <zeit>
+AC-1: Mutation <was> → rot
+AC-2: Mutation <was> → rot
 QA FAIL — HEAD `<sha8>`, ungedeckt: <zusicherung> (<datei>:<zeile>)
 ```
+
+Je ausfuehrbarem Gate im Ledger eine Zeile mit der Mutation, die **genau dieses Gate** rot macht.
+Fehlt sie fuer ein Gate, lehnt `status.sh` `rft` ab.
 
 FAIL: `bin/status.sh <nr> in-progress "QA FAIL: <befund>"` — `owner:` geht an den urspruenglichen
 Engineer zurueck.

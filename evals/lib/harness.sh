@@ -79,19 +79,24 @@ PY2
 }
 
 # Jedes Gate eines Tickets gruen fuer den HEAD seines PR, im Belegformat von bin/gates.py (ausfuehrbar: Definition
-# gebunden, manuell: belegt). Ohne Ledger vorher ein planbares Ledger. Fuer Faelle, die nicht die Gates pruefen.
+# gebunden, manuell: belegt), dazu ein QA-PASS mit einer Mutationszeile je ausfuehrbarem Gate. Mit $2=nurgates ohne
+# den QA-Kommentar. Ohne Ledger vorher ein planbares Ledger. Fuer Faelle, die nicht die Gates pruefen.
 sandbox_gates_green() {
   [ -f "$SANDBOX/tickets/$1/GATES.md" ] || sandbox_plannable "$1"
-  python3 - "$BIN" "$SANDBOX/issues.json" "$SANDBOX/tickets/$1/GATES.md" "$1" <<'PY2'
+  python3 - "$BIN" "$SANDBOX/issues.json" "$SANDBOX/tickets/$1/GATES.md" "$1" "${2:-}" <<'PY2'
 import json, sys
 sys.path.insert(0, sys.argv[1])
 import gates
-head = json.load(open(sys.argv[2]))[sys.argv[4]]["pr"]["head"][:8]
+db = json.load(open(sys.argv[2])); head = db[sys.argv[4]]["pr"]["head"][:8]
 path = sys.argv[3]; text = open(path).read(); doc = gates.parse(text)
 gates.write_results(path, text, doc, {
     g["id"]: (True, "manual head=%s by=eval at=eval — eval" % head if g["check"] is None else
               "v1 head=%s def=%s exit=0 expect=matched out=eval at=eval by=eval" % (head, gates.definition_digest(g)))
     for g in doc["gates"]})
+if sys.argv[5] != "nurgates":
+    lines = ["%s: Mutation eval → rot" % g["id"] for g in doc["gates"] if g["check"] is not None]
+    db[sys.argv[4]]["pr"].setdefault("comments", []).append("QA PASS — HEAD `%s`, eval\n%s" % (head, "\n".join(lines)))
+    json.dump(db, open(sys.argv[2], "w"), indent=2, sort_keys=True)
 PY2
 }
 
