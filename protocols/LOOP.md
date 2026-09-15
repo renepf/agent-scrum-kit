@@ -131,6 +131,13 @@ Ein AC, das sich nicht liefern laesst, faellt nie still weg. Wer es aufgibt, sch
 letzte Wort hat der product-owner: er nimmt das AC per Folgeticket aus Issue und Ledger, oder er
 schickt das Ticket zurueck.
 
+`planned` also records the definition of every gate as `GATES Revision 1: \`AC-1=<digest>, …\``
+next to `OWNS Revision 1`. Before any check, `merge.sh` prints a merge report: each AC of the issue
+exactly once with its ledger state (green or attested for the HEAD, not green with the reason,
+ABANDONED, no gate in the ledger), `definition changed since approval` where a digest differs, and
+the files in the diff. A failed read shows as `UNKNOWN` in the report. The report is a measurement
+for the product-owner, not a check: it rejects nothing.
+
 Grenze: Die Rolle kommt wie ueberall im Kit aus `KIT_ROLE` oder dem Anker. Wer sich als
 product-owner ausgibt, kann freigeben. Der Kommentar macht das in der Issue-Historie sichtbar,
 verhindern kann das Kit es nicht.

@@ -50,7 +50,7 @@ case "$EDGES" in
 esac
 
 # --- 0. Rolle, Besitz, Gate — vor jedem Schreibzugriff ---------------------------
-OWNER=""; KEEP=""; OWNS_LEDGER=""; LINT_MSG=""
+OWNER=""; KEEP=""; OWNS_LEDGER=""; GATES_LEDGER=""; LINT_MSG=""
 case "$NEW" in
   backlog|planned)
     [ "$R" = "product-owner" ] || die "'$NEW' setzt nur der product-owner, nicht $R"
@@ -59,6 +59,9 @@ case "$NEW" in
       BODY="$("$T" body "$TICKET")" || die "#$TICKET: Issue-Text nicht lesbar — Fehlschlag, kein Zustand"
       OWNS_LEDGER="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" planned "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
         || die "#$TICKET: planned abgelehnt — $OWNS_LEDGER"
+      # The approved definition of every gate: merge.sh reports a CHECK changed after this point.
+      GATES_LEDGER="$(python3 "$BIN_DIR/gates.py" definitions "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
+        || die "#$TICKET: planned abgelehnt — $GATES_LEDGER"
       # Kein Orakel, das nicht fallen kann. Hinweise lehnen nicht ab, sie stehen im Kommentar.
       LINT_MSG="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" lint "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
         || die "#$TICKET: planned abgelehnt — Lint:
@@ -172,7 +175,8 @@ fi
 
 ${NOTE:-_kein Kommentar_}${OWNS_LEDGER:+
 
-OWNS Revision 1: \`$OWNS_LEDGER\`}${LINT_MSG:+
+OWNS Revision 1: \`$OWNS_LEDGER\`}${GATES_LEDGER:+
+GATES Revision 1: \`$GATES_LEDGER\`}${LINT_MSG:+
 
 Lint-Hinweise:
 $LINT_MSG}"

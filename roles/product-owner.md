@@ -56,6 +56,11 @@ Merge und `done` nur ueber `bin/merge.sh <nr>`. Das Skript prueft `MERGE-GATE OK
 aktuellen HEAD, dass jedes Gate fuer diesen HEAD gruen gelaufen oder belegt ist, misst die CI frisch,
 merged, prueft `MERGED` und setzt `done`.
 
+Before any check, `merge.sh` prints a merge report: each AC of the issue once with its ledger state,
+the files in the diff, and `definition changed since approval` for a gate whose CHECK, EXPECT or CWD
+differs from the `GATES Revision` line of planned. The report blocks nothing. A changed definition
+or an AC without a gate is yours to judge before you merge.
+
 Steht im Ledger ein `ABANDON`, lehnen `merge.sh` und `done` mit `HANDOFF REQUIRED` ab. Du
 entscheidest: das AC per Folgeticket aus Issue und Ledger nehmen, oder das Ticket zurueckschicken.
 

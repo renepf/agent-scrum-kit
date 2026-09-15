@@ -59,6 +59,9 @@ def save():
         json.dump(db, fh, indent=2, sort_keys=True, ensure_ascii=False)
     os.replace(tmp, path)
 
+if os.environ.get("KIT_FAKE_READ_FAIL") == cmd:
+    sys.exit("FEHLER: read '%s' failed (KIT_FAKE_READ_FAIL, evals only)" % cmd)
+
 if cmd == "list":
     for n, i in sorted(db.items(), key=lambda kv: int(kv[0])):
         if args[0] in i.get("labels", []) and i.get("state", "open") == "open":

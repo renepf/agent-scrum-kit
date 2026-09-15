@@ -70,6 +70,12 @@ Aufruf (von bin/status.sh und bin/revise.sh):
     gates.py qa-lines <ledger> <head8>
                                  PR-Kommentare (JSON-Liste) auf stdin. Exit 0 = jedes ausfuehrbare Gate hat in
                                  einem "QA PASS" fuer <head8> eine Zeile "<gate>: Mutation <was> → rot"
+    gates.py definitions <ledger>
+                                 prints "<gate>=<definition digest>, ..." for the GATES Revision line of planned
+    gates.py report <ledger> <head8>
+                                 stdin: issue comments (JSON list), NUL, issue text. Prints each AC of the issue
+                                 once next to its ledger state and whether its definition changed since approval.
+                                 A measurement for the product-owner, never a gate: exit 0
 
 Ein Beleg gilt fuer genau einen HEAD und eine Definition (CHECK, EXPECT, CWD). Ein Push oder eine
 geaenderte Zeile macht ihn ungueltig. Gruen heisst: Exit 0 und EXPECT in stdout plus stderr.
@@ -98,6 +104,7 @@ REGEX_FLAGS = {"i": re.I, "m": re.M, "s": re.S, "u": 0}
 # (bin/status.sh planned, bin/revise.sh).
 APPROVAL_HEAD_RE = re.compile(r"^\*\*[^*]+\*\* — product-owner · ")
 APPROVAL_LINE_RE = re.compile(r"^OWNS Revision (\d+): `([^`]+)`\s*$")
+GATES_LINE_RE = re.compile(r"^GATES Revision (\d+): `([^`]+)`\s*$")
 
 
 def readable_lines(text):
@@ -321,16 +328,22 @@ def glob_regex(pattern):
     return re.compile("^" + rx + (".*" if p.endswith("/") else "") + "$")
 
 
-def cmd_approved():
+def approved_line(comments, line_re):
+    """(revision, value) of the highest revision line in a product-owner comment; on a tie the latest wins."""
     best = None
-    for body in json.loads(sys.stdin.read() or "[]"):
+    for body in comments:
         lines = body.splitlines()
         if not lines or not APPROVAL_HEAD_RE.match(lines[0]):
             continue
         for line in lines[1:]:
-            m = APPROVAL_LINE_RE.match(line)
+            m = line_re.match(line)
             if m and (best is None or int(m.group(1)) >= best[0]):
                 best = (int(m.group(1)), m.group(2))
+    return best
+
+
+def cmd_approved():
+    best = approved_line(json.loads(sys.stdin.read() or "[]"), APPROVAL_LINE_RE)
     if best is None:
         print("keine freigegebene OWNS-Revision am Issue — sie entsteht mit planned oder bin/revise.sh")
         return 1
@@ -641,8 +654,57 @@ def cmd_abandoned(path):
     return 0
 
 
+def cmd_definitions(path):
+    """Runs after planned accepted the ledger, so it prints without a second parse check."""
+    doc = parse(read(path))
+    print(", ".join("%s=%s" % (g["id"], definition_digest(g)) for g in doc["gates"]))
+    return 0
+
+
+def cmd_report(path, head8):
+    comments, _, body = sys.stdin.read().partition("\0")
+    acs = issue_acs(body)
+    out = []
+    try:
+        doc = parse(read(path))
+        if doc["errors"]:
+            out.append("ledger: " + " · ".join(doc["errors"]))
+    except (OSError, LedgerError) as e:
+        doc = {"gates": [], "abandoned": {}}
+        out.append("ledger: not readable: %s" % e)
+    best = approved_line(json.loads(comments or "[]"), GATES_LINE_RE)
+    approved = dict(p.strip().split("=", 1) for p in best[1].split(",") if "=" in p) if best else None
+    if approved is None:
+        out.append("approved definitions: none on the issue — no 'GATES Revision' line from the product-owner")
+    if not acs:
+        out.append("acceptance criteria: none in the issue")
+    gates = {g["id"]: g for g in doc["gates"]}
+    for gid in acs + [g for g in gates if g not in acs]:
+        gate, parts = gates.get(gid), []
+        if gid not in acs:
+            parts.append("not in the issue")
+        if gate is None:
+            parts.append("no gate in the ledger")
+        elif gid in doc["abandoned"]:
+            parts.append("ABANDONED: " + doc["abandoned"][gid])
+        else:
+            problem = gate_problem(gate, head8)
+            parts.append("not green (%s)" % problem if problem else
+                         "%s for HEAD %s" % ("attested" if gate["check"] is None else "green", head8))
+        if gate is not None and approved is not None:
+            if gid not in approved:
+                parts.append("not in the approved definitions")
+            elif approved[gid] != definition_digest(gate):
+                parts.append("definition changed since approval")
+        out.append("%s: %s%s" % (gid, "; ".join(parts), " · " + gate["title"] if gate else ""))
+    print("\n".join("  " + line for line in out))
+    return 0
+
+
 COMMANDS = {
     ("abandoned", 1): lambda a: cmd_abandoned(a[0]),
+    ("definitions", 1): lambda a: cmd_definitions(a[0]),
+    ("report", 2): lambda a: cmd_report(*a),
     ("lint", 1): lambda a: cmd_lint(a[0]),
     ("qa-lines", 2): lambda a: cmd_qa_lines(*a),
     ("run", 5): lambda a: cmd_run(*a),

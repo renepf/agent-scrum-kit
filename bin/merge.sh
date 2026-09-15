@@ -14,6 +14,20 @@ case "$R" in product-owner|merge-gate) ;; *) die "mergen darf nur der product-ow
 NEED=("MERGE-GATE OK")
 [ "$R" = "merge-gate" ] && NEED+=("PO OK")
 verdicts_missing "$TICKET" "${NEED[@]}"
+# Merge report: a measurement for the product-owner, never a gate. It prints before any rejection;
+# a failed read is UNKNOWN in the report and stops nothing.
+echo "Merge report #$TICKET · PR #$VERDICT_PR · HEAD $VERDICT_HEAD8"
+if R_COMMENTS="$("$BIN_DIR/tickets.sh" comments "$TICKET" 2>&1)" && R_BODY="$("$BIN_DIR/tickets.sh" body "$TICKET" 2>&1)"; then
+  { printf '%s\0' "$R_COMMENTS"; printf '%s\n' "$R_BODY"; } \
+    | python3 "$BIN_DIR/gates.py" report "$TICKETS_DIR/$TICKET/GATES.md" "$VERDICT_HEAD8" 2>&1 || true
+else
+  echo "  acceptance criteria: UNKNOWN — issue not readable: ${R_BODY:-$R_COMMENTS}"
+fi
+if R_FILES="$("$BIN_DIR/tickets.sh" pr-files "$VERDICT_PR" 2>&1)"; then
+  echo "  files in the diff ($(printf '%s\n' "$R_FILES" | grep -c .)): $(printf '%s\n' "$R_FILES" | grep . | tr '\n' ' ')"
+else
+  echo "  files in the diff: UNKNOWN — PR file list not readable: $R_FILES"
+fi
 [ -z "$VERDICT_MISSING" ] || die "#$TICKET: Merge abgelehnt — im PR #$VERDICT_PR fehlt fuer HEAD $VERDICT_HEAD8:$VERDICT_MISSING"
 # Ein aufgegebenes AC faellt nie still weg: solange ein ABANDON steht, kein Merge.
 HANDOFF="$(python3 "$BIN_DIR/gates.py" abandoned "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" || die "#$TICKET: Merge abgelehnt — $HANDOFF"
