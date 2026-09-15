@@ -10,11 +10,9 @@
 # A failed request is UNKNOWN, never "no". Nothing is picked for you.
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
-: "${KIT_LOCAL_BASE_URL:=}"
-: "${KIT_LOCAL_MODEL:=}"
-[ -n "$KIT_LOCAL_BASE_URL" ] || die "KIT_LOCAL_BASE_URL is not set in kit.env (e.g. http://127.0.0.1:11434/v1)"
+[ -n "${KIT_LOCAL_BASE_URL:-}" ] || die "KIT_LOCAL_BASE_URL is not set in kit.env (e.g. http://127.0.0.1:11434/v1)"
 
-python3 - "$KIT_LOCAL_BASE_URL" "$KIT_LOCAL_MODEL" "${KIT_LOCAL_CHECK_TIMEOUT:-600}" <<'PY'
+python3 - "$KIT_LOCAL_BASE_URL" "${KIT_LOCAL_MODEL:-}" "${KIT_LOCAL_CHECK_TIMEOUT:-600}" <<'PY'
 import json, sys, urllib.error, urllib.request
 
 base, chosen, timeout = sys.argv[1].rstrip("/"), sys.argv[2], float(sys.argv[3])

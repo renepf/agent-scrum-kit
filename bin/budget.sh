@@ -60,9 +60,7 @@ def usage_for(sid):
         return "NOPROBE"
     if not paths:
         return None
-    seen = False
-    ctx_max = 0
-    out_total = 0
+    turns = []
     for path in paths:
         with open(path, encoding="utf-8", errors="replace") as fh:
             for line in fh:
@@ -71,12 +69,9 @@ def usage_for(sid):
                 except ValueError:
                     continue
                 t = turn(rec) if isinstance(rec, dict) else None
-                if t is None:
-                    continue
-                seen = True
-                ctx_max = max(ctx_max, t[0])
-                out_total += t[1]
-    return (ctx_max, out_total) if seen else "NOUSAGE"
+                if t is not None:
+                    turns.append(t)
+    return (max(c for c, _ in turns), sum(o for _, o in turns)) if turns else "NOUSAGE"
 
 def num(n):
     return f"{n:,}".replace(",", " ")
