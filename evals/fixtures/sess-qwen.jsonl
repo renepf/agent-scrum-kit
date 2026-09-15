@@ -1,0 +1,4 @@
+{"type": "user", "sessionId": "sess-qwen", "message": {"role": "user", "parts": [{"text": "Reply with exactly: PONG"}]}}
+{"type": "assistant", "sessionId": "sess-qwen", "model": "qwen2.5-coder:14b", "contextWindowSize": 262144, "message": {"role": "model", "parts": [{"text": "PONG"}]}, "usageMetadata": {"promptTokenCount": 20228, "candidatesTokenCount": 3, "thoughtsTokenCount": 0, "totalTokenCount": 20231, "cachedContentTokenCount": 15879}}
+{"type": "system", "sessionId": "sess-qwen", "subtype": "ui_telemetry", "systemPayload": {}}
+{"type": "assistant", "sessionId": "sess-qwen", "model": "qwen2.5-coder:14b", "contextWindowSize": 262144, "message": {"role": "model", "parts": [{"text": "done"}]}, "usageMetadata": {"promptTokenCount": 30000, "candidatesTokenCount": 40, "thoughtsTokenCount": 0, "totalTokenCount": 30040, "cachedContentTokenCount": 100}}

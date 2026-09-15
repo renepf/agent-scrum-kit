@@ -1,0 +1,4 @@
+{"type": "session", "version": 3, "id": "sess-pi", "cwd": "/eval"}
+{"type": "message", "id": "e1f05422", "message": {"role": "user", "content": [{"type": "text", "text": "Reply with exactly: PONG"}]}}
+{"type": "message", "id": "cbd9f74c", "message": {"role": "assistant", "content": [{"type": "text", "text": "PONG"}], "usage": {"input": 1713, "output": 3, "cacheRead": 5, "cacheWrite": 0, "reasoning": 0, "totalTokens": 1721, "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0}}}}
+{"type": "message", "id": "d2a1b3c4", "message": {"role": "assistant", "content": [{"type": "text", "text": "done"}], "usage": {"input": 1000, "output": 20, "cacheRead": 2000, "cacheWrite": 10, "reasoning": 0, "totalTokens": 3030, "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0}}}}

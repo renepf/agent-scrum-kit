@@ -1,0 +1,2 @@
+{"type": "user", "sessionId": "sess-nousage", "message": {"role": "user", "content": "hello"}}
+{"type": "assistant", "sessionId": "sess-nousage", "message": {"role": "assistant", "content": "hi"}}

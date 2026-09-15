@@ -38,6 +38,21 @@ def transcripts(sid):
         return []
     return [p for p in out.stdout.split("\n") if p.strip() and os.path.exists(p)]
 
+def turn(rec):
+    """(context, output) of one transcript record, or None. One shape per host, each measured
+    (adapters/<host>/README.md)."""
+    msg = rec.get("message") if isinstance(rec.get("message"), dict) else {}
+    u = msg.get("usage") or rec.get("usage") or {}
+    if "input_tokens" in u:      # claude-code: input_tokens excludes the cache
+        return (u["input_tokens"] + u.get("cache_read_input_tokens", 0)
+                + u.get("cache_creation_input_tokens", 0), u.get("output_tokens", 0))
+    if "input" in u:             # pi: input excludes cacheRead and cacheWrite
+        return u["input"] + u.get("cacheRead", 0) + u.get("cacheWrite", 0), u.get("output", 0)
+    m = rec.get("usageMetadata") or {}
+    if "promptTokenCount" in m:  # qwen-code: promptTokenCount already contains the cached tokens
+        return m["promptTokenCount"], m.get("candidatesTokenCount", 0)
+    return None
+
 def usage_for(sid):
     """Kontextgroesse = groesster Eingabestand EINES Turns. Nicht die Summe ueber Turns."""
     paths = transcripts(sid)
@@ -45,6 +60,7 @@ def usage_for(sid):
         return "NOPROBE"
     if not paths:
         return None
+    seen = False
     ctx_max = 0
     out_total = 0
     for path in paths:
@@ -54,15 +70,13 @@ def usage_for(sid):
                     rec = json.loads(line)
                 except ValueError:
                     continue
-                u = (rec.get("message") or {}).get("usage") or rec.get("usage") or {}
-                if not u:
+                t = turn(rec) if isinstance(rec, dict) else None
+                if t is None:
                     continue
-                ctx = (u.get("input_tokens", 0)
-                       + u.get("cache_read_input_tokens", 0)
-                       + u.get("cache_creation_input_tokens", 0))
-                ctx_max = max(ctx_max, ctx)
-                out_total += u.get("output_tokens", 0)
-    return ctx_max, out_total
+                seen = True
+                ctx_max = max(ctx_max, t[0])
+                out_total += t[1]
+    return (ctx_max, out_total) if seen else "NOUSAGE"
 
 def num(n):
     return f"{n:,}".replace(",", " ")
@@ -74,6 +88,7 @@ print(f"Stand: {datetime.datetime.now():%Y-%m-%d %H:%M} · Warnung ab {num(warn)
 print()
 print("Kontext = groesster Eingabestand EINES Turns (input + cache_read + cache_creation),")
 print("nicht die Summe ueber alle Turns.")
+print("Per host: qwen-code promptTokenCount (contains the cache), pi input + cacheRead + cacheWrite.")
 print()
 print("| Rolle | Session-ID | Kontext | Output gesamt | Lage |")
 print("|---|---|---|---|---|")
@@ -83,6 +98,9 @@ for rolle, sid in rows:
     res = usage_for(sid)
     if res == "NOPROBE":
         print(f"| {rolle} | `{sid}` | UNKNOWN | UNKNOWN | Host schreibt keine Transkripte — Notbremse nach {maxtickets} Tickets |")
+        continue
+    if res == "NOUSAGE":
+        print(f"| {rolle} | `{sid}` | UNKNOWN | UNKNOWN | transcript has no usage record this kit knows — not read as 0 |")
         continue
     if res is None:
         print(f"| {rolle} | `{sid}` | UNKNOWN | UNKNOWN | Transkript nicht gefunden — nicht als 0 lesen |")
