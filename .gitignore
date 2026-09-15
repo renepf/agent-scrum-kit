@@ -5,3 +5,4 @@ evals/out/
 .pid-roles/
 .role-loop/
 .claude/settings.local.json
+__pycache__/

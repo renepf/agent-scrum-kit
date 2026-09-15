@@ -62,6 +62,16 @@ Pflicht in `kit.env`:
 Alles andere hat sinnvolle Werte. `kit.env` ist gitignored. Solange `KIT_REPO` auf `UNKNOWN` steht,
 bricht jedes Skript ab.
 
+Hosts `qwen-code` and `pi` run against a local model. Set `KIT_LOCAL_BASE_URL` to the runtime's
+OpenAI-compatible endpoint, then measure what this machine can serve:
+
+```bash
+bin/local-model-check.sh    # one line per model: tool calls yes/no/UNKNOWN, memory and context (Ollama)
+```
+
+Name a model with `tool calls: yes` as `KIT_LOCAL_MODEL`. A role needs tool calls to run `bin/*.sh`;
+the check refuses any other model and picks none for you.
+
 ```bash
 bin/preflight.sh            # erwartet: preflight ok · gh · <login> · <repo>
 ```
@@ -237,4 +247,5 @@ bin/tick.sh                 # erwartet: kein aktiver Sprint … Nichts zu tun.
 | `QA PASS fuer HEAD <sha8> nennt keine Mutation fuer: AC-<n>` | QA hat fuer dieses Gate keine Mutation genannt | qa-ruthless ergaenzt im PR `QA PASS — HEAD \`<sha8>\`` mit einer Zeile `AC-<n>: Mutation <was> → rot` |
 | `Gates nicht gruen fuer HEAD <sha8>: AC-<n> (…)` | ein Gate lief nicht fuer diesen HEAD, ist rot, seine Definition hat sich geaendert, oder ein manuelles Gate hat keinen Beleg | im Arbeitsbaum auf dem HEAD des PR `bin/gates.sh run <nr>`; manuell: `bin/gates.sh attest <nr> <gate> "<beleg>"` |
 | `Arbeitsbaum steht auf <sha8>, der PR auf <sha8>` | Gates wuerden gegen einen anderen Stand laufen | den HEAD des PR auschecken |
+| `KIT_LOCAL_MODEL=<model>: refused — tool calls: no (answer came back as text)` | the model writes the tool call as text instead of calling the tool; a role on it cannot run any kit script | pick another model from `bin/local-model-check.sh` with `tool calls: yes` |
 | `rft abgelehnt — … fehlt fuer HEAD` | ein Verdict fehlt oder gilt einem alten HEAD | Verdict fuer den aktuellen HEAD im PR |
