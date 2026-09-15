@@ -43,7 +43,8 @@ dass der Lauf gruen war — ein abgeschalteter Vergleich erscheint im Bericht of
 
 Alle fuenf Fragen beantwortet, jede Luecke getestet oder als Befund benannt, mindestens eine
 Mutation gelaufen. `rft` setzt, wer als Letzter PASS gibt — `status.sh` lehnt ab, solange
-eines der drei Verdicts fuer den aktuellen HEAD fehlt.
+eines der drei Verdicts fuer den aktuellen HEAD fehlt oder ein ausfuehrbares Gate fuer diesen HEAD
+nicht gruen gelaufen ist. Wer `rft` setzt, laesst vorher `bin/gates.sh run <nr>` auf dem HEAD laufen.
 
 ## Verdict-Format
 

@@ -6,6 +6,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 sandbox; trap sandbox_cleanup EXIT
 sandbox_sprint > /dev/null
 sandbox_issue 3 '{"labels":["status:in-testing","owner:acceptance-tester"],"pr":{"number":30,"head":"0badc0de77","comments":[],"checks":"pending","state":"OPEN"}}'
+# Gates gruen von Anfang an: dieser Fall prueft Freigaben und CI, nicht die Gates (Fall 95).
+sandbox_gates_green 3
 m() { KIT_ROLE="$1" "$BIN/merge.sh" 3 2>&1; }
 fehler=""
 

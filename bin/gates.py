@@ -58,10 +58,23 @@ Aufruf (von bin/status.sh und bin/revise.sh):
     gates.py scope <owns>        Dateiliste des PR auf stdin. Exit 0 = jede Datei liegt in <owns>
     gates.py overlap [<label>]   Zeilen "<label> TAB <owns>" auf stdin (<owns> auch "@<ledger>"). Exit 0 = kein
                                  Paar ueberschneidet sich; mit <label> nur Paare, an denen dieses Label beteiligt ist
+    gates.py run <ledger> <head8> <cwd> <rolle> <timeout>
+                                 jedes ausfuehrbare Gate in <cwd> ausfuehren, Beleg fuer <head8> ins Ledger
+    gates.py attest <ledger> <gate> <head8> <rolle> <beleg>
+                                 ein manuelles Gate fuer <head8> belegen
+    gates.py unmet <ledger> <head8> runnable|all
+                                 Exit 0 = jedes (ausfuehrbare) Gate hat einen gueltigen Beleg fuer <head8>
+
+Ein Beleg gilt fuer genau einen HEAD und eine Definition (CHECK, EXPECT, CWD). Ein Push oder eine
+geaenderte Zeile macht ihn ungueltig. Gruen heisst: Exit 0 und EXPECT in stdout plus stderr.
 """
+import hashlib
 import json
+import os
 import re
+import subprocess
 import sys
+import time
 
 GATE_RE = re.compile(r"^- \[([ xX])\]\s*(.*)$")
 GATE_HEAD_RE = re.compile(r"^(\S+?):\s*(.*)$")
@@ -162,7 +175,8 @@ def parse(text):
                 current = None
                 continue
             current = {"id": head.group(1), "title": head.group(2).strip(), "checked": g.group(1) != " ",
-                       "check": None, "expect": None, "cwd": None, "evidence": None, "line": number}
+                       "check": None, "expect": None, "cwd": None, "evidence": None, "line": number,
+                       "evidence_line": None, "last_line": number}
             gates.append(current)
             continue
         if INDENTED_ABANDON_RE.match(line):
@@ -178,6 +192,9 @@ def parse(text):
                 errors.append(where + "Gate %s: %s doppelt" % (current["id"], a.group(2)))
                 continue
             current[key] = a.group(3).strip()
+            current["last_line"] = number
+            if key == "evidence":
+                current["evidence_line"] = number
             continue
         if UNINDENTED_ATTR_RE.match(line):
             errors.append(where + line.split(":")[0] + " ist nicht eingerueckt und gehoert zu keinem Gate")
@@ -370,7 +387,146 @@ def cmd_overlap(only):
     return 0
 
 
+def definition_digest(gate):
+    raw = json.dumps([gate["check"] or "", gate["expect"] or "", gate["cwd"] or ""])
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+
+def stamp():
+    return time.strftime("%Y-%m-%dT%H:%M")
+
+
+def gate_problem(gate, head8):
+    """None, wenn das Gate einen gueltigen Beleg fuer head8 hat, sonst der Grund."""
+    evidence = gate["evidence"] or "pending"
+    if gate["check"] is None:
+        return None if evidence.startswith("manual head=%s " % head8) else "manuell ohne Beleg fuer diesen HEAD"
+    if not evidence.startswith("v1 "):
+        return "nie gruen gelaufen"
+    fields = dict(f.split("=", 1) for f in evidence.split() if "=" in f)
+    if fields.get("head") != head8:
+        return "Beleg gilt HEAD %s" % fields.get("head", "?")
+    if fields.get("def") != definition_digest(gate):
+        return "Definition seit dem Lauf geaendert"
+    if fields.get("exit") != "0" or fields.get("expect") != "matched":
+        return "kein gruener Lauf"
+    return None
+
+
+def write_results(path, text, doc, results):
+    """results: {gate-id: (abgehakt, evidence)}. Aendert nur Checkbox und EVIDENCE-Zeile, schreibt atomar."""
+    lines = text.splitlines(keepends=True)
+    nl = "\r\n" if "\r\n" in text else "\n"
+    edits = []
+    for gate in doc["gates"]:
+        if gate["id"] in results:
+            checked, evidence = results[gate["id"]]
+            edits.append((gate["line"], "box", checked))
+            if gate["evidence_line"]:
+                edits.append((gate["evidence_line"], "evidence", evidence))
+            else:
+                edits.append((gate["last_line"], "insert", evidence))
+    for number, kind, value in sorted(edits, key=lambda e: e[0], reverse=True):
+        i = number - 1
+        if kind == "box":
+            lines[i] = re.sub(r"^- \[[ xX]\]", "- [x]" if value else "- [ ]", lines[i])
+        elif kind == "evidence":
+            lines[i] = "%sEVIDENCE: %s%s" % (re.match(r"^(\s*)", lines[i]).group(1), value, nl)
+        else:
+            lines.insert(number, "  EVIDENCE: %s%s" % (value, nl))
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="") as fh:
+        fh.write("".join(lines))
+    os.replace(tmp, path)
+
+
+def cmd_run(path, head8, cwd, role, timeout):
+    text = read(path)
+    doc = parse(text)
+    if doc["errors"]:
+        print(" · ".join(doc["errors"]))
+        return 2
+    results, report = {}, []
+    for gate in doc["gates"]:
+        if gate["check"] is None or gate["id"] in doc["abandoned"]:
+            continue
+        combined = ""
+        try:
+            p = subprocess.run(gate["check"], shell=True, cwd=os.path.join(cwd, gate["cwd"] or ""),
+                               capture_output=True, timeout=float(timeout))
+            out, err = p.stdout.decode("utf-8", "replace"), p.stderr.decode("utf-8", "replace")
+            combined = out + ("\n" if out and err else "") + err
+            kind, value = gate["expectation"]
+            matched = value in combined if kind == "text" else bool(value.search(combined))
+            why = None if p.returncode == 0 and matched else \
+                "exit=%d, EXPECT %s" % (p.returncode, "gefunden" if matched else "nicht gefunden")
+        except subprocess.TimeoutExpired:
+            why = "Zeitueberschreitung nach %s s" % timeout
+        except OSError as e:
+            why = "nicht startbar: %s" % e
+        if why is None:
+            results[gate["id"]] = (True, "v1 head=%s def=%s exit=0 expect=matched out=%s at=%s by=%s" % (
+                head8, definition_digest(gate), hashlib.sha256(combined.encode("utf-8")).hexdigest()[:12], stamp(), role))
+            report.append("%s gruen" % gate["id"])
+        else:
+            results[gate["id"]] = (False, "pending")
+            report.append("%s ROT: %s · %s" % (gate["id"], why, " ".join(combined.split())[-200:]))
+    if not results:
+        print("keine ausfuehrbaren Gates im Ledger")
+        return 0
+    write_results(path, text, doc, results)
+    print("\n".join(report))
+    return 0 if all(ok for ok, _ in results.values()) else 1
+
+
+def cmd_attest(path, gid, head8, role, beleg):
+    text = read(path)
+    doc = parse(text)
+    if doc["errors"]:
+        print(" · ".join(doc["errors"]))
+        return 2
+    gate = next((g for g in doc["gates"] if g["id"] == gid), None)
+    beleg = " ".join(beleg.split())
+    problem = ("Gate %s gibt es im Ledger nicht" % gid if gate is None else
+               "Gate %s ist ausfuehrbar — sein Beleg entsteht nur mit bin/gates.sh run" % gid if gate["check"] is not None else
+               "Gate %s ist per ABANDON aufgegeben" % gid if gid in doc["abandoned"] else
+               "ein Beleg braucht Text" if not beleg else None)
+    if problem:
+        print(problem)
+        return 1
+    write_results(path, text, doc, {gid: (True, "manual head=%s by=%s at=%s — %s" % (head8, role, stamp(), beleg))})
+    print("%s belegt fuer HEAD %s" % (gid, head8))
+    return 0
+
+
+def cmd_unmet(path, head8, mode):
+    try:
+        doc = parse(read(path))
+    except OSError:
+        print("kein Ledger unter %s" % path)
+        return 1
+    if doc["errors"]:
+        print(" · ".join(doc["errors"]))
+        return 1
+    problems = []
+    for gate in doc["gates"]:
+        if gate["id"] in doc["abandoned"] or (mode == "runnable" and gate["check"] is None):
+            continue
+        why = gate_problem(gate, head8)
+        if why:
+            problems.append("%s (%s)" % (gate["id"], why))
+    if problems:
+        print("Gates nicht gruen fuer HEAD %s: %s · ausfuehrbare mit bin/gates.sh run, manuelle mit bin/gates.sh attest"
+              % (head8, ", ".join(problems)))
+        return 1
+    print("alle Gates gruen fuer HEAD %s" % head8)
+    return 0
+
+
 COMMANDS = {
+    ("run", 5): lambda a: cmd_run(*a),
+    ("attest", 5): lambda a: cmd_attest(*a),
+    ("unmet", 3): lambda a: cmd_unmet(*a),
     ("planned", 1): lambda a: cmd_contract(a[0], fresh=True),
     ("contract", 1): lambda a: cmd_contract(a[0], fresh=False),
     ("approved", 0): lambda a: cmd_approved(),

@@ -231,4 +231,6 @@ bin/tick.sh                 # erwartet: kein aktiver Sprint … Nichts zu tun.
 | `planned abgelehnt — kein Ledger` oder `AC ohne Gate` | das Ticket hat keinen pruefbaren Vertrag | je AC eine Zeile `AC-<n>:` im Issue, je AC ein Gate in `tickets/<nr>/GATES.md` |
 | `… und #<nr> ueberschneiden sich` | zwei Tickets des Sprints beanspruchen dieselben Pfade | OWNS im Ledger enger fassen, oder das Ticket in einen spaeteren Sprint |
 | `rfr abgelehnt — Dateien ausserhalb OWNS` | der PR aendert mehr, als das Ticket darf | Datei aus dem PR nehmen, oder der product-owner gibt per `bin/revise.sh <nr> "<globs>" "<grund>"` eine neue Revision frei |
+| `Gates nicht gruen fuer HEAD <sha8>: AC-<n> (…)` | ein Gate lief nicht fuer diesen HEAD, ist rot, seine Definition hat sich geaendert, oder ein manuelles Gate hat keinen Beleg | im Arbeitsbaum auf dem HEAD des PR `bin/gates.sh run <nr>`; manuell: `bin/gates.sh attest <nr> <gate> "<beleg>"` |
+| `Arbeitsbaum steht auf <sha8>, der PR auf <sha8>` | Gates wuerden gegen einen anderen Stand laufen | den HEAD des PR auschecken |
 | `rft abgelehnt — … fehlt fuer HEAD` | ein Verdict fehlt oder gilt einem alten HEAD | Verdict fuer den aktuellen HEAD im PR |

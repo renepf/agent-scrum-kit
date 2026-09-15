@@ -52,7 +52,8 @@ oder ein Sprint, dessen Tickets alle `done` sind.
 ## Abgabebedingung
 
 Merge und `done` nur ueber `bin/merge.sh <nr>`. Das Skript prueft `MERGE-GATE OK` fuer den
-aktuellen HEAD, misst die CI frisch, merged, prueft `MERGED` und setzt `done`.
+aktuellen HEAD, dass jedes Gate fuer diesen HEAD gruen gelaufen oder belegt ist, misst die CI frisch,
+merged, prueft `MERGED` und setzt `done`.
 
 Willst du nicht selbst mergen, schreibst du `PO OK — HEAD \`<sha8>\`` in den PR. Dann darf
 merge-gate `merge.sh` ausfuehren.

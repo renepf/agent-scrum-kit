@@ -17,6 +17,7 @@ st qa-ruthless in-review
 KIT_ROLE=simplicity-reviewer "$BIN/claim.sh" 1 > /dev/null 2>&1 || fehler="$fehler claim-simplicity"
 KIT_ROLE=security-engineer "$BIN/claim.sh" 1 > /dev/null 2>&1 || fehler="$fehler claim-security"
 for v in "QA PASS" "SIMPLICITY PASS" "SECURITY PASS"; do sandbox_pr_comment 1 "$v — HEAD \`a1b2c3d4\`, eval"; done
+sandbox_gates_green 1
 st security-engineer rft
 st acceptance-tester in-testing
 sandbox_pr_comment 1 "MERGE-GATE OK — HEAD \`a1b2c3d4\`, eval"

@@ -78,6 +78,23 @@ for base, _, files in sorted(os.walk(os.path.join(root, "tickets", n))):
 PY2
 }
 
+# Jedes Gate eines Tickets gruen fuer den HEAD seines PR, im Belegformat von bin/gates.py (ausfuehrbar: Definition
+# gebunden, manuell: belegt). Ohne Ledger vorher ein planbares Ledger. Fuer Faelle, die nicht die Gates pruefen.
+sandbox_gates_green() {
+  [ -f "$SANDBOX/tickets/$1/GATES.md" ] || sandbox_plannable "$1"
+  python3 - "$BIN" "$SANDBOX/issues.json" "$SANDBOX/tickets/$1/GATES.md" "$1" <<'PY2'
+import json, sys
+sys.path.insert(0, sys.argv[1])
+import gates
+head = json.load(open(sys.argv[2]))[sys.argv[4]]["pr"]["head"][:8]
+path = sys.argv[3]; text = open(path).read(); doc = gates.parse(text)
+gates.write_results(path, text, doc, {
+    g["id"]: (True, "manual head=%s by=eval at=eval — eval" % head if g["check"] is None else
+              "v1 head=%s def=%s exit=0 expect=matched out=eval at=eval by=eval" % (head, gates.definition_digest(g)))
+    for g in doc["gates"]})
+PY2
+}
+
 # Ein Ticket planbar machen: Issue mit AC-1, Ledger mit genau einem Gate dafuer, OWNS als $2.
 # Hat das Ticket schon einen PR, bekommt er eine Datei im Umfang: eine leere Dateiliste lehnt rfr ab.
 sandbox_plannable() {

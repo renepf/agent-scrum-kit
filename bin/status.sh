@@ -107,6 +107,9 @@ print(hits[-1] if hits else "")
     in_list "$R" "$REVIEWERS" || die "'rft' setzt nur ein Pruefer, nicht $R"
     verdicts_missing "$TICKET" "QA PASS" "SIMPLICITY PASS" "SECURITY PASS"
     [ -z "$VERDICT_MISSING" ] || die "#$TICKET: rft abgelehnt — im PR #$VERDICT_PR fehlt fuer HEAD $VERDICT_HEAD8:$VERDICT_MISSING. Format der ersten Zeile: '<VERDICT> — HEAD \`$VERDICT_HEAD8\`, ...'"
+    # Die Verdicts ersetzen den Abgleich nicht: jedes ausfuehrbare Gate lief fuer diesen HEAD gruen.
+    GATE_MSG="$(python3 "$BIN_DIR/gates.py" unmet "$TICKETS_DIR/$TICKET/GATES.md" "$VERDICT_HEAD8" runnable 2>&1)" \
+      || die "#$TICKET: rft abgelehnt — $GATE_MSG"
     ;;
   in-testing)
     [ "$R" = "acceptance-tester" ] || die "'in-testing' nimmt nur der acceptance-tester auf, nicht $R"

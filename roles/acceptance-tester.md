@@ -34,7 +34,8 @@ oben stehst. Nach dem Lauf streichst du deinen Eintrag.
 
 1. Den Bau des aktuellen PR-HEAD installieren oder starten.
 2. Fuer **jedes** AC: erfuellt oder nicht erfuellt, mit Beleg — Screenshot-Pfad, Logzeile,
-   beobachtetes Verhalten.
+   beobachtetes Verhalten. Ein manuelles Gate im Ledger belegst du fuer den aktuellen HEAD:
+   `bin/gates.sh attest <nr> <gate> "<beleg>"`. Ohne diesen Beleg lehnt `merge.sh` ab.
 3. Das pruefen, was eine gruene Suite nicht sieht: Fokus, Tastatur, Groessenaenderung,
    Zurueck-Geste, offline, Prozesstod und Wiederherstellung, Darstellungsmodus.
 4. Gibt es eine Referenzplattform, vergleichst du **Verhalten**, nicht Pixel. Eine bereits

@@ -53,9 +53,9 @@ backlog → planned → in-progress → rfr → in-review → rft → in-testing
 | `planned → in-progress` | engineer-a, engineer-b | setzt `owner:<engineer>` |
 | `in-progress → rfr` | der Engineer mit `owner:` | fremder Besitz wird abgelehnt; **Umfang:** jede Datei des PR liegt in der freigegebenen OWNS-Revision |
 | `rfr → in-review` | ein Pruefer | setzt `owner:<pruefer>`, weitere Pruefer bleiben |
-| `in-review → rft` | ein Pruefer | **Gate:** QA PASS, SIMPLICITY PASS, SECURITY PASS fuer den aktuellen HEAD |
+| `in-review → rft` | ein Pruefer | **Gate:** QA PASS, SIMPLICITY PASS, SECURITY PASS fuer den aktuellen HEAD; jedes ausfuehrbare Gate des Ledgers lief fuer diesen HEAD gruen |
 | `rft → in-testing` | acceptance-tester | — |
-| `in-testing → done` | product-owner, oder merge-gate mit `PO OK` fuer den aktuellen HEAD | normal ueber `bin/merge.sh` |
+| `in-testing → done` | product-owner, oder merge-gate mit `PO OK` fuer den aktuellen HEAD | normal ueber `bin/merge.sh`; jedes Gate fuer den aktuellen HEAD gruen oder belegt |
 | `in-review → in-progress` | ein Pruefer | `owner:` zurueck an den Engineer aus der Kommentarhistorie |
 | `in-testing → in-progress` | acceptance-tester, merge-gate, product-owner | dasselbe |
 
@@ -116,6 +116,15 @@ woertliches Pfadsegment abweicht, bevor auf einer Seite ein Glob-Zeichen steht �
 `src/*.kt` gelten also als ueberlappend. Im Zweifel lehnt das Kit ab. Ein Sprint-Ticket ohne Freigabe
 haelt nichts.
 
+`bin/gates.sh run <nr>` fuehrt im Arbeitsbaum des PR jedes ausfuehrbare Gate aus, nur wenn der
+Arbeitsbaum auf dem HEAD des PR steht. Gruen heisst Exit 0 und `EXPECT` in stdout plus stderr; dann
+steht `- [x]` und `EVIDENCE: v1 head=<sha8> def=<digest> …`, sonst `- [ ]` und `EVIDENCE: pending`.
+Ein Beleg gilt nur fuer diesen HEAD und diese Definition aus `CHECK`, `EXPECT` und `CWD`: ein Push
+oder eine geaenderte Zeile macht ihn ungueltig. Zeitgrenze je Gate: `KIT_GATE_TIMEOUT` Sekunden. Ein
+manuelles Gate belegt der acceptance-tester oder der product-owner fuer den aktuellen HEAD:
+`bin/gates.sh attest <nr> <gate> "<beleg>"`. `CHECK` ist Shell-Code aus dem Ledger und laeuft mit den
+Rechten der Session, die ihn startet.
+
 Grenze: Die Rolle kommt wie ueberall im Kit aus `KIT_ROLE` oder dem Anker. Wer sich als
 product-owner ausgibt, kann freigeben. Der Kommentar macht das in der Issue-Historie sichtbar,
 verhindern kann das Kit es nicht.
@@ -124,6 +133,8 @@ verhindern kann das Kit es nicht.
 |---|---|---|
 | Deckung | `status.sh <nr> planned` | das Ledger fehlt oder ist formal kaputt, das Issue nennt keine AC, eine AC hat kein Gate, das Ledger nennt eine AC, die das Issue nicht kennt, das Ledger nennt kein oder ein unzulaessiges `OWNS:`, ein Gate ist schon abgehakt oder per `ABANDON` aufgegeben |
 | Ueberlappung | `status.sh <nr> planned`, `bin/revise.sh`, `bin/sprint-new.sh` | ein OWNS-Glob kann dieselbe Datei meinen wie die Freigabe eines anderen offenen Sprint-Tickets; bei `sprint-new.sh` wie das Ledger eines anderen Tickets im Schnitt |
+| Gruen fuer HEAD | `status.sh <nr> rft` | ein ausfuehrbares Gate hat keinen gruenen Beleg fuer den aktuellen HEAD, oder seine Definition hat sich seit dem Lauf geaendert |
+| Belegt vor Merge | `bin/merge.sh <nr>` | wie oben, dazu ein manuelles Gate ohne Beleg fuer den aktuellen HEAD |
 | Umfang | `status.sh <nr> rfr` | kein oder mehr als ein verknuepfter PR, keine Freigabe am Issue, die Dateiliste ist leer oder nicht lesbar, eine Datei des PR liegt ausserhalb der hoechsten freigegebenen Revision |
 
 ### Letztes Wort: product-owner

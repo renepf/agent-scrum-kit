@@ -51,7 +51,8 @@ PASS-Verdicts gelten fuer den neuen HEAD nicht mehr — die Schleife laeuft voll
 
 ## Abgabebedingung
 
-Fertig **und** PR offen **und** Tests gruen, Ausgabe gesehen. Erst dann:
+Fertig **und** PR offen **und** Tests gruen, Ausgabe gesehen **und** `bin/gates.sh run <nr>` im
+Worktree auf dem HEAD des PR: jedes ausfuehrbare Gate gruen. Erst dann:
 
 ```bash
 bin/status.sh <nr> rfr "PR #<nr>, <n> Tests gruen, HEAD <sha8>, gemessen <zeit>"

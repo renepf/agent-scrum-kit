@@ -19,6 +19,7 @@ ass="$(KIT_ROLE=product-owner "$BIN/tickets.sh" assignees 7 | grep -c . || true)
 KIT_ROLE=qa-ruthless "$BIN/status.sh" 7 in-review x > /dev/null 2>&1
 KIT_ROLE=security-engineer "$BIN/claim.sh" 7 > /dev/null 2>&1
 c="$(sandbox_labels 7)"
+sandbox_gates_green 7
 KIT_ROLE=security-engineer "$BIN/status.sh" 7 rft x > /dev/null 2>&1
 d="$(sandbox_labels 7)"
 

@@ -21,6 +21,7 @@ sandbox_pr_comment 5 'Nebenbei: QA PASS waere schoen — HEAD `22222222`'
 o3="$(try)"; case "$o3" in *"fehlt"*"QA PASS"*) ;; *) fehler="$fehler Verdict-nicht-in-erster-Zeile-akzeptiert" ;; esac
 
 for v in "QA PASS" "SIMPLICITY PASS" "SECURITY PASS"; do sandbox_pr_comment 5 "$v — HEAD \`22222222\`, geprueft"; done
+sandbox_gates_green 5
 o4="$(try)"; case "$o4" in *"in-review → rft"*) ;; *) fehler="$fehler gueltige-Verdicts-abgelehnt:'$o4'" ;; esac
 
 observe "2 von 3 → abgelehnt · alle 3 fuer alten HEAD → abgelehnt · Verdict mitten im Satz → abgelehnt · alle 3 fuer neuen HEAD → $(echo "$o4" | tail -1)${fehler:+ · FEHLER:$fehler}"

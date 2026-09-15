@@ -18,6 +18,7 @@ for fall in "in-review:qa-ruthless" "in-testing:acceptance-tester"; do
   KIT_ROLE=qa-ruthless "$BIN/status.sh" "$n" in-review x > /dev/null 2>&1
   if [ "$pz" = "in-testing" ]; then
     for v in "QA PASS" "SIMPLICITY PASS" "SECURITY PASS"; do sandbox_pr_comment "$n" "$v — HEAD \`feedbeef\`"; done
+    sandbox_gates_green "$n"
     KIT_ROLE=qa-ruthless "$BIN/status.sh" "$n" rft x > /dev/null 2>&1
     KIT_ROLE=acceptance-tester "$BIN/status.sh" "$n" in-testing x > /dev/null 2>&1
   fi
