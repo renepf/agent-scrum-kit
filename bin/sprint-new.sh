@@ -16,6 +16,15 @@ WANT="${KIT_SPRINT_TICKETS:-6}"
 
 "$(dirname "${BASH_SOURCE[0]}")/preflight.sh" > /dev/null || die "Preflight fehlgeschlagen — stoppen und melden"
 
+# Kein Ueberlappen im Schnitt: Tickets mit Ledger duerfen keine gemeinsamen Pfade beanspruchen.
+# Tickets ohne Ledger prueft spaeter status.sh ... planned. Vor jedem Schreibzugriff.
+CLAIMS=""
+for i in "${TICKETS[@]}"; do
+  [ -f "$TICKETS_DIR/$i/GATES.md" ] && CLAIMS="$CLAIMS#$i	@$TICKETS_DIR/$i/GATES.md
+"
+done
+OVERLAP="$(printf '%s' "$CLAIMS" | python3 "$BIN_DIR/gates.py" overlap 2>&1)" || die "Sprint abgelehnt — $OVERLAP"
+
 mkdir -p "$SPRINTS_DIR"
 N=$(printf '%03d' "$(( $(ls "$SPRINTS_DIR" 2>/dev/null | sed -n 's/^S-\([0-9]\{3\}\)-.*/\1/p' | sort -n | tail -1 | sed 's/^0*//' | grep . || echo 0) + 1 ))")
 NAME="S-$N-$SLUG"

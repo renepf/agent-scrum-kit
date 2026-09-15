@@ -29,24 +29,35 @@ oder ein Sprint, dessen Tickets alle `done` sind.
 1. `bin/tick.sh`.
 2. Kandidaten sichten: `bin/tickets.sh list <label>`.
 3. `KIT_SPRINT_TICKETS` Tickets waehlen, die ein Sprintziel ergeben und sich **nicht in denselben
-   Dateien** ueberschneiden — zwei Engineers arbeiten parallel.
-4. Je Ticket in das Issue: `Als <rolle> moechte ich <ziel>, damit <nutzen>.`, dann nummerierte,
-   pruefbare ACs **ohne Loesungsvorgabe**.
-5. `bin/sprint-new.sh <slug> <ticketnummern…>`, Ziel in `sprint.md`. Die Tickets bleiben dabei auf
+   Dateien** ueberschneiden — zwei Engineers arbeiten parallel. `sprint-new.sh`, `planned` und
+   `revise.sh` lehnen ueberlappende `OWNS:` ab.
+4. Je Ticket in das Issue: `Als <rolle> moechte ich <ziel>, damit <nutzen>.`, dann je Kriterium
+   eine eigene Zeile `AC-<n>: <beobachtbares ergebnis>`, **ohne Loesungsvorgabe**.
+5. Je Ticket das Ledger `tickets/<nr>/GATES.md` (Format: `protocols/LOOP.md`, Gate-Ledger): je AC
+   ein Gate. Ein Gate misst das Ergebnis mit einem Befehl (`CHECK` und `EXPECT`) oder ist manuell.
+   Kennst du den Befehl nicht, fragst du per `say.sh`, statt einen zu erfinden. `planned` lehnt ein
+   Orakel ab, das nicht fallen kann: fester `echo`, `EXPECT: ok`, nur eine Zahl aus dem Issue. Dazu `OWNS:` mit
+   den Pfaden, die das Ticket aendern darf. `planned` haelt sie als Revision 1 am Issue fest; eine
+   Erweiterung gibst nur du frei: `bin/revise.sh <nr> "<globs>" "<grund>"`.
+6. `bin/sprint-new.sh <slug> <ticketnummern…>`, Ziel in `sprint.md`. Die Tickets bleiben dabei auf
    `backlog`. **Erst dieser Schritt legt den Chat an** — vorher scheitert jedes `say.sh` mit
    `kein aktiver Sprint`.
-6. **Verdict einholen, bevor irgendwer codiert:** `say.sh` an `@simplicity-reviewer` mit dem
+7. **Verdict einholen, bevor irgendwer codiert:** `say.sh` an `@simplicity-reviewer` mit dem
    geplanten Loesungsweg. Ohne `SOLUTION-VERDICT` kein `planned`. Dann je Ticket
-   `bin/status.sh <nr> planned "Verdict: <kurz>"`.
-7. Takt halten: `KIT_TICKET_MINUTES` je Ticket. Ueberzieht ein Engineer, startet sein naechstes
+   `bin/status.sh <nr> planned "Verdict: <kurz>"` — es lehnt ab, solange eine AC ohne Gate ist.
+8. Takt halten: `KIT_TICKET_MINUTES` je Ticket. Ueberzieht ein Engineer, startet sein naechstes
    Ticket am naechsten Rasterpunkt.
-8. In `in-testing` liest du beim acceptance-tester mit. Ein nicht erfuelltes AC schickt zurueck:
+9. In `in-testing` liest du beim acceptance-tester mit. Ein nicht erfuelltes AC schickt zurueck:
    `bin/status.sh <nr> in-progress "AC-3 nicht erfuellt: <beobachtung>"`.
 
 ## Abgabebedingung
 
 Merge und `done` nur ueber `bin/merge.sh <nr>`. Das Skript prueft `MERGE-GATE OK` fuer den
-aktuellen HEAD, misst die CI frisch, merged, prueft `MERGED` und setzt `done`.
+aktuellen HEAD, dass jedes Gate fuer diesen HEAD gruen gelaufen oder belegt ist, misst die CI frisch,
+merged, prueft `MERGED` und setzt `done`.
+
+Steht im Ledger ein `ABANDON`, lehnen `merge.sh` und `done` mit `HANDOFF REQUIRED` ab. Du
+entscheidest: das AC per Folgeticket aus Issue und Ledger nehmen, oder das Ticket zurueckschicken.
 
 Willst du nicht selbst mergen, schreibst du `PO OK — HEAD \`<sha8>\`` in den PR. Dann darf
 merge-gate `merge.sh` ausfuehren.

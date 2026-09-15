@@ -41,6 +41,8 @@ KIT_STATES="$(printf '%s\n' "$KIT_STATUS_MAP" | grep '|' | cut -d'|' -f1 | tr '\
 SPRINTS_DIR="${KIT_SPRINTS_DIR:-$KIT_ROOT/sprints}"
 CURRENT_FILE="$SPRINTS_DIR/CURRENT"
 MEMORY_DIR="${KIT_MEMORY_DIR:-$KIT_ROOT/memory}"
+# Gate-Ledger je Ticket: $TICKETS_DIR/<nr>/GATES.md (Format: bin/gates.py).
+TICKETS_DIR="${KIT_TICKETS_DIR:-$KIT_ROOT/tickets}"
 
 # Board-Name zu einem Statusschluessel.
 board_name() { printf '%s\n' "$KIT_STATUS_MAP" | grep "^$1|" | cut -d'|' -f2; }
@@ -128,6 +130,21 @@ atomic_write() {
   tmp="$(mktemp "${target}.XXXXXX")"
   cat > "$tmp"
   mv -f "$tmp" "$target"
+}
+
+# Freigegebene OWNS der anderen offenen Sprint-Tickets, je Zeile "#<nr><TAB><globs>" (fuer gates.py overlap).
+# Ein Ticket ohne Freigabe (noch backlog) haelt nichts. Ein unlesbarer Aufruf bricht ab, statt nichts zu melden.
+# Aufruf: CLAIMS="$(sprint_claims <nr>)" || exit 1
+sprint_claims() {
+  local self="$1" nrs o c a
+  nrs="$("$BIN_DIR/tickets.sh" sprint | python3 -c 'import json,sys; print(" ".join(str(i["number"]) for i in json.load(sys.stdin)))')" \
+    || die "Sprint-Tickets nicht lesbar — Fehlschlag, kein Zustand"
+  for o in $nrs; do
+    [ "$o" != "$self" ] || continue
+    c="$("$BIN_DIR/tickets.sh" comments "$o")" || die "#$o: Kommentare nicht lesbar — Fehlschlag, kein Zustand"
+    a="$(printf '%s' "$c" | python3 "$BIN_DIR/gates.py" approved)" || continue
+    printf '#%s\t%s\n' "$o" "${a#*$'\t'}"
+  done
 }
 
 # Anhaengen unter Sperre. mkdir ist atomar auf jedem POSIX-Dateisystem.

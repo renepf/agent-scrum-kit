@@ -6,6 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 sandbox; trap sandbox_cleanup EXIT
 sandbox_sprint > /dev/null
 sandbox_issue 21 '{"title":"zurueckgewiesenes Ticket","labels":["sprint:current"],"pr":{"number":210,"head":"abcabcabc1","comments":[]}}'
+sandbox_plannable 21
 sandbox_issue 22 '{"title":"neues Ticket","labels":["sprint:current","status:planned"]}'
 KIT_ROLE=product-owner "$BIN/status.sh" 21 planned x > /dev/null
 KIT_ROLE=engineer-a "$BIN/status.sh" 21 in-progress x > /dev/null

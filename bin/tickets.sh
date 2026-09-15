@@ -8,8 +8,10 @@
 #   assignees <nr>            · unassign <nr> <wer>
 #   comment <nr> <text>       · comments <nr>   (JSON-Liste der Kommentartexte)
 #   title <nr>                · close <nr>
+#   body <nr>                 Issue-Text (Story und AC-Zeilen)
 #   pr <nr>                   "<pr-nummer> <head-sha8>" des verknuepften PRs, sonst Exit 1
 #   pr-comments <pr>          JSON-Liste der Kommentartexte
+#   pr-files <pr>             geaenderte Dateien des PR, eine je Zeile; bei Umbenennung auch der alte Pfad
 #   pr-checks <pr>            Exit 0 nur wenn alle Checks gruen
 #   pr-merge <pr>             Squash-Merge
 #   pr-state <pr>             "<STATE> <merge-sha8|->"
@@ -72,6 +74,8 @@ elif cmd == "assignees":
     print("\n".join(issue(args[0])["assignees"]))
 elif cmd == "title":
     print(issue(args[0])["title"])
+elif cmd == "body":
+    print(issue(args[0]).get("body", ""))
 elif cmd == "comments":
     print(json.dumps(issue(args[0])["comments"]))
 elif cmd == "add-label":
@@ -98,6 +102,8 @@ elif cmd == "pr":
     print(p["number"], p["head"][:8])
 elif cmd == "pr-comments":
     print(json.dumps(pr_of(args[0]).get("comments", [])))
+elif cmd == "pr-files":
+    print("\n".join(pr_of(args[0]).get("files", [])))
 elif cmd == "pr-checks":
     c = pr_of(args[0]).get("checks", "pending")
     print("checks:", c)
@@ -118,6 +124,7 @@ gh_backend() {
     labels)      gh issue view "$1" --repo "$KIT_REPO" --json labels -q '.labels[].name' ;;
     assignees)   gh issue view "$1" --repo "$KIT_REPO" --json assignees -q '.assignees[].login' ;;
     title)       gh issue view "$1" --repo "$KIT_REPO" --json title -q .title ;;
+    body)        gh issue view "$1" --repo "$KIT_REPO" --json body -q .body ;;
     comments)    gh issue view "$1" --repo "$KIT_REPO" --json comments -q '[.comments[].body]' ;;
     add-label)   gh issue edit "$1" --repo "$KIT_REPO" --add-label "$2" > /dev/null ;;
     rm-label)    gh issue edit "$1" --repo "$KIT_REPO" --remove-label "$2" > /dev/null ;;
@@ -129,12 +136,16 @@ gh_backend() {
     pr)
       local pr head
       pr="$(gh issue view "$1" --repo "$KIT_REPO" --json closedByPullRequestsReferences \
-              -q '.closedByPullRequestsReferences[0].number // empty')"
+              -q '[.closedByPullRequestsReferences[].number | tostring] | join(" ")')"
       [ -n "$pr" ] || exit 1
+      # Zwei PRs, die dasselbe Ticket schliessen: welcher gilt, waere geraten.
+      case "$pr" in *" "*) echo "mehrere verknuepfte PRs: $pr — genau einer schliesst das Ticket" >&2; exit 1 ;; esac
       head="$(gh pr view "$pr" --repo "$KIT_REPO" --json headRefOid -q '.headRefOid[0:8]')"
       [ -n "$head" ] || exit 1
       echo "$pr $head" ;;
     pr-comments) gh pr view "$1" --repo "$KIT_REPO" --json comments -q '[.comments[].body]' ;;
+    # Nicht 'gh pr diff --name-only': das nennt bei Umbenennung nur den neuen Pfad.
+    pr-files)    gh api "repos/$KIT_REPO/pulls/$1/files" --paginate -q '.[] | .filename, (.previous_filename // empty)' ;;
     pr-checks)   gh pr checks "$1" --repo "$KIT_REPO" ;;
     pr-merge)    gh pr merge "$1" --repo "$KIT_REPO" --squash > /dev/null ;;
     pr-state)    gh pr view "$1" --repo "$KIT_REPO" --json state,mergeCommit -q '"\(.state) \(.mergeCommit.oid[0:8] // "-")"' ;;

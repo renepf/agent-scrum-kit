@@ -25,6 +25,7 @@ KIT_BOARD="none"
 KIT_HOST="test-fixture"
 KIT_SPRINTS_DIR="$SANDBOX/sprints"
 KIT_MEMORY_DIR="$SANDBOX/memory"
+KIT_TICKETS_DIR="$SANDBOX/tickets"
 ENV
   export KIT_ENV_FILE="$SANDBOX/kit.env"
   export KIT_BOARD_ENV_FILE="$SANDBOX/board.env"
@@ -59,6 +60,69 @@ PY2
 sandbox_labels() { KIT_ROLE=product-owner "$BIN/tickets.sh" labels "$1" | grep . | sort | tr '\n' ' ' | sed 's/ $//'; }
 
 sandbox_cleanup() { [ -n "${SANDBOX:-}" ] && rm -rf "$SANDBOX"; }
+
+# Ein Gate-Ledger fuer ein Ticket schreiben, Text auf stdin.
+sandbox_ledger() { mkdir -p "$SANDBOX/tickets/$1"; cat > "$SANDBOX/tickets/$1/GATES.md"; }
+
+# Zustand eines Tickets fuer "eine Ablehnung schreibt nichts": Issue-Eintrag plus jede Datei unter tickets/<nr>/.
+sandbox_snap() {
+  python3 - "$SANDBOX" "$1" <<'PY2'
+import hashlib, json, os, sys
+root, n = sys.argv[1], sys.argv[2]
+path = os.path.join(root, "issues.json")
+print(json.dumps(json.load(open(path)).get(n) if os.path.exists(path) else None, sort_keys=True))
+for base, _, files in sorted(os.walk(os.path.join(root, "tickets", n))):
+    for f in sorted(files):
+        p = os.path.join(base, f)
+        print(os.path.relpath(p, root), hashlib.sha256(open(p, "rb").read()).hexdigest())
+PY2
+}
+
+# Jedes Gate eines Tickets gruen fuer den HEAD seines PR, im Belegformat von bin/gates.py (ausfuehrbar: Definition
+# gebunden, manuell: belegt), dazu ein QA-PASS mit einer Mutationszeile je ausfuehrbarem Gate. Mit $2=nurgates ohne
+# den QA-Kommentar. Ohne Ledger vorher ein planbares Ledger. Fuer Faelle, die nicht die Gates pruefen.
+sandbox_gates_green() {
+  [ -f "$SANDBOX/tickets/$1/GATES.md" ] || sandbox_plannable "$1"
+  python3 - "$BIN" "$SANDBOX/issues.json" "$SANDBOX/tickets/$1/GATES.md" "$1" "${2:-}" <<'PY2'
+import json, sys
+sys.path.insert(0, sys.argv[1])
+import gates
+db = json.load(open(sys.argv[2])); head = db[sys.argv[4]]["pr"]["head"][:8]
+path = sys.argv[3]; text = open(path).read(); doc = gates.parse(text)
+gates.write_results(path, text, doc, {
+    g["id"]: (True, "manual head=%s by=eval at=eval — eval" % head if g["check"] is None else
+              "v1 head=%s def=%s exit=0 expect=matched out=eval at=eval by=eval" % (head, gates.definition_digest(g)))
+    for g in doc["gates"]})
+if sys.argv[5] != "nurgates":
+    lines = ["%s: Mutation eval → rot" % g["id"] for g in doc["gates"] if g["check"] is not None]
+    db[sys.argv[4]]["pr"].setdefault("comments", []).append("QA PASS — HEAD `%s`, eval\n%s" % (head, "\n".join(lines)))
+    json.dump(db, open(sys.argv[2], "w"), indent=2, sort_keys=True)
+PY2
+}
+
+# Ein Ticket planbar machen: Issue mit AC-1, Ledger mit genau einem Gate dafuer, OWNS als $2.
+# Hat das Ticket schon einen PR, bekommt er eine Datei im Umfang: eine leere Dateiliste lehnt rfr ab.
+sandbox_plannable() {
+  sandbox_issue "$1" '{"body":"AC-1: das Ergebnis ist beobachtbar"}'
+  python3 - "$SANDBOX/issues.json" "$1" <<'PY2'
+import json, sys
+path, n = sys.argv[1:3]
+db = json.load(open(path))
+if db[n].get("pr") is not None:
+    db[n]["pr"].setdefault("files", ["src/eval.py"])
+json.dump(db, open(path, "w"), indent=2, sort_keys=True)
+PY2
+  sandbox_ledger "$1" <<LEDGER
+# Gates: eval
+
+OWNS: ${2:-src/**, tests/**}
+
+- [ ] AC-1: das Ergebnis ist beobachtbar
+  CHECK: python3 tools/check_result.py
+  EXPECT: ergebnis geprueft
+  EVIDENCE: pending
+LEDGER
+}
 
 # Einen Sprint im Sandkasten anlegen, ohne den PO-Pfad zu durchlaufen.
 sandbox_sprint() {

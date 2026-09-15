@@ -6,6 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 sandbox; trap sandbox_cleanup EXIT
 sandbox_sprint > /dev/null
 sandbox_issue 1 '{"pr":{"number":10,"head":"a1b2c3d4e5f6","comments":[],"checks":"pass","state":"OPEN"}}'
+sandbox_plannable 1
 
 weg=""; fehler=""
 st() { if KIT_ROLE="$1" "$BIN/status.sh" 1 "$2" "eval" > /dev/null 2>&1; then weg="$weg>$2"; else fehler="$fehler $1:$2"; fi; }
@@ -16,6 +17,7 @@ st qa-ruthless in-review
 KIT_ROLE=simplicity-reviewer "$BIN/claim.sh" 1 > /dev/null 2>&1 || fehler="$fehler claim-simplicity"
 KIT_ROLE=security-engineer "$BIN/claim.sh" 1 > /dev/null 2>&1 || fehler="$fehler claim-security"
 for v in "QA PASS" "SIMPLICITY PASS" "SECURITY PASS"; do sandbox_pr_comment 1 "$v — HEAD \`a1b2c3d4\`, eval"; done
+sandbox_gates_green 1
 st security-engineer rft
 st acceptance-tester in-testing
 sandbox_pr_comment 1 "MERGE-GATE OK — HEAD \`a1b2c3d4\`, eval"

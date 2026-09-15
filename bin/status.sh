@@ -50,10 +50,24 @@ case "$EDGES" in
 esac
 
 # --- 0. Rolle, Besitz, Gate — vor jedem Schreibzugriff ---------------------------
-OWNER=""; KEEP=""
+OWNER=""; KEEP=""; OWNS_LEDGER=""; LINT_MSG=""
 case "$NEW" in
   backlog|planned)
     [ "$R" = "product-owner" ] || die "'$NEW' setzt nur der product-owner, nicht $R"
+    if [ "$NEW" = "planned" ]; then
+      # Kein Code ohne pruefbaren Vertrag: jede AC des Issues hat ein Gate, das Ledger nennt seinen Umfang.
+      BODY="$("$T" body "$TICKET")" || die "#$TICKET: Issue-Text nicht lesbar — Fehlschlag, kein Zustand"
+      OWNS_LEDGER="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" planned "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
+        || die "#$TICKET: planned abgelehnt — $OWNS_LEDGER"
+      # Kein Orakel, das nicht fallen kann. Hinweise lehnen nicht ab, sie stehen im Kommentar.
+      LINT_MSG="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" lint "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
+        || die "#$TICKET: planned abgelehnt — Lint:
+$LINT_MSG"
+      # Kein Ueberlappen: kein Pfad, den ein anderes freigegebenes Ticket des Sprints schon haelt.
+      CLAIMS="$(sprint_claims "$TICKET")" || exit 1
+      OVERLAP="$(printf '#%s\t%s\n%s\n' "$TICKET" "$OWNS_LEDGER" "$CLAIMS" | python3 "$BIN_DIR/gates.py" overlap "#$TICKET" 2>&1)" \
+        || die "#$TICKET: planned abgelehnt — $OVERLAP"
+    fi
     ;;
   in-progress)
     if in_list "$R" "$ENGINEERS"; then
@@ -80,6 +94,14 @@ print(hits[-1] if hits else "")
   rfr)
     in_list "$R" "$ENGINEERS" || die "'rfr' setzt nur ein Engineer, nicht $R"
     in_list "$R" "$OWNERS_NOW" || die "#$TICKET gehoert nicht $R (Besitz: ${OWNERS_NOW:-niemand})"
+    # Umfang: jede Datei des PR liegt in der OWNS-Revision, die der product-owner am Issue freigegeben hat.
+    COMMENTS="$("$T" comments "$TICKET")" || die "#$TICKET: Kommentare nicht lesbar — Fehlschlag, kein Zustand"
+    APPROVAL="$(printf '%s' "$COMMENTS" | python3 "$BIN_DIR/gates.py" approved 2>&1)" || die "#$TICKET: rfr abgelehnt — $APPROVAL"
+    PR_LINE="$("$T" pr "$TICKET" 2>&1)" \
+      || die "#$TICKET: rfr abgelehnt — kein verknuepfter PR lesbar (closes #$TICKET im PR-Text?)${PR_LINE:+: $PR_LINE}"
+    FILES="$("$T" pr-files "${PR_LINE%% *}")" || die "PR #${PR_LINE%% *}: Dateiliste nicht lesbar — Fehlschlag, kein Zustand"
+    SCOPE_MSG="$(printf '%s\n' "$FILES" | python3 "$BIN_DIR/gates.py" scope "${APPROVAL#*$'\t'}" 2>&1)" \
+      || die "#$TICKET: rfr abgelehnt (OWNS Revision ${APPROVAL%%$'\t'*}) — $SCOPE_MSG"
     ;;
   in-review)
     in_list "$R" "$REVIEWERS" || die "'in-review' nimmt nur ein Pruefer auf, nicht $R"
@@ -89,6 +111,18 @@ print(hits[-1] if hits else "")
     in_list "$R" "$REVIEWERS" || die "'rft' setzt nur ein Pruefer, nicht $R"
     verdicts_missing "$TICKET" "QA PASS" "SIMPLICITY PASS" "SECURITY PASS"
     [ -z "$VERDICT_MISSING" ] || die "#$TICKET: rft abgelehnt — im PR #$VERDICT_PR fehlt fuer HEAD $VERDICT_HEAD8:$VERDICT_MISSING. Format der ersten Zeile: '<VERDICT> — HEAD \`$VERDICT_HEAD8\`, ...'"
+    # Die Verdicts ersetzen den Abgleich nicht: jedes ausfuehrbare Gate lief fuer diesen HEAD gruen.
+    GATE_MSG="$(python3 "$BIN_DIR/gates.py" unmet "$TICKETS_DIR/$TICKET/GATES.md" "$VERDICT_HEAD8" runnable 2>&1)" \
+      || die "#$TICKET: rft abgelehnt — $GATE_MSG"
+    # Ein CHECK kann seit planned abgeschwaecht und dafuer gruen gelaufen sein: der Lint laeuft erneut.
+    BODY="$("$T" body "$TICKET")" || die "#$TICKET: Issue-Text nicht lesbar — Fehlschlag, kein Zustand"
+    LINT_RFT="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" lint "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
+      || die "#$TICKET: rft abgelehnt — Lint:
+$LINT_RFT"
+    # QA nennt je ausfuehrbarem Gate die Mutation, die genau dieses Gate rot macht.
+    PR_COMMENTS="$("$T" pr-comments "$VERDICT_PR")" || die "PR #$VERDICT_PR: Kommentare nicht lesbar — Fehlschlag, kein Zustand"
+    QA_MSG="$(printf '%s' "$PR_COMMENTS" | python3 "$BIN_DIR/gates.py" qa-lines "$TICKETS_DIR/$TICKET/GATES.md" "$VERDICT_HEAD8" 2>&1)" \
+      || die "#$TICKET: rft abgelehnt — $QA_MSG"
     ;;
   in-testing)
     [ "$R" = "acceptance-tester" ] || die "'in-testing' nimmt nur der acceptance-tester auf, nicht $R"
@@ -103,6 +137,8 @@ print(hits[-1] if hits else "")
         ;;
       *) die "'done' setzt nur der product-owner, oder merge-gate mit PO OK — nicht $R" ;;
     esac
+    # Auch am Merge vorbei kein done, solange ein AC per ABANDON aufgegeben ist.
+    HANDOFF="$(python3 "$BIN_DIR/gates.py" abandoned "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" || die "#$TICKET: done abgelehnt — $HANDOFF"
     ;;
 esac
 
@@ -131,9 +167,15 @@ if [ -z "$OWNER" ]; then
   for a in $("$T" assignees "$TICKET"); do "$T" unassign "$TICKET" "$a"; done
 fi
 
+# Bei planned ist dieser Kommentar zugleich die Freigabe des Umfangs (bin/gates.py approved).
 "$T" comment "$TICKET" "**$(board_name "$NEW")** — $R · $(now) · session \`$SID\`
 
-${NOTE:-_kein Kommentar_}"
+${NOTE:-_kein Kommentar_}${OWNS_LEDGER:+
+
+OWNS Revision 1: \`$OWNS_LEDGER\`}${LINT_MSG:+
+
+Lint-Hinweise:
+$LINT_MSG}"
 
 [ "$NEW" != "done" ] || "$T" close "$TICKET"
 

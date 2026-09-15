@@ -51,13 +51,18 @@ PASS-Verdicts gelten fuer den neuen HEAD nicht mehr — die Schleife laeuft voll
 
 ## Abgabebedingung
 
-Fertig **und** PR offen **und** Tests gruen, Ausgabe gesehen. Erst dann:
+Fertig **und** PR offen **und** Tests gruen, Ausgabe gesehen **und** `bin/gates.sh run <nr>` im
+Worktree auf dem HEAD des PR: jedes ausfuehrbare Gate gruen. Erst dann:
 
 ```bash
 bin/status.sh <nr> rfr "PR #<nr>, <n> Tests gruen, HEAD <sha8>, gemessen <zeit>"
 ```
 
 `rfr` ist besitzerlos: dein `owner:` faellt ab, die Pruefer sehen, dass sie dran sind.
+
+`rfr` lehnt ab, wenn eine Datei des PR ausserhalb der freigegebenen OWNS-Revision liegt
+(Kommentar `OWNS Revision <n>` am Issue). Brauchst du mehr, fragst du per `say.sh` `@product-owner`. `OWNS:` im
+Ledger selbst zu aendern erweitert nichts.
 
 ## Verdict-Format
 
@@ -75,3 +80,5 @@ Offen: <was der Pruefer wissen muss> | keine
 - Nie zwei Tickets gleichzeitig, nie im Worktree der anderen Instanz.
 - Keine Tests ueberspringen. Die TDD-Folge **ist** der Plan.
 - Kein "fertig" ohne einen Testlauf, dessen Ausgabe du gesehen hast.
+- Ein AC nie still weglassen. Nicht lieferbar? `ABANDON: AC-<n> <grund und uebergabe>` an Spalte 1
+  im Ledger und `say.sh` an `@product-owner`. Ohne seine Entscheidung gibt es keinen Merge.

@@ -2,9 +2,11 @@
 """Vorgetaeuschtes gh fuer die Eval-Suite. Kein Netz, eigener Zustand.
 
 Zustand:  $FAKE_GH_STATE  (JSON: {"<nr>": {"labels": [], "assignees": [], "state": "OPEN",
-                                         "comments": [], "board": null}})
+                                         "comments": [], "board": null, "body": "", "prs": ["<pr>"]},
+                                  "pulls": {"<pr>": {"head": "<sha>", "files": [{"filename": "...",
+                                                     "previous_filename": "..."}]}}})
 Protokoll: $FAKE_GH_LOG   (eine Zeile je Aufruf, in Aufrufreihenfolge)
-Fehler:   $FAKE_GH_FAIL   "graphql" | "item-edit" | "readback" | "" — laesst genau diesen Aufruf scheitern
+Fehler:   $FAKE_GH_FAIL   "graphql" | "item-edit" | "readback" | "pr-files" | "comments" | "" — laesst genau diesen Aufruf scheitern
 Optionen: $FAKE_GH_OPTIONS "o-backlog=Backlog;o-planned=Planned;..." — Namen fuer das Zuruecklesen
 
 Nur die Aufrufe, die bin/preflight.sh und bin/tickets.sh wirklich machen. Alles andere
@@ -65,6 +67,23 @@ if args[:2] == ["api", "graphql"]:
     print("PVTI_" + content.removeprefix("I_"))
     sys.exit(0)
 
+if args[:1] == ["api"] and len(args) > 1 and args[1].startswith("repos/") and args[1].endswith("/files"):
+    # bin/tickets.sh pr-files: Dateien des PR samt altem Pfad bei Umbenennung.
+    nr = args[1].split("/")[-2]
+    log(f"api pulls {nr} files")
+    if fail == "pr-files":
+        die("HTTP 502: Bad Gateway (https://api.github.com/" + args[1] + ")")
+    # Der alte Pfad kommt nur, wenn die Abfrage in tickets.sh ihn verlangt — sonst bliebe ihr Wegfall unbemerkt.
+    for f in db["pulls"][nr]["files"]:
+        print(f["filename"])
+        if f.get("previous_filename") and "previous_filename" in (opt("-q") or ""):
+            print(f["previous_filename"])
+    sys.exit(0)
+
+if args[:2] == ["pr", "view"] and opt("--json") == "headRefOid":
+    log(f"pr view {args[2]} headRefOid")
+    print(db["pulls"][args[2]]["head"][:8]); sys.exit(0)
+
 if args[:2] == ["project", "item-edit"]:
     item, option = opt("--id"), opt("--single-select-option-id")
     log(f"project item-edit {item} {option}")
@@ -72,6 +91,19 @@ if args[:2] == ["project", "item-edit"]:
         die("HTTP 503: Service Unavailable")
     db[item.removeprefix("PVTI_")]["board"] = option
     save(); sys.exit(0)
+
+if args[:2] == ["issue", "list"]:
+    # bin/tickets.sh list (-q: nur Nummern) und sprint (JSON mit number, title, labels)
+    label = opt("--label")
+    log(f"issue list {label}")
+    hits = [(nr, i) for nr, i in sorted(db.items()) if nr.isdigit() and label in i.get("labels", [])
+            and i.get("state", "OPEN") == "OPEN"]
+    if "-q" in args:
+        print("\n".join(nr for nr, _ in hits))
+    else:
+        print(json.dumps([{"number": int(nr), "title": i.get("title", ""), "labels": [{"name": l} for l in i["labels"]]}
+                          for nr, i in hits]))
+    sys.exit(0)
 
 if args[:1] == ["issue"] and len(args) >= 3:
     sub, nr = args[1], args[2]
@@ -84,7 +116,12 @@ if args[:1] == ["issue"] and len(args) >= 3:
         elif field == "id":        print("I_" + nr)
         elif field == "state":     print(i["state"])
         elif field == "title":     print(i.get("title", ""))
-        elif field == "comments":  print(json.dumps(i["comments"]))
+        elif field == "comments":
+            if fail == "comments":
+                die("HTTP 502: Bad Gateway (https://api.github.com/graphql)")
+            print(json.dumps(i["comments"]))
+        elif field == "body":      print(i.get("body", ""))
+        elif field == "closedByPullRequestsReferences": print(" ".join(i.get("prs", [])))
         else: die(f"fake-gh: --json {field} nicht nachgebildet")
         sys.exit(0)
     if sub == "edit":
