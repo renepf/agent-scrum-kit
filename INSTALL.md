@@ -229,5 +229,6 @@ bin/tick.sh                 # erwartet: kein aktiver Sprint … Nichts zu tun.
 | `keine Board-Option fuer '<status>' in board.env` | Schritt 3.4 fehlt oder Board geaendert | `bin/board-check.sh --write` |
 | `Board zeigt fuer #<nr> '…' statt '…'` | Board-Schreibzugriff nicht angekommen | erneut versuchen; das Label wurde bewusst nicht geaendert |
 | `planned abgelehnt — kein Ledger` oder `AC ohne Gate` | das Ticket hat keinen pruefbaren Vertrag | je AC eine Zeile `AC-<n>:` im Issue, je AC ein Gate in `tickets/<nr>/GATES.md` |
+| `… und #<nr> ueberschneiden sich` | zwei Tickets des Sprints beanspruchen dieselben Pfade | OWNS im Ledger enger fassen, oder das Ticket in einen spaeteren Sprint |
 | `rfr abgelehnt — Dateien ausserhalb OWNS` | der PR aendert mehr, als das Ticket darf | Datei aus dem PR nehmen, oder der product-owner gibt per `bin/revise.sh <nr> "<globs>" "<grund>"` eine neue Revision frei |
 | `rft abgelehnt — … fehlt fuer HEAD` | ein Verdict fehlt oder gilt einem alten HEAD | Verdict fuer den aktuellen HEAD im PR |

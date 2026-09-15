@@ -59,6 +59,10 @@ case "$NEW" in
       BODY="$("$T" body "$TICKET")" || die "#$TICKET: Issue-Text nicht lesbar — Fehlschlag, kein Zustand"
       OWNS_LEDGER="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" planned "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
         || die "#$TICKET: planned abgelehnt — $OWNS_LEDGER"
+      # Kein Ueberlappen: kein Pfad, den ein anderes freigegebenes Ticket des Sprints schon haelt.
+      CLAIMS="$(sprint_claims "$TICKET")" || exit 1
+      OVERLAP="$(printf '#%s\t%s\n%s\n' "$TICKET" "$OWNS_LEDGER" "$CLAIMS" | python3 "$BIN_DIR/gates.py" overlap "#$TICKET" 2>&1)" \
+        || die "#$TICKET: planned abgelehnt — $OVERLAP"
     fi
     ;;
   in-progress)

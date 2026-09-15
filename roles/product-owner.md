@@ -29,7 +29,8 @@ oder ein Sprint, dessen Tickets alle `done` sind.
 1. `bin/tick.sh`.
 2. Kandidaten sichten: `bin/tickets.sh list <label>`.
 3. `KIT_SPRINT_TICKETS` Tickets waehlen, die ein Sprintziel ergeben und sich **nicht in denselben
-   Dateien** ueberschneiden — zwei Engineers arbeiten parallel.
+   Dateien** ueberschneiden — zwei Engineers arbeiten parallel. `sprint-new.sh`, `planned` und
+   `revise.sh` lehnen ueberlappende `OWNS:` ab.
 4. Je Ticket in das Issue: `Als <rolle> moechte ich <ziel>, damit <nutzen>.`, dann je Kriterium
    eine eigene Zeile `AC-<n>: <beobachtbares ergebnis>`, **ohne Loesungsvorgabe**.
 5. Je Ticket das Ledger `tickets/<nr>/GATES.md` (Format: `protocols/LOOP.md`, Gate-Ledger): je AC

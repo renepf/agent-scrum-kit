@@ -132,6 +132,21 @@ atomic_write() {
   mv -f "$tmp" "$target"
 }
 
+# Freigegebene OWNS der anderen offenen Sprint-Tickets, je Zeile "#<nr><TAB><globs>" (fuer gates.py overlap).
+# Ein Ticket ohne Freigabe (noch backlog) haelt nichts. Ein unlesbarer Aufruf bricht ab, statt nichts zu melden.
+# Aufruf: CLAIMS="$(sprint_claims <nr>)" || exit 1
+sprint_claims() {
+  local self="$1" nrs o c a
+  nrs="$("$BIN_DIR/tickets.sh" sprint | python3 -c 'import json,sys; print(" ".join(str(i["number"]) for i in json.load(sys.stdin)))')" \
+    || die "Sprint-Tickets nicht lesbar — Fehlschlag, kein Zustand"
+  for o in $nrs; do
+    [ "$o" != "$self" ] || continue
+    c="$("$BIN_DIR/tickets.sh" comments "$o")" || die "#$o: Kommentare nicht lesbar — Fehlschlag, kein Zustand"
+    a="$(printf '%s' "$c" | python3 "$BIN_DIR/gates.py" approved)" || continue
+    printf '#%s\t%s\n' "$o" "${a#*$'\t'}"
+  done
+}
+
 # Anhaengen unter Sperre. mkdir ist atomar auf jedem POSIX-Dateisystem.
 with_lock() {
   local lock="$1"; shift

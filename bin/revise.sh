@@ -19,12 +19,15 @@ SID="$(session_id)"
 owns_set() { printf '%s\n' "$1" | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep . | sort -u | tr '\n' ','; }
 
 revise() {
-  local body ledger_owns comments approval old_rev=0 old_owns="" rev
+  local body ledger_owns claims overlap comments approval old_rev=0 old_owns="" rev
   body="$("$BIN_DIR/tickets.sh" body "$TICKET")" || die "#$TICKET: Issue-Text nicht lesbar — Fehlschlag, kein Zustand"
   ledger_owns="$(printf '%s\n' "$body" | python3 "$BIN_DIR/gates.py" contract "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
     || die "#$TICKET: Revision abgelehnt — $ledger_owns"
   [ "$(owns_set "$ledger_owns")" = "$(owns_set "$WANT")" ] \
     || die "#$TICKET: Revision abgelehnt — der Aufruf nennt '$WANT', das Ledger nennt '$ledger_owns'"
+  claims="$(sprint_claims "$TICKET")" || exit 1
+  overlap="$(printf '#%s\t%s\n%s\n' "$TICKET" "$ledger_owns" "$claims" | python3 "$BIN_DIR/gates.py" overlap "#$TICKET" 2>&1)" \
+    || die "#$TICKET: Revision abgelehnt — $overlap"
 
   comments="$("$BIN_DIR/tickets.sh" comments "$TICKET")" || die "#$TICKET: Kommentare nicht lesbar — Fehlschlag, kein Zustand"
   if approval="$(printf '%s' "$comments" | python3 "$BIN_DIR/gates.py" approved)"; then

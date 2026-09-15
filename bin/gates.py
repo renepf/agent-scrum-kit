@@ -56,6 +56,8 @@ Aufruf (von bin/status.sh und bin/revise.sh):
     gates.py approved            Issue-Kommentare (JSON-Liste) auf stdin. Druckt Revision, Tabulator, OWNS
                                  der hoechsten Freigabe des product-owner; Exit 1, wenn es keine gibt
     gates.py scope <owns>        Dateiliste des PR auf stdin. Exit 0 = jede Datei liegt in <owns>
+    gates.py overlap [<label>]   Zeilen "<label> TAB <owns>" auf stdin (<owns> auch "@<ledger>"). Exit 0 = kein
+                                 Paar ueberschneidet sich; mit <label> nur Paare, an denen dieses Label beteiligt ist
 """
 import json
 import re
@@ -321,11 +323,60 @@ def cmd_scope(owns):
     return 0
 
 
+def globs_overlap(a, b):
+    """Koennen zwei OWNS-Globs dieselbe Datei meinen? Im Zweifel ja.
+    Ein Pfad ohne Glob ist genau eine Datei: dann entscheidet, ob der andere Glob sie trifft. Sonst die
+    Segment-Regel aus unlazy (globsOverlap): getrennt nur, wenn ein woertliches Segment abweicht, bevor
+    auf einer Seite ein Glob-Zeichen steht."""
+    def is_file(p):
+        return not re.search(r"[*?]", p) and not p.endswith("/")
+    a, b = (p.strip()[2:] if p.strip().startswith("./") else p.strip() for p in (a, b))
+    if is_file(a):
+        return bool(glob_regex(b).match(a))
+    if is_file(b):
+        return bool(glob_regex(a).match(b))
+    for x, y in zip([s for s in a.split("/") if s], [s for s in b.split("/") if s]):
+        if re.search(r"[*?]", x) or re.search(r"[*?]", y):
+            return True
+        if x != y:
+            return False
+    return True
+
+
+def cmd_overlap(only):
+    claims = []
+    for line in sys.stdin.read().splitlines():
+        if "\t" not in line:
+            continue
+        label, owns = line.split("\t", 1)
+        if owns.startswith("@"):
+            try:
+                owns = ", ".join(parse(read(owns[1:]))["owns"])
+            except OSError:
+                print("Ledger nicht lesbar: " + owns[1:])
+                return 1
+        claims.append((label, split_owns(owns)))
+    conflicts = []
+    for i, (la, ga) in enumerate(claims):
+        for lb, gb in claims[i + 1:]:
+            if only and only not in (la, lb):
+                continue
+            pairs = ["%s ~ %s" % (x, y) for x in ga for y in gb if globs_overlap(x, y)]
+            if pairs:
+                conflicts.append("%s und %s ueberschneiden sich: %s" % (la, lb, ", ".join(pairs)))
+    if conflicts:
+        print(" · ".join(conflicts) + " · zwei Engineers arbeiten parallel, OWNS muessen getrennt sein")
+        return 1
+    return 0
+
+
 COMMANDS = {
     ("planned", 1): lambda a: cmd_contract(a[0], fresh=True),
     ("contract", 1): lambda a: cmd_contract(a[0], fresh=False),
     ("approved", 0): lambda a: cmd_approved(),
     ("scope", 1): lambda a: cmd_scope(a[0]),
+    ("overlap", 0): lambda a: cmd_overlap(None),
+    ("overlap", 1): lambda a: cmd_overlap(a[0]),
 }
 
 

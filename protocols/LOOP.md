@@ -110,6 +110,12 @@ Namens, `/` am Ende heisst alles darunter, ein Pfad ohne Glob ist genau eine Dat
 absolute Pfade, `..` und alles, was die ganze Wurzel freigibt (`**`, `*`, `./**`). Bei einer
 Umbenennung zaehlt auch der alte Pfad.
 
+Zwei Tickets desselben Sprints halten nie dieselbe Datei. Ein Pfad ohne Glob ist eine Datei: er
+ueberschneidet sich mit einem Glob, der ihn trifft. Zwei Globs gelten nur dann als getrennt, wenn ein
+woertliches Pfadsegment abweicht, bevor auf einer Seite ein Glob-Zeichen steht — `src/*.py` und
+`src/*.kt` gelten also als ueberlappend. Im Zweifel lehnt das Kit ab. Ein Sprint-Ticket ohne Freigabe
+haelt nichts.
+
 Grenze: Die Rolle kommt wie ueberall im Kit aus `KIT_ROLE` oder dem Anker. Wer sich als
 product-owner ausgibt, kann freigeben. Der Kommentar macht das in der Issue-Historie sichtbar,
 verhindern kann das Kit es nicht.
@@ -117,6 +123,7 @@ verhindern kann das Kit es nicht.
 | Pruefung | Wo | Lehnt ab, wenn |
 |---|---|---|
 | Deckung | `status.sh <nr> planned` | das Ledger fehlt oder ist formal kaputt, das Issue nennt keine AC, eine AC hat kein Gate, das Ledger nennt eine AC, die das Issue nicht kennt, das Ledger nennt kein oder ein unzulaessiges `OWNS:`, ein Gate ist schon abgehakt oder per `ABANDON` aufgegeben |
+| Ueberlappung | `status.sh <nr> planned`, `bin/revise.sh`, `bin/sprint-new.sh` | ein OWNS-Glob kann dieselbe Datei meinen wie die Freigabe eines anderen offenen Sprint-Tickets; bei `sprint-new.sh` wie das Ledger eines anderen Tickets im Schnitt |
 | Umfang | `status.sh <nr> rfr` | kein oder mehr als ein verknuepfter PR, keine Freigabe am Issue, die Dateiliste ist leer oder nicht lesbar, eine Datei des PR liegt ausserhalb der hoechsten freigegebenen Revision |
 
 ### Letztes Wort: product-owner

@@ -6,7 +6,7 @@ Zustand:  $FAKE_GH_STATE  (JSON: {"<nr>": {"labels": [], "assignees": [], "state
                                   "pulls": {"<pr>": {"head": "<sha>", "files": [{"filename": "...",
                                                      "previous_filename": "..."}]}}})
 Protokoll: $FAKE_GH_LOG   (eine Zeile je Aufruf, in Aufrufreihenfolge)
-Fehler:   $FAKE_GH_FAIL   "graphql" | "item-edit" | "readback" | "pr-files" | "" — laesst genau diesen Aufruf scheitern
+Fehler:   $FAKE_GH_FAIL   "graphql" | "item-edit" | "readback" | "pr-files" | "comments" | "" — laesst genau diesen Aufruf scheitern
 Optionen: $FAKE_GH_OPTIONS "o-backlog=Backlog;o-planned=Planned;..." — Namen fuer das Zuruecklesen
 
 Nur die Aufrufe, die bin/preflight.sh und bin/tickets.sh wirklich machen. Alles andere
@@ -92,6 +92,19 @@ if args[:2] == ["project", "item-edit"]:
     db[item.removeprefix("PVTI_")]["board"] = option
     save(); sys.exit(0)
 
+if args[:2] == ["issue", "list"]:
+    # bin/tickets.sh list (-q: nur Nummern) und sprint (JSON mit number, title, labels)
+    label = opt("--label")
+    log(f"issue list {label}")
+    hits = [(nr, i) for nr, i in sorted(db.items()) if nr.isdigit() and label in i.get("labels", [])
+            and i.get("state", "OPEN") == "OPEN"]
+    if "-q" in args:
+        print("\n".join(nr for nr, _ in hits))
+    else:
+        print(json.dumps([{"number": int(nr), "title": i.get("title", ""), "labels": [{"name": l} for l in i["labels"]]}
+                          for nr, i in hits]))
+    sys.exit(0)
+
 if args[:1] == ["issue"] and len(args) >= 3:
     sub, nr = args[1], args[2]
     i = issue(nr)
@@ -103,7 +116,10 @@ if args[:1] == ["issue"] and len(args) >= 3:
         elif field == "id":        print("I_" + nr)
         elif field == "state":     print(i["state"])
         elif field == "title":     print(i.get("title", ""))
-        elif field == "comments":  print(json.dumps(i["comments"]))
+        elif field == "comments":
+            if fail == "comments":
+                die("HTTP 502: Bad Gateway (https://api.github.com/graphql)")
+            print(json.dumps(i["comments"]))
         elif field == "body":      print(i.get("body", ""))
         elif field == "closedByPullRequestsReferences": print(" ".join(i.get("prs", [])))
         else: die(f"fake-gh: --json {field} nicht nachgebildet")
