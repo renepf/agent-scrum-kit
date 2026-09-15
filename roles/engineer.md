@@ -59,6 +59,10 @@ bin/status.sh <nr> rfr "PR #<nr>, <n> Tests gruen, HEAD <sha8>, gemessen <zeit>"
 
 `rfr` ist besitzerlos: dein `owner:` faellt ab, die Pruefer sehen, dass sie dran sind.
 
+`rfr` lehnt ab, wenn eine Datei des PR ausserhalb der freigegebenen OWNS-Revision liegt
+(Kommentar `OWNS Revision <n>` am Issue). Brauchst du mehr, fragst du per `say.sh` `@product-owner`. `OWNS:` im
+Ledger selbst zu aendern erweitert nichts.
+
 ## Verdict-Format
 
 Chat per `say.sh`:

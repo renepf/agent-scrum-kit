@@ -64,11 +64,36 @@ sandbox_cleanup() { [ -n "${SANDBOX:-}" ] && rm -rf "$SANDBOX"; }
 # Ein Gate-Ledger fuer ein Ticket schreiben, Text auf stdin.
 sandbox_ledger() { mkdir -p "$SANDBOX/tickets/$1"; cat > "$SANDBOX/tickets/$1/GATES.md"; }
 
-# Ein Ticket planbar machen: Issue mit AC-1, Ledger mit genau einem Gate dafuer.
+# Zustand eines Tickets fuer "eine Ablehnung schreibt nichts": Issue-Eintrag plus jede Datei unter tickets/<nr>/.
+sandbox_snap() {
+  python3 - "$SANDBOX" "$1" <<'PY2'
+import hashlib, json, os, sys
+root, n = sys.argv[1], sys.argv[2]
+path = os.path.join(root, "issues.json")
+print(json.dumps(json.load(open(path)).get(n) if os.path.exists(path) else None, sort_keys=True))
+for base, _, files in sorted(os.walk(os.path.join(root, "tickets", n))):
+    for f in sorted(files):
+        p = os.path.join(base, f)
+        print(os.path.relpath(p, root), hashlib.sha256(open(p, "rb").read()).hexdigest())
+PY2
+}
+
+# Ein Ticket planbar machen: Issue mit AC-1, Ledger mit genau einem Gate dafuer, OWNS als $2.
+# Hat das Ticket schon einen PR, bekommt er eine Datei im Umfang: eine leere Dateiliste lehnt rfr ab.
 sandbox_plannable() {
   sandbox_issue "$1" '{"body":"AC-1: das Ergebnis ist beobachtbar"}'
-  sandbox_ledger "$1" <<'LEDGER'
+  python3 - "$SANDBOX/issues.json" "$1" <<'PY2'
+import json, sys
+path, n = sys.argv[1:3]
+db = json.load(open(path))
+if db[n].get("pr") is not None:
+    db[n]["pr"].setdefault("files", ["src/eval.py"])
+json.dump(db, open(path, "w"), indent=2, sort_keys=True)
+PY2
+  sandbox_ledger "$1" <<LEDGER
 # Gates: eval
+
+OWNS: ${2:-src/**, tests/**}
 
 - [ ] AC-1: das Ergebnis ist beobachtbar
   CHECK: python3 tools/check_result.py

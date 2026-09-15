@@ -50,17 +50,15 @@ case "$EDGES" in
 esac
 
 # --- 0. Rolle, Besitz, Gate — vor jedem Schreibzugriff ---------------------------
-OWNER=""; KEEP=""
+OWNER=""; KEEP=""; OWNS_LEDGER=""
 case "$NEW" in
   backlog|planned)
     [ "$R" = "product-owner" ] || die "'$NEW' setzt nur der product-owner, nicht $R"
     if [ "$NEW" = "planned" ]; then
-      # Kein Code ohne pruefbaren Vertrag: jede AC des Issues hat ein Gate im Ledger.
-      LEDGER="$TICKETS_DIR/$TICKET/GATES.md"
-      [ -f "$LEDGER" ] || die "#$TICKET: planned abgelehnt — kein Ledger unter $LEDGER. Je AC ein Gate, Format in bin/gates.py"
+      # Kein Code ohne pruefbaren Vertrag: jede AC des Issues hat ein Gate, das Ledger nennt seinen Umfang.
       BODY="$("$T" body "$TICKET")" || die "#$TICKET: Issue-Text nicht lesbar — Fehlschlag, kein Zustand"
-      GATE_MSG="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" planned "$LEDGER" 2>&1)" \
-        || die "#$TICKET: planned abgelehnt — $GATE_MSG"
+      OWNS_LEDGER="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" planned "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
+        || die "#$TICKET: planned abgelehnt — $OWNS_LEDGER"
     fi
     ;;
   in-progress)
@@ -88,6 +86,14 @@ print(hits[-1] if hits else "")
   rfr)
     in_list "$R" "$ENGINEERS" || die "'rfr' setzt nur ein Engineer, nicht $R"
     in_list "$R" "$OWNERS_NOW" || die "#$TICKET gehoert nicht $R (Besitz: ${OWNERS_NOW:-niemand})"
+    # Umfang: jede Datei des PR liegt in der OWNS-Revision, die der product-owner am Issue freigegeben hat.
+    COMMENTS="$("$T" comments "$TICKET")" || die "#$TICKET: Kommentare nicht lesbar — Fehlschlag, kein Zustand"
+    APPROVAL="$(printf '%s' "$COMMENTS" | python3 "$BIN_DIR/gates.py" approved 2>&1)" || die "#$TICKET: rfr abgelehnt — $APPROVAL"
+    PR_LINE="$("$T" pr "$TICKET" 2>&1)" \
+      || die "#$TICKET: rfr abgelehnt — kein verknuepfter PR lesbar (closes #$TICKET im PR-Text?)${PR_LINE:+: $PR_LINE}"
+    FILES="$("$T" pr-files "${PR_LINE%% *}")" || die "PR #${PR_LINE%% *}: Dateiliste nicht lesbar — Fehlschlag, kein Zustand"
+    SCOPE_MSG="$(printf '%s\n' "$FILES" | python3 "$BIN_DIR/gates.py" scope "${APPROVAL#*$'\t'}" 2>&1)" \
+      || die "#$TICKET: rfr abgelehnt (OWNS Revision ${APPROVAL%%$'\t'*}) — $SCOPE_MSG"
     ;;
   in-review)
     in_list "$R" "$REVIEWERS" || die "'in-review' nimmt nur ein Pruefer auf, nicht $R"
@@ -139,9 +145,12 @@ if [ -z "$OWNER" ]; then
   for a in $("$T" assignees "$TICKET"); do "$T" unassign "$TICKET" "$a"; done
 fi
 
+# Bei planned ist dieser Kommentar zugleich die Freigabe des Umfangs (bin/gates.py approved).
 "$T" comment "$TICKET" "**$(board_name "$NEW")** — $R · $(now) · session \`$SID\`
 
-${NOTE:-_kein Kommentar_}"
+${NOTE:-_kein Kommentar_}${OWNS_LEDGER:+
+
+OWNS Revision 1: \`$OWNS_LEDGER\`}"
 
 [ "$NEW" != "done" ] || "$T" close "$TICKET"
 

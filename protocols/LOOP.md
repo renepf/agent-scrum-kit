@@ -51,7 +51,7 @@ backlog → planned → in-progress → rfr → in-review → rft → in-testing
 |---|---|---|
 | `backlog → planned` | product-owner | **Ledger:** `tickets/<nr>/GATES.md` hat je `AC-<n>` des Issues ein Gate |
 | `planned → in-progress` | engineer-a, engineer-b | setzt `owner:<engineer>` |
-| `in-progress → rfr` | der Engineer mit `owner:` | fremder Besitz wird abgelehnt |
+| `in-progress → rfr` | der Engineer mit `owner:` | fremder Besitz wird abgelehnt; **Umfang:** jede Datei des PR liegt in der freigegebenen OWNS-Revision |
 | `rfr → in-review` | ein Pruefer | setzt `owner:<pruefer>`, weitere Pruefer bleiben |
 | `in-review → rft` | ein Pruefer | **Gate:** QA PASS, SIMPLICITY PASS, SECURITY PASS fuer den aktuellen HEAD |
 | `rft → in-testing` | acceptance-tester | — |
@@ -86,6 +86,8 @@ stammen aus unlazy (MIT), die Einzelheiten stehen in `bin/gates.py`.
 ```
 # Gates: #<nr> <titel>
 
+OWNS: <pfade, die dieses Ticket aendern darf, z.B. src/export/**, tests/export/**>
+
 - [ ] AC-1: <ergebnis>
   CHECK: <befehl, der das Ergebnis direkt misst>
   EXPECT: <text, den nur der Erfolg druckt>
@@ -95,9 +97,27 @@ stammen aus unlazy (MIT), die Einzelheiten stehen in `bin/gates.py`.
   EVIDENCE: pending
 ```
 
+Jede `AC-<n>` im Issue-Text zaehlt, in jeder Schreibweise, ausser in Codebloecken und HTML-Kommentaren.
+
+`planned` haelt `OWNS:` in seinem Issue-Kommentar als Zeile `OWNS Revision 1: \`<globs>\`` fest.
+Diese Zeile ist die Freigabe. `rfr` liest nur Kommentare, deren erste Zeile der product-owner
+geschrieben hat, und nimmt die hoechste Revision. Aendert jemand `OWNS:` im Ledger, erweitert das
+nichts, bis der product-owner `bin/revise.sh <nr> "<globs>" "<grund>"` ausfuehrt: die Globs im Aufruf
+muessen dem Ledger gleichen, der Kommentar nennt alten und neuen Umfang und den Grund.
+
+OWNS-Globs: `**` ueber Verzeichnisgrenzen und nur als ganzes Segment, `*` und `?` innerhalb eines
+Namens, `/` am Ende heisst alles darunter, ein Pfad ohne Glob ist genau eine Datei. Verboten sind
+absolute Pfade, `..` und alles, was die ganze Wurzel freigibt (`**`, `*`, `./**`). Bei einer
+Umbenennung zaehlt auch der alte Pfad.
+
+Grenze: Die Rolle kommt wie ueberall im Kit aus `KIT_ROLE` oder dem Anker. Wer sich als
+product-owner ausgibt, kann freigeben. Der Kommentar macht das in der Issue-Historie sichtbar,
+verhindern kann das Kit es nicht.
+
 | Pruefung | Wo | Lehnt ab, wenn |
 |---|---|---|
-| Deckung | `status.sh <nr> planned` | das Ledger fehlt oder ist formal kaputt, das Issue nennt keine AC, eine AC hat kein Gate, das Ledger nennt eine AC, die das Issue nicht kennt |
+| Deckung | `status.sh <nr> planned` | das Ledger fehlt oder ist formal kaputt, das Issue nennt keine AC, eine AC hat kein Gate, das Ledger nennt eine AC, die das Issue nicht kennt, das Ledger nennt kein oder ein unzulaessiges `OWNS:`, ein Gate ist schon abgehakt oder per `ABANDON` aufgegeben |
+| Umfang | `status.sh <nr> rfr` | kein oder mehr als ein verknuepfter PR, keine Freigabe am Issue, die Dateiliste ist leer oder nicht lesbar, eine Datei des PR liegt ausserhalb der hoechsten freigegebenen Revision |
 
 ### Letztes Wort: product-owner
 

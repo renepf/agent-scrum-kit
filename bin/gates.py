@@ -20,8 +20,9 @@ entweder ein Befehl entscheidet (CHECK + EXPECT) oder ein Mensch mit Beleg (manu
     ABANDON: AC-2 <grund und uebergabe>
 
 Format und Regeln sind uebernommen aus unlazy (https://github.com/Leonxlnx/unlazy, Stand 1667149,
-references/gates.md und scripts/gate-lint.mjs) und hier in Python neu umgesetzt. Abweichung vom
-Original: Gate-IDs, die wie ein Acceptance-Kriterium aussehen (AC-<n>), muessen im Issue stehen.
+references/gates.md und scripts/gate-lint.mjs) und hier in Python neu umgesetzt. Abweichungen vom
+Original: Gate-IDs der Form AC-<n> muessen im Issue vorkommen; OWNS ist Pflicht, gibt nie die ganze
+Wurzel frei und kennt ** nur als ganzes Pfadsegment; HTML-Kommentare zaehlen wie Codebloecke nicht.
 
 unlazy steht unter folgender Lizenz:
 
@@ -47,10 +48,16 @@ unlazy steht unter folgender Lizenz:
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 
-Aufruf (von bin/status.sh und bin/merge.sh, nicht von Hand noetig):
+Aufruf (von bin/status.sh und bin/revise.sh):
 
-    gates.py planned <ledger>      Issue-Text auf stdin; Exit 0 = Ledger deckt jede AC, sonst Liste
+    gates.py planned <ledger>    Issue-Text auf stdin. Exit 0 = Ledger deckt jede AC und beginnt frisch
+                                 (kein Gate abgehakt, kein ABANDON); druckt dann das OWNS des Ledgers
+    gates.py contract <ledger>   wie planned, ohne die Pruefung auf frischen Beginn (fuer Revisionen)
+    gates.py approved            Issue-Kommentare (JSON-Liste) auf stdin. Druckt Revision, Tabulator, OWNS
+                                 der hoechsten Freigabe des product-owner; Exit 1, wenn es keine gibt
+    gates.py scope <owns>        Dateiliste des PR auf stdin. Exit 0 = jede Datei liegt in <owns>
 """
+import json
 import re
 import sys
 
@@ -63,23 +70,39 @@ INDENTED_ABANDON_RE = re.compile(r"^\s+ABANDON:")
 OWNS_RE = re.compile(r"^OWNS:\s*(.*)$")
 FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 AC_ID_RE = re.compile(r"^AC-\d+$")
-ISSUE_AC_RE = re.compile(r"^\s*(?:[-*+]\s+|\d+[.)]\s+)?(?:\*\*)?(AC-\d+)(?:\*\*)?\s*:\s*(\S.*)$")
+ISSUE_AC_RE = re.compile(r"\bAC-\d+\b")
 REGEX_EXPECT_RE = re.compile(r"^/(.+)/([a-z]*)$")
 REGEX_FLAGS = {"i": re.I, "m": re.M, "s": re.S, "u": 0}
+# Eine Freigabe ist eine Zeile in einem Kommentar, dessen erste Zeile der product-owner geschrieben hat
+# (bin/status.sh planned, bin/revise.sh).
+APPROVAL_HEAD_RE = re.compile(r"^\*\*[^*]+\*\* — product-owner · ")
+APPROVAL_LINE_RE = re.compile(r"^OWNS Revision (\d+): `([^`]+)`\s*$")
 
 
-def unfenced(text):
-    """Zeilen mit Nummer, ohne den Inhalt eingezaeunter Codebloecke (CommonMark-Regeln)."""
-    fence = None
+def readable_lines(text):
+    """Zeilen mit Nummer, ohne eingezaeunte Codebloecke (CommonMark-Regeln) und ohne HTML-Kommentare."""
+    fence, comment = None, False
     for number, line in enumerate(text.splitlines(), 1):
-        m = FENCE_RE.match(line)
-        if fence is None:
-            if m:
-                fence = m.group(1)
+        if fence is not None:
+            m = FENCE_RE.match(line)
+            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence) and not m.group(2).strip():
+                fence = None
+            continue
+        if comment:
+            if "-->" not in line:
                 continue
-            yield number, line
-        elif m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence) and not m.group(2).strip():
-            fence = None
+            line, comment = line.split("-->", 1)[1], False
+        while "<!--" in line:
+            before, rest = line.split("<!--", 1)
+            if "-->" in rest:
+                line = before + rest.split("-->", 1)[1]
+            else:
+                line, comment = before, True
+        m = FENCE_RE.match(line)
+        if m:
+            fence = m.group(1)
+            continue
+        yield number, line
 
 
 def relative_path_error(value, what):
@@ -95,6 +118,19 @@ def relative_path_error(value, what):
     return None
 
 
+def owns_error(value):
+    err = relative_path_error(value, "OWNS-Pfad")
+    if err:
+        return err
+    p = value.strip()
+    p = p[2:] if p.startswith("./") else p
+    if any("**" in s and s != "**" for s in p.split("/")):
+        return "OWNS-Pfad: ** nur als ganzes Pfadsegment: " + value
+    if not p.strip("*/?"):
+        return "OWNS-Pfad gibt die ganze Wurzel frei: " + value
+    return None
+
+
 def compile_expect(expect):
     """EXPECT als (art, wert). /muster/flags ist ein regulaerer Ausdruck, sonst Teilstring."""
     m = REGEX_EXPECT_RE.match(expect)
@@ -103,7 +139,7 @@ def compile_expect(expect):
     flags = 0
     for f in m.group(2):
         if f not in REGEX_FLAGS:
-            return None, "EXPECT-Flag '%s' unbekannt (erlaubt: ims)" % f
+            return None, "EXPECT-Flag '%s' unbekannt (erlaubt: imsu)" % f
         flags |= REGEX_FLAGS[f]
     try:
         return ("regex", re.compile(m.group(1), flags)), None
@@ -112,14 +148,14 @@ def compile_expect(expect):
 
 
 def parse(text):
-    gates, owns, abandoned, errors = [], None, {}, []
-    current = None
-    for number, line in unfenced(text):
+    gates, owns, abandoned, errors = [], [], {}, []
+    owns_seen, current = False, None
+    for number, line in readable_lines(text):
         where = "Zeile %d: " % number
         g = GATE_RE.match(line)
         if g:
             head = GATE_HEAD_RE.match(g.group(2).strip())
-            if not head or not head.group(1):
+            if not head:
                 errors.append(where + "Gate ohne ID — Format '- [ ] AC-1: <ergebnis>'")
                 current = None
                 continue
@@ -158,16 +194,12 @@ def parse(text):
         if o:
             if gates:
                 errors.append(where + "OWNS muss vor dem ersten Gate stehen")
-            elif owns is not None:
+            elif owns_seen:
                 errors.append(where + "OWNS doppelt")
             else:
+                owns_seen = True
                 owns = [p.strip() for p in o.group(1).split(",") if p.strip()]
-                if not owns:
-                    errors.append(where + "OWNS nennt keinen Pfad")
-                for p in owns:
-                    err = relative_path_error(p, "OWNS-Pfad")
-                    if err:
-                        errors.append(where + err)
+                errors.extend(where + e for e in map(owns_error, owns) if e)
             continue
 
     if not gates:
@@ -193,19 +225,17 @@ def parse(text):
     for gid in abandoned:
         if gid not in seen:
             errors.append("ABANDON nennt unbekanntes Gate %s" % gid)
-    return {"gates": gates, "owns": owns or [], "abandoned": abandoned, "errors": errors}
+    return {"gates": gates, "owns": owns, "abandoned": abandoned, "errors": errors}
 
 
 def issue_acs(body):
-    """AC-IDs aus dem Issue-Text, in Reihenfolge. Eine AC ist eine Zeile 'AC-<n>: <text>'."""
-    acs, errors = {}, []
-    for _, line in unfenced(body):
-        m = ISSUE_AC_RE.match(line)
-        if m:
-            if m.group(1) in acs:
-                errors.append("Issue nennt %s doppelt" % m.group(1))
-            acs.setdefault(m.group(1), m.group(2).strip())
-    return acs, errors
+    """Jede AC-<n> im Issue-Text, in Reihenfolge und in jeder Schreibweise: Liste, Checkbox, Tabelle, Zitat."""
+    acs = []
+    for _, line in readable_lines(body):
+        for ac in ISSUE_AC_RE.findall(line):
+            if ac not in acs:
+                acs.append(ac)
+    return acs
 
 
 def read(path):
@@ -213,10 +243,14 @@ def read(path):
         return fh.read()
 
 
-def cmd_planned(ledger_path):
-    doc = parse(read(ledger_path))
-    acs, errors = issue_acs(sys.stdin.read())
-    errors = doc["errors"] + errors
+def cmd_contract(ledger_path, fresh):
+    try:
+        doc = parse(read(ledger_path))
+    except OSError:
+        print("kein Ledger unter %s — je AC ein Gate, Format in bin/gates.py" % ledger_path)
+        return 1
+    acs = issue_acs(sys.stdin.read())
+    errors = list(doc["errors"])
     if not acs:
         errors.append("das Issue nennt keine AC — je Kriterium eine Zeile 'AC-<n>: <beobachtbares ergebnis>'")
     ids = [g["id"] for g in doc["gates"]]
@@ -226,18 +260,81 @@ def cmd_planned(ledger_path):
     unknown = [i for i in ids if AC_ID_RE.match(i) and acs and i not in acs]
     if unknown:
         errors.append("Ledger nennt AC, die das Issue nicht kennt: " + ", ".join(unknown))
+    if not doc["owns"]:
+        errors.append("Ledger ohne OWNS — welche Pfade darf dieses Ticket aendern?")
+    if fresh:
+        checked = [g["id"] for g in doc["gates"] if g["checked"]]
+        if checked:
+            errors.append("Gate schon abgehakt, bevor die Arbeit beginnt: " + ", ".join(checked))
+        if doc["abandoned"]:
+            errors.append("ABANDON, bevor die Arbeit beginnt: " + ", ".join(doc["abandoned"]))
     if errors:
         print(" · ".join(errors))
         return 1
-    print("Ledger deckt %d AC mit %d Gates" % (len(acs), len(ids)))
+    print(", ".join(doc["owns"]))
     return 0
 
 
+def split_owns(value):
+    return [p.strip() for p in value.split(",") if p.strip()]
+
+
+def glob_regex(pattern):
+    """OWNS-Glob als regulaerer Ausdruck: ** ueber Verzeichnisgrenzen, * und ? innerhalb eines Namens,
+    / am Ende = alles darunter. Setzt einen Glob voraus, den owns_error zugelassen hat."""
+    p = pattern.strip()
+    p = p[2:] if p.startswith("./") else p
+    rx = re.escape(p).replace(r"\*\*/", "(?:.*/)?").replace(r"\*\*", ".*").replace(r"\*", "[^/]*").replace(r"\?", "[^/]")
+    return re.compile("^" + rx + (".*" if p.endswith("/") else "") + "$")
+
+
+def cmd_approved():
+    best = None
+    for body in json.loads(sys.stdin.read() or "[]"):
+        lines = body.splitlines()
+        if not lines or not APPROVAL_HEAD_RE.match(lines[0]):
+            continue
+        for line in lines[1:]:
+            m = APPROVAL_LINE_RE.match(line)
+            if m and (best is None or int(m.group(1)) >= best[0]):
+                best = (int(m.group(1)), m.group(2))
+    if best is None:
+        print("keine freigegebene OWNS-Revision am Issue — sie entsteht mit planned oder bin/revise.sh")
+        return 1
+    print("%d\t%s" % best)
+    return 0
+
+
+def cmd_scope(owns):
+    globs = split_owns(owns)
+    files = [f.strip() for f in sys.stdin.read().splitlines() if f.strip()]
+    if not files:
+        print("Dateiliste des PR ist leer — Fehlschlag, kein Zustand")
+        return 1
+    patterns = [glob_regex(g) for g in globs]
+    outside = [f for f in files if not any(p.match(f) for p in patterns)]
+    if outside:
+        print("Dateien ausserhalb OWNS (%s): %s · eine Erweiterung gibt nur der product-owner frei: bin/revise.sh"
+              % (", ".join(globs), ", ".join(outside)))
+        return 1
+    print("Umfang ok: %d Dateien" % len(files))
+    return 0
+
+
+COMMANDS = {
+    ("planned", 1): lambda a: cmd_contract(a[0], fresh=True),
+    ("contract", 1): lambda a: cmd_contract(a[0], fresh=False),
+    ("approved", 0): lambda a: cmd_approved(),
+    ("scope", 1): lambda a: cmd_scope(a[0]),
+}
+
+
 def main(argv):
-    if len(argv) == 2 and argv[0] == "planned":
-        return cmd_planned(argv[1])
-    sys.stderr.write(__doc__.split("Aufruf")[1] if "Aufruf" in __doc__ else "")
-    return 2
+    run = COMMANDS.get((argv[0], len(argv) - 1)) if argv else None
+    if run is None:
+        sys.stderr.write(__doc__.split("Aufruf")[-1])
+        return 2
+    return run(argv[1:])
 
 
 if __name__ == "__main__":

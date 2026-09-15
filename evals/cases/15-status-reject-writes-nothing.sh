@@ -10,7 +10,7 @@ KIT_BOARD="github-project"
 ENV
 printf 'KIT_PROJECT_ID="P"\nKIT_STATUS_FIELD_ID="F"\n' > "$KIT_BOARD_ENV_FILE"
 for k in BACKLOG PLANNED IN_PROGRESS RFR IN_REVIEW RFT IN_TESTING DONE; do echo "KIT_OPTION_$k=\"opt-$k\"" >> "$KIT_BOARD_ENV_FILE"; done
-sandbox_issue 9 '{"labels":["status:in-progress","owner:engineer-a"],"pr":{"number":90,"head":"cafecafe99","comments":[]}}'
+sandbox_issue 9 '{"labels":["status:in-progress","owner:engineer-a"],"comments":["**Planned** — product-owner · eval · session `e`\n\nOWNS Revision 1: `src/**`"],"pr":{"number":90,"head":"cafecafe99","comments":[],"files":["src/a.py"]}}'
 
 snap() { python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))["9"], sort_keys=True))' "$SANDBOX/issues.json"; }
 vorher="$(snap)"; fehler=""

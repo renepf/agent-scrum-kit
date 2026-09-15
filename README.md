@@ -246,8 +246,8 @@ Aendert sich `roles/_COMMON.md`, betrifft das alle neun Sessions.
 | `INSTALL.md` | Einrichtung Schritt fuer Schritt, mit gemessenen Ausgaben und Fehlertabelle |
 | `protocols/LOOP.md` | Statusmodell, Kanten, Gates, Loop-Reihenfolge, Tick, Chat, Zwillingssperre, Budget |
 | `adapters/<host>/` | wie eine Session startet, eine Rolle laedt, ihre Kennung meldet |
-| `bin/` | `tick.sh`, `status.sh`, `claim.sh`, `merge.sh`, `say.sh`, `reindex.sh`, `brain.sh`, `budget.sh`, `register.sh`, `restart-self.sh`, `sprint-new.sh`, `commit.sh`, `board-setup.sh`, `board-check.sh`, `preflight.sh`, `tickets.sh`, `gates.py` |
-| `tickets/<nr>/GATES.md` | Gate-Ledger je Ticket: je AC ein Gate, Format und Regeln aus unlazy (MIT) |
+| `bin/` | `tick.sh`, `status.sh`, `claim.sh`, `merge.sh`, `say.sh`, `reindex.sh`, `brain.sh`, `budget.sh`, `register.sh`, `restart-self.sh`, `sprint-new.sh`, `commit.sh`, `board-setup.sh`, `board-check.sh`, `preflight.sh`, `tickets.sh`, `gates.py`, `revise.sh` |
+| `tickets/<nr>/` | `GATES.md`: Gate-Ledger je Ticket, je AC ein Gate, `OWNS:` als Umfang, Format und Regeln aus unlazy (MIT); die Freigabe des Umfangs steht als Kommentar am Issue |
 | `evals/` | die Suite, die prueft, ob das alles haelt |
 | `memory/` | Gedaechtnis je Rolle plus geteilt, eine Datei je Fakt, generierter Index |
 | `.mcp.json` | MCP-Server context7 und graphify, beide durch `caveman-shrink`; jcodemunch auf Einschalten unter `adapters/claude-code/mcp/` |
