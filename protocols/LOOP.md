@@ -55,7 +55,7 @@ backlog → planned → in-progress → rfr → in-review → rft → in-testing
 | `rfr → in-review` | ein Pruefer | setzt `owner:<pruefer>`, weitere Pruefer bleiben |
 | `in-review → rft` | ein Pruefer | **Gate:** QA PASS, SIMPLICITY PASS, SECURITY PASS fuer den aktuellen HEAD; jedes ausfuehrbare Gate des Ledgers lief fuer diesen HEAD gruen; Lint ohne Fehler; je ausfuehrbarem Gate eine QA-Mutationszeile |
 | `rft → in-testing` | acceptance-tester | — |
-| `in-testing → done` | product-owner, oder merge-gate mit `PO OK` fuer den aktuellen HEAD | normal ueber `bin/merge.sh`; jedes Gate fuer den aktuellen HEAD gruen oder belegt |
+| `in-testing → done` | product-owner, oder merge-gate mit `PO OK` fuer den aktuellen HEAD | normal ueber `bin/merge.sh`; jedes Gate fuer den aktuellen HEAD gruen oder belegt; kein offenes `ABANDON` |
 | `in-review → in-progress` | ein Pruefer | `owner:` zurueck an den Engineer aus der Kommentarhistorie |
 | `in-testing → in-progress` | acceptance-tester, merge-gate, product-owner | dasselbe |
 
@@ -125,6 +125,12 @@ manuelles Gate belegt der acceptance-tester oder der product-owner fuer den aktu
 `bin/gates.sh attest <nr> <gate> "<beleg>"`. `CHECK` ist Shell-Code aus dem Ledger und laeuft mit den
 Rechten der Session, die ihn startet.
 
+Ein AC, das sich nicht liefern laesst, faellt nie still weg. Wer es aufgibt, schreibt an Spalte 1
+`ABANDON: AC-<n> <grund und uebergabe>` ins Ledger. Review und Lauf ueberspringen dieses Gate;
+`merge.sh` und `status.sh <nr> done` lehnen mit `HANDOFF REQUIRED` ab, solange die Zeile steht. Das
+letzte Wort hat der product-owner: er nimmt das AC per Folgeticket aus Issue und Ledger, oder er
+schickt das Ticket zurueck.
+
 Grenze: Die Rolle kommt wie ueberall im Kit aus `KIT_ROLE` oder dem Anker. Wer sich als
 product-owner ausgibt, kann freigeben. Der Kommentar macht das in der Issue-Historie sichtbar,
 verhindern kann das Kit es nicht.
@@ -136,6 +142,7 @@ verhindern kann das Kit es nicht.
 | Lint | `status.sh <nr> planned`, `status.sh <nr> rft` | ein Orakel kann nicht fallen: `CHECK` gibt festen Text aus, `EXPECT` ist ein Wort wie `ok` oder `fertig`, ein `EXPECT`-Regex sieht aus wie ein Pfad, `EXPECT` ist nur eine Zahl aus dem Issue. Hinweise lehnen nicht ab und stehen im planned-Kommentar: manuelles Gate, Zahl im Titel eines manuellen Gates, Taetigkeit statt Ergebnis, ueberwiegend manuelles Ledger |
 | QA-Mutation je Gate | `status.sh <nr> rft` | fuer ein ausfuehrbares Gate steht in keinem `QA PASS` fuer den aktuellen HEAD eine Zeile `<gate>: Mutation <was> → rot` |
 | Gruen fuer HEAD | `status.sh <nr> rft` | ein ausfuehrbares Gate hat keinen gruenen Beleg fuer den aktuellen HEAD, oder seine Definition hat sich seit dem Lauf geaendert |
+| Weglassen sichtbar | `bin/merge.sh <nr>`, `status.sh <nr> done` | ein Gate steht auf `ABANDON` (`HANDOFF REQUIRED`) |
 | Belegt vor Merge | `bin/merge.sh <nr>` | wie oben, dazu ein manuelles Gate ohne Beleg fuer den aktuellen HEAD |
 | Umfang | `status.sh <nr> rfr` | kein oder mehr als ein verknuepfter PR, keine Freigabe am Issue, die Dateiliste ist leer oder nicht lesbar, eine Datei des PR liegt ausserhalb der hoechsten freigegebenen Revision |
 

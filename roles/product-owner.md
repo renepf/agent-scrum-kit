@@ -56,6 +56,9 @@ Merge und `done` nur ueber `bin/merge.sh <nr>`. Das Skript prueft `MERGE-GATE OK
 aktuellen HEAD, dass jedes Gate fuer diesen HEAD gruen gelaufen oder belegt ist, misst die CI frisch,
 merged, prueft `MERGED` und setzt `done`.
 
+Steht im Ledger ein `ABANDON`, lehnen `merge.sh` und `done` mit `HANDOFF REQUIRED` ab. Du
+entscheidest: das AC per Folgeticket aus Issue und Ledger nehmen, oder das Ticket zurueckschicken.
+
 Willst du nicht selbst mergen, schreibst du `PO OK — HEAD \`<sha8>\`` in den PR. Dann darf
 merge-gate `merge.sh` ausfuehren.
 

@@ -80,3 +80,5 @@ Offen: <was der Pruefer wissen muss> | keine
 - Nie zwei Tickets gleichzeitig, nie im Worktree der anderen Instanz.
 - Keine Tests ueberspringen. Die TDD-Folge **ist** der Plan.
 - Kein "fertig" ohne einen Testlauf, dessen Ausgabe du gesehen hast.
+- Ein AC nie still weglassen. Nicht lieferbar? `ABANDON: AC-<n> <grund und uebergabe>` an Spalte 1
+  im Ledger und `say.sh` an `@product-owner`. Ohne seine Entscheidung gibt es keinen Merge.

@@ -64,6 +64,7 @@ Aufruf (von bin/status.sh und bin/revise.sh):
                                  ein manuelles Gate fuer <head8> belegen
     gates.py unmet <ledger> <head8> runnable|all
                                  Exit 0 = jedes (ausfuehrbare) Gate hat einen gueltigen Beleg fuer <head8>
+    gates.py abandoned <ledger>  Exit 0 = kein Gate aufgegeben (oder kein Ledger); sonst HANDOFF REQUIRED mit Grund
     gates.py lint <ledger>       Issue-Text auf stdin. Zeilen "FEHLER|HINWEIS <gate> [<regel>]: ...";
                                  Exit 1, sobald ein FEHLER dabei ist. Fuehrt kein CHECK aus.
     gates.py qa-lines <ledger> <head8>
@@ -615,7 +616,25 @@ def cmd_qa_lines(path, head8):
     return 0
 
 
+def cmd_abandoned(path):
+    """Ein aufgegebenes Gate ist eine sichtbare Uebergabe, nie ein erledigtes. Ohne Ledger: nichts aufgegeben —
+    dass ein Ledger fehlt, prueft unmet."""
+    try:
+        doc = parse(read(path))
+    except OSError:
+        return 0
+    if doc["errors"]:
+        print(" · ".join(doc["errors"]))
+        return 1
+    if doc["abandoned"]:
+        print("HANDOFF REQUIRED: %s · der product-owner entscheidet: das AC per Folgeticket aus Issue und Ledger nehmen, "
+              "oder das Ticket zurueckschicken" % ", ".join("%s (%s)" % kv for kv in doc["abandoned"].items()))
+        return 1
+    return 0
+
+
 COMMANDS = {
+    ("abandoned", 1): lambda a: cmd_abandoned(a[0]),
     ("lint", 1): lambda a: cmd_lint(a[0]),
     ("qa-lines", 2): lambda a: cmd_qa_lines(*a),
     ("run", 5): lambda a: cmd_run(*a),

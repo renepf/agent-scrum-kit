@@ -137,6 +137,8 @@ $LINT_RFT"
         ;;
       *) die "'done' setzt nur der product-owner, oder merge-gate mit PO OK — nicht $R" ;;
     esac
+    # Auch am Merge vorbei kein done, solange ein AC per ABANDON aufgegeben ist.
+    HANDOFF="$(python3 "$BIN_DIR/gates.py" abandoned "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" || die "#$TICKET: done abgelehnt — $HANDOFF"
     ;;
 esac
 

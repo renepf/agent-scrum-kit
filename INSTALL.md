@@ -231,6 +231,7 @@ bin/tick.sh                 # erwartet: kein aktiver Sprint … Nichts zu tun.
 | `planned abgelehnt — kein Ledger` oder `AC ohne Gate` | das Ticket hat keinen pruefbaren Vertrag | je AC eine Zeile `AC-<n>:` im Issue, je AC ein Gate in `tickets/<nr>/GATES.md` |
 | `… und #<nr> ueberschneiden sich` | zwei Tickets des Sprints beanspruchen dieselben Pfade | OWNS im Ledger enger fassen, oder das Ticket in einen spaeteren Sprint |
 | `rfr abgelehnt — Dateien ausserhalb OWNS` | der PR aendert mehr, als das Ticket darf | Datei aus dem PR nehmen, oder der product-owner gibt per `bin/revise.sh <nr> "<globs>" "<grund>"` eine neue Revision frei |
+| `HANDOFF REQUIRED: AC-<n> (<grund>)` | ein AC wurde per `ABANDON` aufgegeben | der product-owner entscheidet: Folgeticket anlegen und das AC aus Issue und Ledger nehmen, oder das Ticket zurueckschicken |
 | `Lint: FEHLER AC-<n> [<regel>]` | ein Gate misst nichts, was scheitern kann | das Gate so umschreiben, dass der Befehl das Ergebnis selbst misst und eine Zeile druckt, die nur der Erfolg kennt |
 | `QA PASS fuer HEAD <sha8> nennt keine Mutation fuer: AC-<n>` | QA hat fuer dieses Gate keine Mutation genannt | qa-ruthless ergaenzt im PR `QA PASS — HEAD \`<sha8>\`` mit einer Zeile `AC-<n>: Mutation <was> → rot` |
 | `Gates nicht gruen fuer HEAD <sha8>: AC-<n> (…)` | ein Gate lief nicht fuer diesen HEAD, ist rot, seine Definition hat sich geaendert, oder ein manuelles Gate hat keinen Beleg | im Arbeitsbaum auf dem HEAD des PR `bin/gates.sh run <nr>`; manuell: `bin/gates.sh attest <nr> <gate> "<beleg>"` |
