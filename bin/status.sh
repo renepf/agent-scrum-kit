@@ -73,6 +73,13 @@ $LINT_MSG"
         grep -q '[^[:space:]]' "$TICKETS_DIR/$TICKET/$KETTE" 2>/dev/null \
           || die "#$TICKET: planned abgelehnt — $KETTE fehlt oder ist leer unter $TICKETS_DIR/$TICKET/ (requirements-engineer)"
       done
+      # Gibt es eine Referenz zum Vergleichen (KIT_REFERENCE_CMD), gehoert der Befund in die spec.md:
+      # eine Zeile "REFERENCE: <was geprueft wurde, mit Zeit>". Ohne konfigurierte Referenz verlangt das
+      # Kit nichts — es kennt das Projekt nicht.
+      if [ -n "${KIT_REFERENCE_CMD:-}" ]; then
+        grep -q '^REFERENCE:' "$TICKETS_DIR/$TICKET/spec.md" 2>/dev/null \
+          || die "#$TICKET: planned abgelehnt — spec.md ohne REFERENCE-Zeile, obwohl KIT_REFERENCE_CMD gesetzt ist (requirements-engineer prueft gegen die Referenz und traegt den Befund ein)"
+      fi
       # Kein Ueberlappen: kein Pfad, den ein anderes freigegebenes Ticket des Sprints schon haelt.
       CLAIMS="$(sprint_claims "$TICKET")" || exit 1
       OVERLAP="$(printf '#%s\t%s\n%s\n' "$TICKET" "$OWNS_LEDGER" "$CLAIMS" | python3 "$BIN_DIR/gates.py" overlap "#$TICKET" 2>&1)" \

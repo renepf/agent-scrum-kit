@@ -144,6 +144,7 @@ verhindern kann das Kit es nicht.
 
 | Pruefung | Wo | Lehnt ab, wenn |
 |---|---|---|
+| Referenzbefund | `status.sh <nr> planned` | `KIT_REFERENCE_CMD` ist gesetzt und `spec.md` hat keine Zeile `REFERENCE:`. Der `requirements-engineer` fuehrt den Befehl in seiner eigenen Sitzung aus und traegt den Befund ein |
 | Artefaktkette | `status.sh <nr> planned` | `tickets/<nr>/intent.md`, `spec.md` oder `plan.md` fehlt oder ist leer. Der `requirements-engineer` schreibt intent und spec, den Plan mit dem product-owner |
 | Deckung | `status.sh <nr> planned` | das Ledger fehlt oder ist formal kaputt, das Issue nennt keine AC, eine AC hat kein Gate, das Ledger nennt eine AC, die das Issue nicht kennt, das Ledger nennt kein oder ein unzulaessiges `OWNS:`, ein Gate ist schon abgehakt oder per `ABANDON` aufgegeben |
 | Ueberlappung | `status.sh <nr> planned`, `bin/revise.sh`, `bin/sprint-new.sh` | ein OWNS-Glob kann dieselbe Datei meinen wie die Freigabe eines anderen offenen Sprint-Tickets; bei `sprint-new.sh` wie das Ledger eines anderen Tickets im Schnitt |
