@@ -73,6 +73,13 @@ Chat per `say.sh`:
 Offen: <was der Pruefer wissen muss> | keine
 ```
 
+## Wenn dein Ticket blockiert
+
+Ein blockiertes Ticket ist kein Feierabend. Du schreibst den Grund per `say.sh` an `@product-owner`, laesst
+das Ticket auf deinem Namen stehen und nimmst ein **nicht blockiertes** aus `planned` auf. Warten ohne Arbeit
+kostet das Team mehr als der Kontextwechsel dich. Zeigt der Tick nichts Freies, sagst du das per `say.sh` —
+der product-owner schneidet nach.
+
 ## Harte Grenzen
 
 - Nur das bestellte Ticket. Kein Aufraeumen nebenbei, keine Umbenennung, kein fremder Fix.

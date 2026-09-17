@@ -25,6 +25,16 @@ for i in "${TICKETS[@]}"; do
 done
 OVERLAP="$(printf '%s' "$CLAIMS" | python3 "$BIN_DIR/gates.py" overlap 2>&1)" || die "Sprint abgelehnt — $OVERLAP"
 
+# Artefaktkette je Ticket: ohne intent.md, spec.md und plan.md kommt ein Ticket nicht in den Sprint.
+# Sonst steht es spaeter bei planned und blockiert den Takt. Der requirements-engineer schreibt sie.
+LUECKE=""
+for i in "${TICKETS[@]}"; do
+  for a in intent.md spec.md plan.md; do
+    grep -q '[^[:space:]]' "$TICKETS_DIR/$i/$a" 2>/dev/null || LUECKE="$LUECKE #$i:$a"
+  done
+done
+[ -z "$LUECKE" ] || die "Sprint abgelehnt — Artefaktkette unvollstaendig:$LUECKE (requirements-engineer)"
+
 mkdir -p "$SPRINTS_DIR"
 N=$(printf '%03d' "$(( $(ls "$SPRINTS_DIR" 2>/dev/null | sed -n 's/^S-\([0-9]\{3\}\)-.*/\1/p' | sort -n | tail -1 | sed 's/^0*//' | grep . || echo 0) + 1 ))")
 NAME="S-$N-$SLUG"

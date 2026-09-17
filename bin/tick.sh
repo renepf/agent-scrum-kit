@@ -106,6 +106,54 @@ print("  frei fuer dich (" + ",".join(want) + "):"); print("\n".join(free) if fr
 ' "$P" "$O" "$R"
 fi
 
+# --- 3b. Backlog ohne Artefaktkette -------------------------------------------
+# Wer backlog aufnimmt (requirements-engineer) oder alles sieht (product-owner), sieht hier, welchem
+# Ticket noch ein Glied fehlt. planned und sprint-new.sh lehnen genau diese Tickets ab.
+case ",$QUEUE," in
+  *,backlog,*|*"*"*)
+    LUECKEN=""
+    for b in $("$BIN_DIR/tickets.sh" list "${P}backlog" 2>/dev/null); do
+      fehlt=""
+      for a in intent.md spec.md plan.md; do
+        grep -q '[^[:space:]]' "$TICKETS_DIR/$b/$a" 2>/dev/null || fehlt="$fehlt $a"
+      done
+      [ -n "$fehlt" ] && LUECKEN="$LUECKEN  #$b fehlt:$fehlt
+"
+    done
+    if [ -n "$LUECKEN" ]; then
+      echo "── backlog ohne Artefaktkette (so lehnen sprint-new.sh und planned ab) ──"
+      printf '%s' "$LUECKEN"
+    fi
+    ;;
+esac
+
+# --- 3c. Kanban: nur der product-owner plant, nur er sieht die Zahlen ----------
+if [ "$R" = "product-owner" ] && [ -n "${SPRINT_JSON:-}" ]; then
+  printf '%s' "$SPRINT_JSON" | MIN="${KIT_MIN_PLANNED:-7}" STOP="${KIT_QUEUE_STOP:-2}" \
+    ENG="$(printf '%s\n' $KIT_ROLES | grep -c '^engineer-')" python3 -c '
+import json, os, sys
+p = sys.argv[1]
+mn, stop, eng = int(os.environ["MIN"]), int(os.environ["STOP"]), int(os.environ["ENG"])
+c = {}
+for i in json.load(sys.stdin):
+    names = [l["name"] for l in i["labels"]]
+    st = next((l[len(p):] for l in names if l.startswith(p)), "backlog")
+    c[st] = c.get(st, 0) + 1
+planned, wip = c.get("planned", 0), c.get("in-progress", 0)
+review = c.get("rfr", 0) + c.get("in-review", 0)
+test = c.get("rft", 0) + c.get("in-testing", 0)
+print("── Kanban ──")
+print("  geplant %d (Ziel mindestens %d) · in Arbeit %d (Engineers %d) · Pruefschlange %d · Testschlange %d"
+      % (planned, mn, wip, eng, review, test))
+if review > stop or test > stop:
+    print("  Planungsstopp: Pruef- oder Testschlange ueber %d. Nichts Neues planen, bis sie auf %d faellt." % (stop, stop))
+elif planned < mn:
+    print("  zu wenig geplant: %d statt %d — nachschneiden, sonst laeuft das Team leer." % (planned, mn))
+if wip < eng:
+    print("  %d Engineer(s) ohne Ticket: freies planned-Ticket aufnehmen, sonst ein nicht blockiertes." % (eng - wip))
+' "$P"
+fi
+
 # --- 4. Chat: ungesehene Eintraege und Direktansprache, je genau einmal ----------
 # Gemerkt werden die gesehenen datei:zeile-Verweise, nicht eine Zeilenzahl. Eine Zahl
 # versagt, sobald zwei Eintraege dieselbe Minute tragen: der Index sortiert dann nach

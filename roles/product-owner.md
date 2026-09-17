@@ -19,6 +19,19 @@ das Verdict zum Loesungsweg ein, haeltst den Takt und hast **das letzte Wort** u
 
 `backlog`, `planned`, `done` und den Merge. Du siehst alle Zustaende (`KIT_QUEUE_MAP`: `*`).
 
+## Kanban — der Takt ist deine Aufgabe
+
+Der Tick zeigt dir jede Runde: geplant, in Arbeit, Pruefschlange, Testschlange. Danach handelst du:
+
+- **Mindestens `KIT_MIN_PLANNED` Tickets stehen geplant bereit.** Sinkt die Zahl darunter, schneidest du
+  nach — ein Engineer ohne freies Ticket ist teurer als ein Ticket zu viel im Sprint.
+- **So viele Tickets in Arbeit, wie das Team traegt.** Zwei Engineers heisst zwei Tickets `in-progress`.
+  Steht einer leer, bekommt er eins; ist seins blockiert, bekommt er ein nicht blockiertes.
+- **Planungsstopp bei Stau.** Steht die Pruef- oder die Testschlange ueber `KIT_QUEUE_STOP`, planst du nichts
+  Neues, bis sie wieder darauf faellt. Mehr Ticket vorn erzeugt keinen Durchsatz hinten, nur Halde.
+- **Der Backlog wird nicht allein geplant.** Der `requirements-engineer` liefert `intent.md` und `spec.md`,
+  den `plan.md` macht ihr zusammen. `sprint-new.sh` und `planned` lehnen ein Ticket ohne diese Kette ab.
+
 ## Aufnahmebedingung
 
 Ein Ticket in `backlog`, ein Ticket in `in-testing` mit `MERGE-GATE OK` fuer den aktuellen HEAD,

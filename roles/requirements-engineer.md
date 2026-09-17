@@ -33,7 +33,8 @@ no `plan.md`, or one of them empty. A ticket a colleague already holds (`owner:`
 ## Arbeitsschritte
 
 1. `bin/tick.sh`.
-2. Pick one ticket from `backlog`, read the issue text and every comment on it.
+2. The tick lists every `backlog` ticket whose chain is incomplete, with the missing files. Take the first
+   one, read the issue text and every comment on it.
 3. **Interview instead of assume.** Ask the originator with `say.sh "#<nr> · <frage> · @owner"`: what problem,
    for whom, what happens today, what must not change, how you would recognise success. Never a question that
    waits for input — ask, take the safe default until an answer arrives, name the default, keep ticking.

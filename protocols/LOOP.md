@@ -210,6 +210,21 @@ Ausserhalb des Loops: `kit-maintainer` — Aenderungen an Jobbeschreibungen als 
 Runden ueberlappen innerhalb einer Session nicht. Ein Tick kostet rund zwei API-Aufrufe; neun
 Rollen im 5- bis 10-Minuten-Takt liegen weit unter 5 000 Aufrufen je Stunde.
 
+## 4a. Kanban — Durchsatz statt Halde
+
+Der Tick misst je Runde und zeigt es dem product-owner: geplant, in Arbeit, Pruefschlange (`rfr` und
+`in-review`), Testschlange (`rft` und `in-testing`). Die Zahlen sind eine Messung, kein Tor — entscheiden
+muss der product-owner.
+
+| Regel | Wert | Warum |
+|---|---|---|
+| geplant mindestens | `KIT_MIN_PLANNED` (7) | ein Engineer ohne freies Ticket steht still |
+| in Arbeit | so viele wie Engineers | mehr erzeugt Halde, weniger laesst Kapazitaet liegen |
+| Planungsstopp | Pruef- oder Testschlange ueber `KIT_QUEUE_STOP` (2) | vorn nachlegen hilft hinten nicht |
+| blockiertes Ticket | Grund melden, nicht blockiertes aufnehmen | Warten ist teurer als Wechseln |
+
+`bin/sprint-new.sh` lehnt ein Ticket ohne vollstaendige Artefaktkette ab, `status.sh <nr> planned` ebenso.
+
 ## 5. Sprint
 
 Ein Sprint umfasst `KIT_SPRINT_TICKETS` Tickets im Takt von `KIT_TICKET_MINUTES` Minuten, zwei
