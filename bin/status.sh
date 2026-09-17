@@ -66,6 +66,13 @@ case "$NEW" in
       LINT_MSG="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" lint "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
         || die "#$TICKET: planned abgelehnt — Lint:
 $LINT_MSG"
+      # Artefaktkette je Ticket: intent.md (Problem und Warum), spec.md (beobachtbares Verhalten),
+      # plan.md (Schritte und Dateien). Fehlt ein Glied, plant der product-owner ins Blaue; der
+      # requirements-engineer liefert sie, bevor ein Ticket in den Sprint geht.
+      for KETTE in intent.md spec.md plan.md; do
+        grep -q '[^[:space:]]' "$TICKETS_DIR/$TICKET/$KETTE" 2>/dev/null \
+          || die "#$TICKET: planned abgelehnt — $KETTE fehlt oder ist leer unter $TICKETS_DIR/$TICKET/ (requirements-engineer)"
+      done
       # Kein Ueberlappen: kein Pfad, den ein anderes freigegebenes Ticket des Sprints schon haelt.
       CLAIMS="$(sprint_claims "$TICKET")" || exit 1
       OVERLAP="$(printf '#%s\t%s\n%s\n' "$TICKET" "$OWNS_LEDGER" "$CLAIMS" | python3 "$BIN_DIR/gates.py" overlap "#$TICKET" 2>&1)" \

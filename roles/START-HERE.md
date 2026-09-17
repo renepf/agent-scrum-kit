@@ -10,6 +10,7 @@ Die Einrichtung davor steht in `INSTALL.md`.
 |---|---|---|---|---|
 | 1 | 1 | `product-owner` | `roles/product-owner.md` | 10 min |
 | 1 | 2 | `simplicity-reviewer` | `roles/simplicity-reviewer.md` | 5 min |
+| 1 | 3 | `requirements-engineer` | `roles/requirements-engineer.md` | 10 min |
 | 2 | 3 | `watchdog` | `roles/watchdog.md` | 5 min |
 | 3 | 4 | `engineer-a` | `roles/engineer.md` | 5 min |
 | 3 | 5 | `engineer-b` | `roles/engineer.md` | 5 min |

@@ -62,7 +62,13 @@ sandbox_labels() { KIT_ROLE=product-owner "$BIN/tickets.sh" labels "$1" | grep .
 sandbox_cleanup() { [ -n "${SANDBOX:-}" ] && rm -rf "$SANDBOX"; }
 
 # Ein Gate-Ledger fuer ein Ticket schreiben, Text auf stdin.
-sandbox_ledger() { mkdir -p "$SANDBOX/tickets/$1"; cat > "$SANDBOX/tickets/$1/GATES.md"; }
+# Schreibt zugleich die Artefaktkette, die planned verlangt (Fall 46). Ein Fall, der sie pruefen will,
+# loescht oder leert sie selbst.
+sandbox_ledger() {
+  mkdir -p "$SANDBOX/tickets/$1"
+  cat > "$SANDBOX/tickets/$1/GATES.md"
+  for a in intent.md spec.md plan.md; do printf 'eval\n' > "$SANDBOX/tickets/$1/$a"; done
+}
 
 # Zustand eines Tickets fuer "eine Ablehnung schreibt nichts": Issue-Eintrag plus jede Datei unter tickets/<nr>/.
 sandbox_snap() {

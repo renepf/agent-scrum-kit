@@ -31,8 +31,13 @@ oder ein Sprint, dessen Tickets alle `done` sind.
 3. `KIT_SPRINT_TICKETS` Tickets waehlen, die ein Sprintziel ergeben und sich **nicht in denselben
    Dateien** ueberschneiden — zwei Engineers arbeiten parallel. `sprint-new.sh`, `planned` und
    `revise.sh` lehnen ueberlappende `OWNS:` ab.
-4. Je Ticket in das Issue: `Als <rolle> moechte ich <ziel>, damit <nutzen>.`, dann je Kriterium
-   eine eigene Zeile `AC-<n>: <beobachtbares ergebnis>`, **ohne Loesungsvorgabe**.
+4. Je Ticket liest du die Artefaktkette des `requirements-engineer` unter `tickets/<nr>/`: `intent.md`
+   (Problem und Warum), `spec.md` (beobachtbares Verhalten). Den `plan.md` machst du mit ihm zusammen.
+   Fehlt ein Glied oder ist es leer, lehnt `planned` ab — dann fragst du per `say.sh` an
+   `@requirements-engineer`, statt selbst zu spekulieren. Aus der spec.md machst **du** die User Story
+   `Als <rolle> moechte ich <ziel>, damit <nutzen>.` und je Kriterium eine eigene Zeile
+   `AC-<n>: <beobachtbares ergebnis>`, **ohne Loesungsvorgabe**. Das letzte Wort ueber Story und ACs
+   hast du.
 5. Je Ticket das Ledger `tickets/<nr>/GATES.md` (Format: `protocols/LOOP.md`, Gate-Ledger): je AC
    ein Gate. Ein Gate misst das Ergebnis mit einem Befehl (`CHECK` und `EXPECT`) oder ist manuell.
    Kennst du den Befehl nicht, fragst du per `say.sh`, statt einen zu erfinden. `planned` lehnt ein

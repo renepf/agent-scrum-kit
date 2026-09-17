@@ -38,6 +38,8 @@ PY
   # Vor planned: AC im Issue, Gate im Ledger (protocols/LOOP.md, Gate-Ledger).
   python3 -c 'import json; p=".kit-issues.json"; db=json.load(open(p)); db["1"]["body"]="AC-1: die frische Kopie laeuft"; json.dump(db, open(p, "w"))' || exit 12
   mkdir -p tickets/1 && printf '# Gates: #1\n\nOWNS: src/**\n\n- [ ] AC-1: die frische Kopie laeuft\n  CHECK: bin/preflight.sh\n  EXPECT: preflight ok\n  EVIDENCE: pending\n' > tickets/1/GATES.md || exit 12
+  # Die Artefaktkette, die planned verlangt (Fall 46): im echten Loop schreibt sie der requirements-engineer.
+  for a in intent.md spec.md plan.md; do printf 'Beleg aus Fall 44.\n' > "tickets/1/$a" || exit 12; done
   bin/sprint-new.sh erster-sprint 1 > /dev/null 2>&1 || exit 13
   bin/status.sh 1 planned "los" > /dev/null 2>&1 || exit 14
   bin/say.sh "#1 · Kopie laeuft" <<'EOF' > /dev/null 2>&1 || exit 15

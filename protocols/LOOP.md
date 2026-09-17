@@ -144,6 +144,7 @@ verhindern kann das Kit es nicht.
 
 | Pruefung | Wo | Lehnt ab, wenn |
 |---|---|---|
+| Artefaktkette | `status.sh <nr> planned` | `tickets/<nr>/intent.md`, `spec.md` oder `plan.md` fehlt oder ist leer. Der `requirements-engineer` schreibt intent und spec, den Plan mit dem product-owner |
 | Deckung | `status.sh <nr> planned` | das Ledger fehlt oder ist formal kaputt, das Issue nennt keine AC, eine AC hat kein Gate, das Ledger nennt eine AC, die das Issue nicht kennt, das Ledger nennt kein oder ein unzulaessiges `OWNS:`, ein Gate ist schon abgehakt oder per `ABANDON` aufgegeben |
 | Ueberlappung | `status.sh <nr> planned`, `bin/revise.sh`, `bin/sprint-new.sh` | ein OWNS-Glob kann dieselbe Datei meinen wie die Freigabe eines anderen offenen Sprint-Tickets; bei `sprint-new.sh` wie das Ledger eines anderen Tickets im Schnitt |
 | Lint | `status.sh <nr> planned`, `status.sh <nr> rft` | ein Orakel kann nicht fallen: `CHECK` gibt festen Text aus, `EXPECT` ist ein Wort wie `ok` oder `fertig`, ein `EXPECT`-Regex sieht aus wie ein Pfad, `EXPECT` ist nur eine Zahl aus dem Issue. Hinweise lehnen nicht ab und stehen im planned-Kommentar: manuelles Gate, Zahl im Titel eines manuellen Gates, Taetigkeit statt Ergebnis, ueberwiegend manuelles Ledger |
@@ -160,11 +161,12 @@ Entscheidung des product-owner. Er merged selbst per `bin/merge.sh`, oder schrei
 merge-gate `bin/merge.sh` ausfuehren darf. `merge.sh` prueft die Freigaben, misst die CI **frisch**,
 merged, prueft `MERGED` und setzt `done`.
 
-## 3. Cast — neun Sessions
+## 3. Cast — zehn Sessions
 
 | Rolle | Auftrag | Nimmt auf (`KIT_QUEUE_MAP`) |
 |---|---|---|
 | `product-owner` | Sprint, Stories, ACs, Takt, letztes Wort | alle |
+| `requirements-engineer` | `intent.md` und `spec.md` je Ticket, `plan.md` mit dem product-owner | `backlog` |
 | `engineer-a`, `engineer-b` | Implementierung, TDD, PR | `planned`, Rueckweisungen zuerst |
 | `qa-ruthless` | fehlende Tests, Mutationen, Acceptance-Tests | `rfr`, `in-review` |
 | `simplicity-reviewer` | Loeschliste, Verdict zum Loesungsweg vor `planned` | `rfr`, `in-review` |
@@ -203,6 +205,7 @@ Ausserhalb des Loops: `kit-maintainer` — Aenderungen an Jobbeschreibungen als 
 | `acceptance-tester` | 10 min | Geraeteschlange ist seriell, schnelleres Pollen bringt nichts |
 | `merge-gate` | 10 min | wartet auf `in-testing` und gruene CI, beides dauert |
 | `product-owner` | 10 min | haelt den Takt, sieht alle Zustaende |
+| `requirements-engineer` | 10 min | arbeitet vor dem Sprint; ein Ticket im `backlog` wartet nicht auf Minuten |
 
 Runden ueberlappen innerhalb einer Session nicht. Ein Tick kostet rund zwei API-Aufrufe; neun
 Rollen im 5- bis 10-Minuten-Takt liegen weit unter 5 000 Aufrufen je Stunde.
