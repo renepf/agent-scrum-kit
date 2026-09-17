@@ -45,6 +45,9 @@ Eine leere Runde endet nach dem Tick.
   Rollenanker als Kontext, einmal mit `--wake` (asyncRewake), das die Session nach `startup`, `clear`
   und `resume` ohne Eingabe weckt. Gemessen: Start ohne Prompt registriert sich; nach `/clear` liest
   die Session ihre Rolle neu, tickt (neue ID im Roster) und findet ihren laufenden `/loop`.
+- **Kein Modell ohne Arbeit:** vor jedem Start fuehrt die Schleife `bin/tick.sh --signal` aus. Exit 4 heisst
+  "nichts fuer dich": dann startet sie kein `claude`, sondern wartet bis `KIT_TICK_INTERVAL` Sekunden in
+  Schritten von `KIT_TICK_POLL` — oder kuerzer, wenn ein Statuswechsel `.role-loop/<rolle>.wake` anlegt.
 - **Waechter-Schleife:** `role-loop.sh <rolle> [--after <pid>]` startet `claude -n <rolle> --settings … --mcp-config
   .mcp.json` und startet neu, sobald es endet. Mit `--after` wartet sie bis 120 s, bis unter der PID kein
   `claude` mehr lebt — so oeffnet `bin/restart-self.sh` sie in einem zellij-Tab, bevor sich die alte Session

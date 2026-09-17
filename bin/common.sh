@@ -102,6 +102,20 @@ host_pid() {
 
 now() { date '+%Y-%m-%d %H:%M'; }
 
+# Weckmarken: wer diesen Zustand in seiner Warteschlange hat, soll nicht bis zum naechsten
+# Intervall warten. Die Marke ist ein Hinweis, kein Auftrag — bleibt sie liegen, weckt das
+# Intervall die Rolle ohnehin.
+wake_roles() {
+  local zustand="$1" zeile rolle queue
+  mkdir -p "$KIT_ROOT/.role-loop" 2>/dev/null || return 0
+  printf '%s\n' "$KIT_QUEUE_MAP" | grep '|' | while IFS='|' read -r rolle queue; do
+    [ -n "$rolle" ] || continue
+    case ",$queue," in
+      *",$zustand,"*|*"*"*) : > "$KIT_ROOT/.role-loop/$rolle.wake" 2>/dev/null || true ;;
+    esac
+  done
+}
+
 # Anker fuer die eigene Rolle setzen, wenn er fehlt oder abweicht. Ohne Host-PID: nichts.
 anchor_role() {
   local r="$1" hp; hp="$(host_pid)"
@@ -158,9 +172,13 @@ with_lock() {
   done
   # shellcheck disable=SC2064
   trap "rmdir '$lock' 2>/dev/null || true" EXIT
-  "$@"
+  # Der Exitcode des Befehls gehoert dem Aufrufer: sonst verschwindet ein Fehlschlag INNERHALB
+  # der Sperre spurlos, und "gelaufen" liest sich wie "gelungen".
+  local rc=0
+  "$@" || rc=$?
   rmdir "$lock" 2>/dev/null || true
   trap - EXIT
+  return "$rc"
 }
 
 # Welche der verlangten Verdicts fehlen im verknuepften PR fuer dessen AKTUELLEN HEAD?

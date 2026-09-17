@@ -203,4 +203,8 @@ ${NOTE:-Statuswechsel ohne Kommentar.}
 EOF
 fi
 
+# Wer den neuen Zustand aufnimmt, wird geweckt: sonst wartet er bis zum naechsten Intervall,
+# obwohl die Arbeit schon daliegt. Verliert sich die Marke, weckt ihn das Intervall (Rueckfalllinie).
+wake_roles "$NEW"
+
 echo "#$TICKET: $OLD → $NEW${OWNER:+ (owner:$OWNER)}"

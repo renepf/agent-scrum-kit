@@ -36,6 +36,10 @@ export KIT_ROLE=engineer-a KIT_HOST_PID="$ALT" KIT_RESTART_DELAY=1 KIT_LOOP_AFTE
 unset KIT_ROLE_LOOP
 # Die "neue Session" der Schleife: haelt fest, dass sie lief, und setzt die Stopp-Datei.
 export KIT_LOOP_CLAUDE='date +%s >> "$KIT_ROOT/.role-loop/engineer-a.gestartet"; touch "$KIT_ROOT/.role-loop/engineer-a.stop"'
+# Seit die Schleife erst tickt und nur bei Arbeit startet (Fall 35), braucht engineer-a ein freies Ticket —
+# sonst wartet sie bis KIT_TICK_INTERVAL und startet den Host nie. Geprueft wird hier der Neustartweg.
+sandbox_plannable 59 "src/m59/**" > /dev/null
+sandbox_issue 59 '{"labels":["status:planned","sprint:current"]}'
 "$BIN/brain.sh" handover "Stand 2026-09-15" <<<'Kein Ticket offen.' > /dev/null
 fehler=""
 d="$(KIT_RESTART_DRY_RUN=1 "$BIN/restart-self.sh" stop 2>&1)"

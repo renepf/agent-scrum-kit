@@ -20,8 +20,13 @@ case "$out" in *"zweite Instanz"*) fehler="$fehler fremder-Prozess-als-Zwilling"
 [ ! -f "$KIT_ROOT/.pid-roles/$FREMD" ] || fehler="$fehler anker-neu-vergeben-bleibt"
 [ ! -f "$KIT_ROOT/.pid-roles/999999" ] || fehler="$fehler anker-tot-bleibt"
 grep -q '| engineer-a | neu |' "$SPRINT/roster.md" || fehler="$fehler nicht-registriert"
-# Schleife: fremder Prozess mit Anker darf den Start nicht verhindern
+# Schleife: fremder Prozess mit Anker darf den Start nicht verhindern.
+# Seit die Schleife erst tickt und ein Modell nur bei Arbeit startet (Fall 35), braucht engineer-b ein
+# freies Ticket — sonst wartet die Schleife bis KIT_TICK_INTERVAL und der falsche Host legt die
+# Stopp-Datei nie an. Geprueft wird hier die Zwillingssperre, nicht der Modellstart.
 echo engineer-b > "$KIT_ROOT/.pid-roles/$FREMD"
+sandbox_plannable 77 "src/m77/**" > /dev/null
+sandbox_issue 77 '{"labels":["status:planned","sprint:current"]}'
 lo="$(KIT_LOOP_CLAUDE='touch "$KIT_ROOT/.role-loop/engineer-b.stop"' KIT_LOOP_SLEEP=0 "$KIT_ROOT/adapters/claude-code/role-loop.sh" engineer-b 2>&1)"; lr=$?
 case "$lo" in *"laeuft schon"*) fehler="$fehler schleife-blockiert" ;; esac
 observe "neu vergebene PID + tote PID: Tick Exit $rc, beide Anker weg, registriert · Schleife startet trotz fremdem Anker (Exit $lr)${fehler:+ · FEHLER:$fehler}"

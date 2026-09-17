@@ -42,10 +42,24 @@ rm -f "$STOP"
 export KIT_ROLE="$R" KIT_ROLE_LOOP=1
 fast=0
 echo "$(now) · Schleife gestartet fuer $R in $KIT_ROOT" >> "$LOG"
+WAKE="$STATE/$R.wake"
 while :; do
   [ -f "$STOP" ] && { echo "$(now) · Stopp-Datei gefunden, Schleife endet" >> "$LOG"; break; }
+  # Kein Modell ohne Arbeit: der Tick ist Bash und kostet keine Tokens, eine leere Modellrunde
+  # kostet ein ganzes Kontextfenster. Exit 4 heisst "nichts fuer dich".
+  rm -f "$WAKE"
+  KIT_ROLE="$R" "$KIT_ROOT/bin/tick.sh" --signal >> "$LOG" 2>&1; trc=$?
+  if [ "$trc" = 4 ]; then
+    wartete=0
+    while [ "$wartete" -lt "${KIT_TICK_INTERVAL:-300}" ]; do
+      [ -f "$STOP" ] && break
+      [ -f "$WAKE" ] && { echo "$(now) · Weckruf, starte sofort" >> "$LOG"; break; }
+      sleep "${KIT_TICK_POLL:-10}"; wartete=$((wartete + ${KIT_TICK_POLL:-10}))
+    done
+    continue
+  fi
   start=$(date +%s)
-  echo "$(now) · starte claude" >> "$LOG"
+  echo "$(now) · starte claude (Tick-Code $trc)" >> "$LOG"
   ( cd "$KIT_ROOT" && eval "${KIT_LOOP_CLAUDE:-claude -n \"$R\" --settings adapters/claude-code/settings.json --mcp-config .mcp.json}" )
   rc=$?; dur=$(( $(date +%s) - start ))
   echo "$(now) · claude beendet rc=$rc nach ${dur}s" >> "$LOG"

@@ -278,6 +278,28 @@ Der Chat ist das Gespraech eines Sprints. `memory/<rolle>/` ist das Gedaechtnis 
 Sprints und Resets hinweg, `memory/_shared/` das Wissen aller. Werkzeug `bin/brain.sh`, Regeln
 `memory/README.md`. Der Tick holt es nach jedem Reset automatisch zurueck.
 
+## 9a. Kein Modell ohne Arbeit
+
+Ein Tick ist Bash und `gh`: er kostet keine Tokens. Eine leere Modellrunde kostet ein ganzes
+Kontextfenster. Deshalb fragt die Waechter-Schleife vor jedem Start:
+
+```bash
+bin/tick.sh --signal     # Exit 4 = nichts fuer dich, kein Modellstart noetig
+```
+
+Ohne den Schalter bleibt der Exitcode 0 — Menschen und bestehende Aufrufer sehen keinen neuen Code.
+
+Als Arbeit zaehlen: eine Rueckweisung, ein eigenes oder freies Ticket der eigenen Warteschlange, eine
+Luecke in der Artefaktkette (wer `backlog` aufnimmt), ein Kanban-Hinweis (product-owner), eine
+Erwaehnung `@<rolle>` im Chat, Warnung oder STOP im Budget. **Nicht** als Arbeit zaehlt eine neue
+Chat-Zeile ohne Erwaehnung: sonst weckt jeder Statuswechsel das ganze Team fuer eine Zeile. Gezeigt
+wird sie trotzdem, sobald die Rolle aus einem anderen Grund laeuft.
+
+Wer ein Ticket weiterreicht, weckt die Rollen, die den neuen Zustand aufnehmen: `bin/status.sh` legt
+`.role-loop/<rolle>.wake` an. Die Marke startet kein Modell — sie beendet nur das Warten, geprueft
+wird wieder mit dem Tick. Geht sie verloren, weckt das Intervall (`KIT_TICK_INTERVAL`, Schritte von
+`KIT_TICK_POLL`) die Rolle ohnehin. Damit steht nie etwas still, und leere Runden kosten nichts.
+
 ## 10. Tokenbudget und Reset
 
 1. **Watchdog, echte Zahl.** `bin/budget.sh` liest die Transkripte des Hosts. Ab `KIT_WARN_TOKENS`
