@@ -1,45 +1,45 @@
 #!/usr/bin/env bash
-# Neuen Sprint anlegen. Nur der product-owner.
+# Create a new sprint. Only the product-owner.
 #
 #   export KIT_ROLE=product-owner
-#   bin/sprint-new.sh mein-sprintziel 712 715 718 721 724 727
+#   bin/sprint-new.sh my-sprint-goal 712 715 718 721 724 727
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 TICKETS_SH="$(dirname "${BASH_SOURCE[0]}")/tickets.sh"
-[ "$(role)" = "product-owner" ] || die "nur der product-owner schneidet einen Sprint"
-[ $# -ge 2 ] || die "Aufruf: bin/sprint-new.sh <slug> <ticket> [ticket...]"
+[ "$(role)" = "product-owner" ] || die "only the product-owner cuts a sprint"
+[ $# -ge 2 ] || die "usage: bin/sprint-new.sh <slug> <ticket> [ticket...]"
 
 SLUG="$1"; shift
 TICKETS=("$@")
 WANT="${KIT_SPRINT_TICKETS:-6}"
-[ ${#TICKETS[@]} -eq "$WANT" ] || echo "HINWEIS: Sprint hat ${#TICKETS[@]} Tickets, der Takt ist auf $WANT ausgelegt." >&2
+[ ${#TICKETS[@]} -eq "$WANT" ] || echo "NOTE: the sprint has ${#TICKETS[@]} tickets, the cadence is built for $WANT." >&2
 
-"$(dirname "${BASH_SOURCE[0]}")/preflight.sh" > /dev/null || die "Preflight fehlgeschlagen — stoppen und melden"
+"$(dirname "${BASH_SOURCE[0]}")/preflight.sh" > /dev/null || die "preflight failed — stop and report"
 
-# Kein Ueberlappen im Schnitt: Tickets mit Ledger duerfen keine gemeinsamen Pfade beanspruchen.
-# Tickets ohne Ledger prueft spaeter status.sh ... planned. Vor jedem Schreibzugriff.
+# No overlap at the cut: tickets with a ledger must not claim shared paths.
+# Tickets without a ledger are checked later by status.sh ... planned. Before any write.
 CLAIMS=""
 for i in "${TICKETS[@]}"; do
   [ -f "$TICKETS_DIR/$i/GATES.md" ] && CLAIMS="$CLAIMS#$i	@$TICKETS_DIR/$i/GATES.md
 "
 done
-OVERLAP="$(printf '%s' "$CLAIMS" | python3 "$BIN_DIR/gates.py" overlap 2>&1)" || die "Sprint abgelehnt — $OVERLAP"
+OVERLAP="$(printf '%s' "$CLAIMS" | python3 "$BIN_DIR/gates.py" overlap 2>&1)" || die "sprint rejected — $OVERLAP"
 
-# Artefaktkette je Ticket: ohne intent.md, spec.md und plan.md kommt ein Ticket nicht in den Sprint.
-# Sonst steht es spaeter bei planned und blockiert den Takt. Der requirements-engineer schreibt sie.
-LUECKE=""
+# Artefact chain per ticket: without intent.md, spec.md and plan.md a ticket does not enter the sprint.
+# Otherwise it stalls later at planned and blocks the cadence. The requirements-engineer writes them.
+GAP=""
 for i in "${TICKETS[@]}"; do
   for a in intent.md spec.md plan.md; do
-    grep -q '[^[:space:]]' "$TICKETS_DIR/$i/$a" 2>/dev/null || LUECKE="$LUECKE #$i:$a"
+    grep -q '[^[:space:]]' "$TICKETS_DIR/$i/$a" 2>/dev/null || GAP="$GAP #$i:$a"
   done
 done
-[ -z "$LUECKE" ] || die "Sprint abgelehnt — Artefaktkette unvollstaendig:$LUECKE (requirements-engineer)"
+[ -z "$GAP" ] || die "sprint rejected — artefact chain incomplete:$GAP (requirements-engineer)"
 
 mkdir -p "$SPRINTS_DIR"
 N=$(printf '%03d' "$(( $(ls "$SPRINTS_DIR" 2>/dev/null | sed -n 's/^S-\([0-9]\{3\}\)-.*/\1/p' | sort -n | tail -1 | sed 's/^0*//' | grep . || echo 0) + 1 ))")
 NAME="S-$N-$SLUG"
 DIR="$SPRINTS_DIR/$NAME"
-[ -e "$DIR" ] && die "$DIR existiert schon"
+[ -e "$DIR" ] && die "$DIR already exists"
 
 mkdir -p "$DIR/chat"
 
@@ -47,30 +47,30 @@ mkdir -p "$DIR/chat"
   echo "# $NAME"
   echo
   echo "Start: $(now)"
-  echo "Takt: $WANT Tickets, ${KIT_TICKET_MINUTES:-30} Minuten je Ticket, zwei Engineers parallel."
+  echo "Cadence: $WANT tickets, ${KIT_TICKET_MINUTES:-30} minutes per ticket, two engineers in parallel."
   echo
   echo "## Tickets"
   echo
-  echo "| Ticket | Titel | Engineer | Status |"
+  echo "| Ticket | Title | Engineer | Status |"
   echo "|---|---|---|---|"
   for i in "${TICKETS[@]}"; do
-    T="$("$TICKETS_SH" title "$i" 2>/dev/null || echo 'UNKNOWN — Titel nicht abrufbar')"
+    T="$("$TICKETS_SH" title "$i" 2>/dev/null || echo 'UNKNOWN — title not retrievable')"
     echo "| #$i | ${T:-UNKNOWN} | — | planned |"
   done
   echo
-  echo "## Sprint-Ziel"
+  echo "## Sprint goal"
   echo
-  echo "_vom product-owner auszufuellen_"
+  echo "_to be filled in by the product-owner_"
   echo
   echo "## Definition of Done"
   echo
-  echo "- alle Tickets geschlossen"
-  echo "- CI gruen auf dem Integrationsbranch"
-  echo "- jedes nutzersichtbare Ticket vom acceptance-tester am laufenden Bau geprueft"
-  echo "- keine offenen Worktrees ausser zu offenen PRs"
+  echo "- every ticket closed"
+  echo "- CI green on the integration branch"
+  echo "- every user-visible ticket checked by the acceptance-tester against the running build"
+  echo "- no open worktrees except for open PRs"
 } > "$DIR/sprint.md"
 
-printf '# simqueue · %s\n\nExklusive Geraete werden nie parallel benutzt.\n\n| Zeit | Rolle | Geraet | Ticket | Status |\n|---|---|---|---|---|\n' "$NAME" > "$DIR/simqueue.md"
+printf '# simqueue · %s\n\nExclusive devices are never used in parallel.\n\n| Time | Role | Device | Ticket | Status |\n|---|---|---|---|---|\n' "$NAME" > "$DIR/simqueue.md"
 
 echo "$NAME" > "$CURRENT_FILE"
 
@@ -80,9 +80,9 @@ for old in $("$TICKETS_SH" list "$SL" 2>/dev/null || true); do
 done
 for i in "${TICKETS[@]}"; do
   "$TICKETS_SH" add-label "$i" "$SL"
-  echo "  #$i markiert"
+  echo "  #$i marked"
 done
 
-"$(dirname "${BASH_SOURCE[0]}")/reindex.sh" > /dev/null || die "reindex.sh fehlgeschlagen"
-echo "Sprint $NAME angelegt: $DIR"
-echo "Naechster Schritt: Ziel in sprint.md, dann je Ticket 'bin/status.sh <nr> planned \"…\"'."
+"$(dirname "${BASH_SOURCE[0]}")/reindex.sh" > /dev/null || die "reindex.sh failed"
+echo "sprint $NAME created: $DIR"
+echo "Next step: the goal in sprint.md, then per ticket 'bin/status.sh <nr> planned \"…\"'."

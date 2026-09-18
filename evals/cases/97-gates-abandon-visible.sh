@@ -17,7 +17,7 @@ ledger() { # <nr> <mit-abandon: ja|nein>
     printf -- '- [ ] AC-1: Druckansicht zeigt alle Zeilen\n  CHECK: python3 tools/check_print.py\n  EXPECT: druckansicht geprueft\n  EVIDENCE: pending\n\n'
     if [ "$2" = ja ]; then
       printf -- '- [ ] AC-2: Druck landet auf dem Drucker\n  CHECK: python3 tools/check_printer.py\n  EXPECT: drucker geprueft\n  EVIDENCE: pending\n\n'
-      printf 'ABANDON: AC-2 Drucker-API fehlt im Testsystem, Folgeticket #99 angelegt\n'
+      printf 'ABANDON: AC-2 printer API missing in the test system, follow-up ticket #99 created\n'
     fi
   } | sandbox_ledger "$1"
 }
@@ -27,14 +27,14 @@ sandbox_issue 81 '{"body":"AC-1: Druckansicht zeigt alle Zeilen\nAC-2: Druck lan
 ledger 81 ja
 sandbox_gates_green 81 gatesonly
 s1="$(sandbox_snap 81)"
-expect a-merge-po "$(KIT_ROLE=product-owner "$BIN/merge.sh" 81 2>&1)" '*HANDOFF REQUIRED*AC-2*Drucker-API fehlt*'
+expect a-merge-po "$(KIT_ROLE=product-owner "$BIN/merge.sh" 81 2>&1)" '*HANDOFF REQUIRED*AC-2*printer API missing*'
 expect a-merge-gate "$(KIT_ROLE=merge-gate "$BIN/merge.sh" 81 2>&1)" '*HANDOFF REQUIRED*AC-2*'
 expect a-done-direkt "$(KIT_ROLE=product-owner "$BIN/status.sh" 81 done x 2>&1)" '*HANDOFF REQUIRED*AC-2*'
 n=$((n + 1)); [ "$(pr_state 81)" = OPEN ] || fail "a:PR-gemergt-trotz-ABANDON($(pr_state 81))"
 n=$((n + 1)); [ "$s1" = "$(sandbox_snap 81)" ] || fail a:Zustand-veraendert
 
 # b) Review blockiert es nicht: rft ohne Beleg und ohne QA-Zeile fuer das aufgegebene Gate
-sandbox_issue 82 '{"body":"AC-1: Druckansicht zeigt alle Zeilen\nAC-2: Druck landet auf dem Drucker","labels":["status:in-review","owner:qa-ruthless"],"pr":{"number":820,"head":"82828282aa","comments":["SIMPLICITY PASS — HEAD `82828282`, eval","SECURITY PASS — HEAD `82828282`, eval","QA PASS — HEAD `82828282`, eval\nAC-1: Mutation Zeilenzaehler aus → rot"],"files":["src/print/view.py"]}}'
+sandbox_issue 82 '{"body":"AC-1: Druckansicht zeigt alle Zeilen\nAC-2: Druck landet auf dem Drucker","labels":["status:in-review","owner:qa-ruthless"],"pr":{"number":820,"head":"82828282aa","comments":["SIMPLICITY PASS — HEAD `82828282`, eval","SECURITY PASS — HEAD `82828282`, eval","QA PASS — HEAD `82828282`, eval\nAC-1: mutation Zeilenzaehler aus → red"],"files":["src/print/view.py"]}}'
 ledger 82 ja
 sandbox_gates_green 82 gatesonly
 python3 - "$SANDBOX/tickets/82/GATES.md" <<'PY'
@@ -48,11 +48,11 @@ expect b-rft-ueberspringt "$(KIT_ROLE=qa-ruthless "$BIN/status.sh" 82 rft x 2>&1
 
 # c) Der Lauf ueberspringt ein aufgegebenes Gate, auch wenn sein CHECK scheitern wuerde
 P="$SANDBOX/lauf"; mkdir -p "$P"
-printf '# Gates\n\nOWNS: src/**\n\n- [ ] AC-1: Zeilen gezaehlt\n  CHECK: python3 -c "print(chr(122)+\\"eilen gezaehlt\\")"\n  EXPECT: zeilen gezaehlt\n  EVIDENCE: pending\n\n- [ ] AC-2: Drucker erreicht\n  CHECK: python3 -c "import sys; sys.exit(3)"\n  EXPECT: drucker erreicht\n  EVIDENCE: pending\n\nABANDON: AC-2 kein Drucker im Testsystem\n' > "$P/GATES.md"
+printf '# Gates\n\nOWNS: src/**\n\n- [ ] AC-1: Zeilen gezaehlt\n  CHECK: python3 -c "print(chr(122)+\\"eilen gezaehlt\\")"\n  EXPECT: zeilen gezaehlt\n  EVIDENCE: pending\n\n- [ ] AC-2: Drucker erreicht\n  CHECK: python3 -c "import sys; sys.exit(3)"\n  EXPECT: drucker erreicht\n  EVIDENCE: pending\n\nABANDON: AC-2 no printer in the test system\n' > "$P/GATES.md"
 oc="$(python3 "$BIN/gates.py" run "$P/GATES.md" 83838383 "$P" engineer-a 30 2>&1)"; rc=$?
 n=$((n + 1)); [ "$rc" = 0 ] || fail "c:rc=$rc:'$(echo "$oc" | tr '\n' ' ' | head -c 120)'"
 case "$oc" in *AC-2*) fail "c:AC-2-gelaufen" ;; esac
-expect c-AC-1-gruen "$oc" '*AC-1 gruen*'
+expect c-AC-1-gruen "$oc" '*AC-1 green*'
 
 # d) Das letzte Wort hat der product-owner: AC-2 per Folgeticket aus Issue und Ledger genommen → Merge geht durch
 sandbox_issue 81 '{"body":"AC-1: Druckansicht zeigt alle Zeilen\n\nDruck auf dem Drucker: Folgeticket #99"}'

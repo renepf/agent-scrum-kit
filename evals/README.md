@@ -1,102 +1,104 @@
+🇬🇧 English · [🇩🇪 Deutsch](README.de.md)
+
 # Evals
 
 ```bash
-evals/run.sh                 # alle Faelle ohne Modellaufruf, kostenlos
-evals/run.sh --live          # zusaetzlich die Faelle mit echtem Modellaufruf
-evals/run.sh --gh            # zusaetzlich die Faelle mit echtem GitHub-Zugriff (liest nur)
-evals/run.sh --net           # zusaetzlich die Faelle mit Paketdownloads (MCP-Handshakes)
-evals/run.sh --case <name>   # genau einen Fall
-evals/run.sh --list          # auflisten, nichts ausfuehren
+evals/run.sh                 # every case without a model call, free
+evals/run.sh --live          # plus the cases with a real model call
+evals/run.sh --gh            # plus the cases with real GitHub access (read only)
+evals/run.sh --net           # plus the cases with package downloads (MCP handshakes)
+evals/run.sh --case <name>   # exactly one case
+evals/run.sh --list          # list, execute nothing
 ```
 
-Jeder Fall druckt sein Urteil **mit dem beobachteten Wert**. Ein Fall, der nur bei einem
-bestimmten Host laeuft, wird als `[host-gebunden: <host>]` markiert.
+Every case prints its verdict **with the observed value**. A case that runs only on a
+particular host is marked `[host-bound: <host>]`.
 
-| Urteil | Bedeutung | Exitcode der Suite |
+| Verdict | Meaning | Exit code of the suite |
 |---|---|---|
-| `PASS` | bestanden | |
-| `FAIL` | durchgefallen | 1 |
-| `BLOCK` | der Host konnte nicht antworten: Kontingent erschoepft, API-Fehler, leere Antwort | 2 |
-| `SKIP` | live-Fall ohne `--live`, gh-Fall ohne `--gh`, net-Fall ohne `--net` | |
+| `PASS` | passed | |
+| `FAIL` | failed | 1 |
+| `BLOCK` | the host could not answer: quota exhausted, API error, empty answer | 2 |
+| `SKIP` | a live case without `--live`, a gh case without `--gh`, a net case without `--net` | |
 
-`BLOCK` ist **kein** Urteil ueber die Rolle. Ein fehlgeschlagener Aufruf ist ein Fehlschlag,
-kein Ergebnis — die Suite leitet daraus keinen Zustand ab, sie sagt "erneut laufen lassen".
+`BLOCK` is **not** a verdict about the role. A failed call is a failure,
+not a result — the suite derives no state from it, it says "run it again".
 
-## Die Familien
+## The families
 
-| Praefix | Familie | Was sie prueft |
+| Prefix | Family | What it checks |
 |---|---|---|
-| `10–17` | Statusuebergaenge | volle Schleife backlog → done ueber `merge.sh`; alle 40 unerlaubten Kanten abgelehnt, Zustand unveraendert; Rueckwaertskante aus `in-review` und `in-testing` zurueck an den urspruenglichen Engineer; `owner:`-Besitz, `rfr`/`rft` besitzerlos; `rft`-Gate: drei PASS fuer den aktuellen HEAD; eine abgelehnte Transition schreibt nichts; product-owner hat das letzte Wort, CI frisch gemessen; Board vor Label, mit Zuruecklesen |
-| `18` | Gate-Ledger | `planned` nur mit Ledger, das jede AC des Issues deckt und frisch beginnt; fehlendes oder kaputtes Ledger, unbekannte AC, abgehaktes Gate, `ABANDON` vorab und ein Issue ohne AC werden abgelehnt, mit Byte-Vergleich von Issue und `tickets/<nr>/`; zehn AC-Schreibweisen samt Code-Zaun und HTML-Kommentar |
-| `19` | Umfang | `planned` verlangt `OWNS:` und haelt es als Revision 1 am Issue fest; `rfr` lehnt eine PR-Datei ausserhalb ab, auch den alten Pfad einer Umbenennung; eigene OWNS-Erweiterung und fremde Freigabezeilen zaehlen nicht; sechs unzulaessige Revisionen; Revision 2 nur durch den product-owner; ohne PR, mit zwei PRs, leerer oder unlesbarer Dateiliste keine Abgabe; 14 Glob-Formen; gh-Pfad ueber vorgetaeuschtes gh |
-| `20–24` | Nebenlaeufigkeit und Index | N Sessions schreiben gleichzeitig; kein Eintrag geht verloren, der Index ist vollstaendig, deterministisch, nie halb lesbar, frei von Zwischenueberschriften und auch fuer einen leeren Sprint gueltig |
-| `25–29` | Tick | ohne Sprint wird gewartet; Registrierung einmal und nach Reset erneut; jeder fremde Eintrag genau einmal, auch bei gleicher Minute; `@rolle` erreicht genau diese Rolle genau einmal; jede Rolle sieht nur ihre Warteschlange |
-| `3x` | Budget | bekannte Transkripte ergeben exakt den erwarteten Kontextwert; die Schwellen loesen an der richtigen Stelle aus; fehlende Daten ergeben `UNKNOWN`, nie 0 |
-| `35` | Kein Modell ohne Arbeit | `bin/tick.sh --signal` meldet mit Exit 4, dass nichts anliegt, ohne Schalter bleibt es bei 0; die Waechter-Schleife startet dann kein Modell; ein Statuswechsel weckt genau die Rollen, die den neuen Zustand aufnehmen; eine Weckmarke ohne Arbeit startet nichts |
-| `34` | Budget per host | qwen-code (`usageMetadata.promptTokenCount`, cache included) and pi (`input + cacheRead + cacheWrite`) transcripts give the exact context value, the largest turn and not the sum; a transcript without a usage record the kit knows is `UNKNOWN`, never 0 |
-| `4x` | Rollentreue (statisch) | jede Jobbeschreibung traegt die eiserne Regel woertlich, hat denselben Aufbau, kennt kein Host-Vokabular und kein Projektwissen; eine frische Kopie ist lauffaehig; den eigenen Loop nie beenden und keine blockierende Rueckfrage — im Blatt, im Tick-Text und im Hook (45) |
-| `54` | Local host transcripts | the qwen-code and pi adapters print exactly the transcript of the given session id (paths measured against qwen 0.23.4 and pi 0.85.1), never the newest file of another session, and fail for an unknown id |
-| `58` | Local model check | against a stub endpoint: a structured tool call is `yes`, a call written as text is `no`, a failed request and an unreachable endpoint are `UNKNOWN`; exit 0 only when `KIT_LOCAL_MODEL` is set and passed |
-| `59` | Neustart ohne Schleife | zellij-Weg: Tab mit `role-loop.sh --after`, Beenden erst bei laufender Schleife, Schleife wartet auf das Ende; scheitert der Tab, wird nichts beendet |
-| `46` | Artefaktkette | `planned` lehnt ab, solange `tickets/<nr>/intent.md`, `spec.md` oder `plan.md` fehlt oder leer ist, benennt das fehlende Glied einzeln und schreibt bei Ablehnung nichts; der `requirements-engineer` steht im Cast und nimmt `backlog` auf |
-| `47` | Planungssignale | `sprint-new.sh` lehnt ein Ticket ohne vollstaendige Artefaktkette ab und legt nichts an; der Tick zeigt dem `requirements-engineer` die Luecken im `backlog` mit den fehlenden Dateien und dem `product-owner` die Kanban-Zahlen samt Planungsstopp, anderen Rollen nicht |
-| `48` | Referenzbefund | ist `KIT_REFERENCE_CMD` gesetzt, lehnt `planned` eine `spec.md` ohne `REFERENCE:`-Zeile ab und schreibt nichts; mit Zeile geht es durch; ohne konfigurierte Referenz verlangt das Kit nichts; das Rollenblatt nennt beide Schluessel und die eigene Sitzung |
-| `49` | Local host start | `adapters/qwen-code/start.sh` and `adapters/pi/start.sh` against fake hosts and a stub endpoint: a model without tool calls starts nothing; a passing model execs the host with the measured flags, the same PID and a fresh session id; pi also needs its `kit-local` provider pointing at the endpoint; `session-id.sh` and `host-pid.sh` print the start values or fail; `host-alive.sh` tells the host from another process |
-| `79` | Local hosts live (`--live`) | with the model from `kit.env` passing `bin/local-model-check.sh`, qwen-code and pi each run a shell command that sees `KIT_SESSION_ID`, and both transcripts are found; otherwise `BLOCK` |
-| `5x` | Anti-Halluzination (statisch) | ungeklaerte Adapter tragen `UNKNOWN`; ein fehlgeschlagener Aufruf aendert keinen Zustand; die Session-ID wird nie geraten; scheitert der Board-Aufruf oder zeigt das Board danach nichts, bleiben Label, Kommentar und Chat unveraendert; eine neu vergebene PID gilt nicht als Rolle (56); eine Hintergrund-Session mit geerbter Rolle tickt nicht (57) |
-| `6x` | Loop und Kontext-Reset | Rueckweisungen vor neuen Tickets; Zwillingssperre; neue Session holt die Uebergabe zurueck; die Rolle ueberlebt einen Reset ueber den Anker am Host-Prozess; SessionStart-Hook still ohne Rolle, weckt nur bei startup/clear/resume; Session-ID zuerst aus der Registry; `restart-self.sh` beendet nichts ohne Schleife, frische Uebergabe und Ticketgrenze; Waechter-Schleife startet neu, stoppt, gibt auf, startet keinen Zwilling; neun gleichzeitige Registrierungen ergeben neun Roster-Zeilen |
-| `7x` | live | echter Modellaufruf: Adapter laedt eine Rolle, kein Subagent, Ablehnung ausserhalb des Auftrags, `UNKNOWN` statt Erfindung, kein "fertig" ohne Messung; neun Sessions starten parallel (75); Rolle uebersteht `/clear` (76); echter Selbst-Neustart unter `role-loop.sh` (77); interaktive Rolle stellt bei Unklarheit keine blockierende Rueckfrage (78, Verhaltensbeobachtung ohne Mutationsprobe) |
-| `8x` | Gedaechtnis | Index generiert, eine Zeile je Eintrag, offene `[[Verweise]]` sichtbar; Dublette, relatives Datum, falscher Typ abgelehnt; falsche Fakten geloescht; geteilte Fakten aendert nur der Autor |
-| `94` | Kein Ueberlappen | `planned`, `revise.sh` und `sprint-new.sh` lehnen OWNS ab, die sich mit einem freigegebenen Ticket desselben Sprints ueberschneiden; 11 Glob-Paare; anderer Sprint und fehlende Freigabe zaehlen nicht; kein Sprint bei Ablehnung; gh-Pfad mit unlesbaren Kommentaren |
-| `95` | Gruen fuer HEAD | `rft` erst, wenn jedes ausfuehrbare Gate fuer den aktuellen HEAD gruen lief (echter Lauf in einem Git-Sandkasten); neuer Push, falscher Checkout und geaenderte Definition machen den Beleg ungueltig; Exit 0 ohne EXPECT, EXPECT mit Exit 1 und Zeitueberschreitung sind rot; Merge verlangt Belege fuer manuelle Gates, nur vom acceptance-tester, nur fuer manuelle Gates. Braucht eine Git-Identitaet in `~/.gitconfig` |
-| `96` | Gate-Lint | 14 Regelfaelle (fester Ausgabebefehl, schwaches EXPECT auch deutsch, Pfad als Regex, kopierte Zahl, Hinweise); `planned` lehnt ein blindes Orakel ohne Schreibzugriff ab und schreibt Hinweise in den Kommentar; `rft` lehnt ein nach planned abgeschwaechtes CHECK ab; `rft` verlangt je ausfuehrbarem Gate eine QA-Mutationszeile fuer den aktuellen HEAD |
-| `97` | Weglassen sichtbar | ein Gate mit `ABANDON` blockiert `merge.sh` (product-owner und merge-gate) und `done` mit `HANDOFF REQUIRED`, der PR bleibt offen, nichts wird geschrieben; `rft` und `gates.py run` ueberspringen das Gate; nach dem Entscheid des product-owner geht der Merge durch |
-| `98` | Gate I/O errors | an unwritable ledger (`run`, `attest`) and a ledger that is not valid UTF-8 (`planned`, `lint`, `unmet`, `abandoned`, `qa-lines`) end in one error line naming the file, exit 1, no stack trace; `status.sh planned` rejects and writes nothing |
-| `99` | Merge report | `planned` records every gate definition as `GATES Revision 1`; `merge.sh` prints each AC of the issue once with its ledger state and the diff's files, before any rejection; a failed read of comments, issue text or file list is `UNKNOWN`; a CHECK changed after planned and an AC without a gate are shown and do not block the merge; a ticket without a GATES line is reported as such |
-| `90` | Board-Check | fehlende, ueberzaehlige, falsch sortierte Optionen und fehlende Labels werden erkannt; `board.env` entsteht nur bei Erfolg |
-| `91` | Board live (`--gh`) | das konfigurierte GitHub Project bildet das Statusmodell ab |
-| `92` | MCP-Konfiguration | gueltiges JSON, jede Version exakt gepinnt, jeder Server durch `caveman-shrink`, jcodemunch nur auf Einschalten, Lizenzhinweis vorhanden |
-| `93` | MCP live (`--net`) | jeder ausgelieferte Server antwortet auf `initialize` und `tools/list` |
+| `10–17` | status transitions | the full loop backlog → done through `merge.sh`; all 40 forbidden edges refused, the state unchanged; the backward edge out of `in-review` and `in-testing` back to the original engineer; `owner:` ownership, `rfr`/`rft` ownerless; the `rft` gate: three PASS for the current HEAD; a refused transition writes nothing; the product-owner has the last word, CI measured fresh; board before label, with a read-back |
+| `18` | gate ledger | `planned` only with a ledger that covers every AC of the issue and starts fresh; a missing or broken ledger, an unknown AC, a ticked gate, an `ABANDON` up front and an issue without an AC are refused, with a byte comparison of the issue and `tickets/<nr>/`; ten AC spellings including a code fence and an HTML comment |
+| `19` | scope | `planned` demands `OWNS:` and records it as revision 1 on the issue; `rfr` refuses a PR file outside it, the old path of a rename included; a self-made OWNS extension and someone else's approval line do not count; six invalid revisions; revision 2 only by the product-owner; without a PR, with two PRs, with an empty or unreadable file list there is no hand-off; 14 glob forms; the gh path through a faked gh |
+| `20–24` | concurrency and index | N sessions write at the same time; no entry is lost, the index is complete, deterministic, never half readable, free of sub-headings and valid for an empty sprint too |
+| `25–29` | tick | without a sprint it waits; registration once and again after a reset; every foreign entry exactly once, even within the same minute; `@role` reaches exactly that role exactly once; every role sees only its own queue |
+| `3x` | budget | known transcripts give exactly the expected context value; the thresholds fire at the right place; missing data gives `UNKNOWN`, never 0 |
+| `35` | no model without work | `bin/tick.sh --signal` reports with exit 4 that nothing is waiting, without the flag it stays 0; the watchdog loop then starts no model; a status change wakes exactly the roles that pick up the new state; a wake mark without work starts nothing |
+| `34` | budget per host | qwen-code (`usageMetadata.promptTokenCount`, cache included) and pi (`input + cacheRead + cacheWrite`) transcripts give the exact context value, the largest turn and not the sum; a transcript without a usage record the kit knows is `UNKNOWN`, never 0 |
+| `4x` | role fidelity (static) | every job description carries the iron rule verbatim, has the same structure, knows no host vocabulary and no project knowledge; a fresh copy runs; never end your own loop and never ask a blocking question — in the sheet, in the tick text and in the hook (45) |
+| `54` | local host transcripts | the qwen-code and pi adapters print exactly the transcript of the given session id (paths measured against qwen 0.23.4 and pi 0.85.1), never the newest file of another session, and fail for an unknown id |
+| `58` | local model check | against a stub endpoint: a structured tool call is `yes`, a call written as text is `no`, a failed request and an unreachable endpoint are `UNKNOWN`; exit 0 only when `KIT_LOCAL_MODEL` is set and passed |
+| `59` | restart without a loop | the zellij path: a tab with `role-loop.sh --after`, ending only once the loop runs, the loop waiting for the end; if the tab fails, nothing is ended |
+| `46` | artefact chain | `planned` refuses while `tickets/<nr>/intent.md`, `spec.md` or `plan.md` is missing or empty, names the missing link individually and writes nothing on a rejection; the `requirements-engineer` is in the cast and picks up `backlog` |
+| `47` | planning signals | `sprint-new.sh` refuses a ticket without a complete artefact chain and creates nothing; the tick shows the `requirements-engineer` the gaps in the `backlog` with the missing files, and the `product-owner` the kanban numbers including the planning stop, other roles neither |
+| `48` | reference finding | with `KIT_REFERENCE_CMD` set, `planned` refuses a `spec.md` without a `REFERENCE:` line and writes nothing; with the line it passes; without a configured reference the kit demands nothing; the role sheet names both keys and its own session |
+| `49` | local host start | `adapters/qwen-code/start.sh` and `adapters/pi/start.sh` against fake hosts and a stub endpoint: a model without tool calls starts nothing; a passing model execs the host with the measured flags, the same PID and a fresh session id; pi also needs its `kit-local` provider pointing at the endpoint; `session-id.sh` and `host-pid.sh` print the start values or fail; `host-alive.sh` tells the host from another process |
+| `79` | local hosts live (`--live`) | with the model from `kit.env` passing `bin/local-model-check.sh`, qwen-code and pi each run a shell command that sees `KIT_SESSION_ID`, and both transcripts are found; otherwise `BLOCK` |
+| `5x` | anti-hallucination (static) | unsettled adapters carry `UNKNOWN`; a failed call changes no state; the session id is never guessed; if the board call fails or the board shows nothing afterwards, label, comment and chat stay unchanged; a reassigned PID does not count as a role (56); a background session with an inherited role does not tick (57) |
+| `6x` | loop and context reset | rejections before new tickets; the twin lock; a new session pulls the handover back; the role survives a reset through the anchor on the host process; the SessionStart hook stays silent without a role and wakes only on startup/clear/resume; the session id comes from the registry first; `restart-self.sh` ends nothing without a loop, a fresh handover and the ticket boundary; the watchdog loop restarts, stops, gives up, starts no twin; nine simultaneous registrations give nine roster lines |
+| `7x` | live | a real model call: the adapter loads a role, no subagent, a rejection outside the assignment, `UNKNOWN` instead of invention, no "finished" without a measurement; nine sessions start in parallel (75); the role survives `/clear` (76); a real self restart under `role-loop.sh` (77); an interactive role asks no blocking question when something is unclear (78, a behaviour observation without a mutation probe) |
+| `8x` | memory | the index is generated, one line per entry, open `[[links]]` visible; a duplicate, a relative date, a wrong type are refused; wrong facts deleted; shared facts changed only by their author |
+| `94` | no overlap | `planned`, `revise.sh` and `sprint-new.sh` refuse OWNS that overlap an approved ticket of the same sprint; 11 glob pairs; another sprint and a missing approval do not count; no sprint on a rejection; the gh path with unreadable comments |
+| `95` | green for the HEAD | `rft` only once every executable gate ran green for the current HEAD (a real run in a git sandbox); a new push, a wrong checkout and a changed definition invalidate the evidence; exit 0 without EXPECT, EXPECT with exit 1 and a timeout are red; the merge demands evidence for manual gates, only from the acceptance-tester, only for manual gates. Needs a git identity in `~/.gitconfig` |
+| `96` | gate lint | 14 rule cases (a fixed output command, a weak EXPECT in German too, a path as a regex, a copied number, hints); `planned` refuses a blind oracle without write access and writes hints into the comment; `rft` refuses a CHECK weakened after planned; `rft` demands one QA mutation line per executable gate for the current HEAD |
+| `97` | omission visible | a gate with `ABANDON` blocks `merge.sh` (product-owner and merge-gate) and `done` with `HANDOFF REQUIRED`, the PR stays open, nothing is written; `rft` and `gates.py run` skip the gate; after the product-owner's decision the merge goes through |
+| `98` | gate I/O errors | an unwritable ledger (`run`, `attest`) and a ledger that is not valid UTF-8 (`planned`, `lint`, `unmet`, `abandoned`, `qa-lines`) end in one error line naming the file, exit 1, no stack trace; `status.sh planned` refuses and writes nothing |
+| `99` | merge report | `planned` records every gate definition as `GATES Revision 1`; `merge.sh` prints each AC of the issue once with its ledger state and the diff's files, before any rejection; a failed read of comments, issue text or file list is `UNKNOWN`; a CHECK changed after planned and an AC without a gate are shown and do not block the merge; a ticket without a GATES line is reported as such |
+| `90` | board check | missing, surplus and wrongly ordered options and missing labels are detected; `board.env` appears only on success |
+| `91` | board live (`--gh`) | the configured GitHub Project mirrors the status model |
+| `92` | MCP configuration | valid JSON, every version pinned exactly, every server through `caveman-shrink`, jcodemunch only on opt-in, the licence note present |
+| `93` | MCP live (`--net`) | every shipped server answers `initialize` and `tools/list` |
 
-Die Live-Familie misst "kein Subagent" nicht am Text, sondern an `subagent_stats.spawned`
-aus dem Ergebnis des Hosts. Eine Absichtserklaerung im Antworttext zaehlt nicht.
+The live family measures "no subagent" not by the text but by `subagent_stats.spawned`
+from the host's result. A declaration of intent in the answer text does not count.
 
-## Der geschlossene Kreis
+## The closed circle
 
-1. Faellt eine Rolle in einer Eval durch, oder wird ihre Arbeit in der Praxis zurueckgewiesen,
-   schreibt der **watchdog** den Fall nach `evals/findings/`.
-2. Der **kit-maintainer** macht daraus einen **Pull Request** an der Jobbeschreibung, mit dem
-   fehlgeschlagenen Fall als Beleg.
-3. Ein **Mensch** merged. Eine Rolle aendert ihre eigene Jobbeschreibung niemals selbst.
+1. If a role fails an eval, or its work is rejected in practice,
+   the **watchdog** writes the case to `evals/findings/`.
+2. The **kit-maintainer** turns that into a **pull request** on the job description, with the
+   failed case as evidence.
+3. A **human** merges. A role never changes its own job description.
 
-Jede Aenderung an einer Jobbeschreibung muss mindestens einen zuvor durchgefallenen Fall
-bestehen lassen, ohne einen bestehenden zu brechen. Beide Laeufe gehoeren in den PR-Text:
+Every change to a job description must make at least one previously failed case pass,
+without breaking an existing one. Both runs belong in the PR text:
 
 ```bash
-evals/run.sh --case <der-fall>   # vorher FAIL, nachher PASS
-evals/run.sh                     # kein bestehender Fall bricht
+evals/run.sh --case <the-case>   # FAIL before, PASS after
+evals/run.sh                     # no existing case breaks
 ```
 
-Drei Antworten sind auf einen durchgefallenen Fall moeglich, und alle drei sind erlaubt:
-eine fehlende Regel, eine mehrdeutige Regel — oder **eine falsche Eval**. Ein Beispiel fuer
-den dritten Fall liegt in `evals/findings/`.
+Three answers to a failed case are possible, and all three are allowed:
+a missing rule, an ambiguous rule — or **a wrong eval**. An example of the
+third lies in `evals/findings/`.
 
-## Einen Fall hinzufuegen
+## Adding a case
 
-Eine Datei `evals/cases/<nn>-<name>.sh` mit drei Kopfzeilen:
+A file `evals/cases/<nn>-<name>.sh` with three header lines:
 
 ```bash
-CASE_DESC="was der Fall prueft"
-CASE_KIND="static"        # static = kostenlos, live = Modellaufruf, gh = GitHub-Zugriff, net = Paketdownloads
-CASE_HOST=""              # leer = hostunabhaengig, sonst der Hostname
+CASE_DESC="what the case checks"
+CASE_KIND="static"        # static = free, live = a model call, gh = GitHub access, net = package downloads
+CASE_HOST=""              # empty = host-independent, otherwise the host name
 ```
 
-Danach `source ../lib/harness.sh`, `sandbox` fuer eine wegwerfbare Umgebung, am Ende
-`echo "OBSERVED: $OBSERVED"` und ein Exitcode: 0 bestanden, sonst durchgefallen.
-Ein Fall prueft **nur, was in einer Jobbeschreibung oder im Protokoll steht**. Verlangt er mehr,
-ist er falsch.
+Then `source ../lib/harness.sh`, `sandbox` for a throwaway environment, at the end
+`echo "OBSERVED: $OBSERVED"` and an exit code: 0 passed, anything else failed.
+A case checks **only what stands in a job description or in the protocol**. If it demands more,
+it is wrong.
 
-**Jeder neue Fall braucht eine Mutationsprobe:** die Regel, die er schuetzt, im Code abschalten →
-der Fall muss rot werden. Ein Fall, der bei abgeschalteter Regel gruen bleibt, misst die falsche
-Achse. Beispiel aus diesem Repo: Fall 11 pruefte nur die Fehlermeldung und blieb gruen, als die
-Kantensperre die Meldung druckte und trotzdem schrieb.
+**Every new case needs a mutation probe:** switch off the rule it protects in the code →
+the case must turn red. A case that stays green with the rule switched off measures the wrong
+axis. An example from this repo: case 11 checked only the error message and stayed green when
+the edge lock printed the message and wrote anyway.

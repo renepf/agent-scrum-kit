@@ -12,7 +12,7 @@ fehler=""
 o1="$(KIT_ROLE=engineer-a KIT_SESSION_ID=sess-1 KIT_HOST_PID="$ZWILLING" "$BIN/register.sh" 2>&1)" || fehler="$fehler erste-Instanz-abgewiesen"
 o2="$(KIT_ROLE=engineer-a KIT_SESSION_ID=sess-1 KIT_HOST_PID="$ZWILLING" "$BIN/register.sh" 2>&1)" || fehler="$fehler dieselbe-Instanz-erneut-abgewiesen"
 o3="$(KIT_ROLE=engineer-a KIT_SESSION_ID=sess-1 KIT_HOST_PID=$$ "$BIN/tick.sh" 2>&1)"; rc3=$?
-case "$o3" in *"zweite Instanz"*) ;; *) fehler="$fehler Zwilling-mit-gleicher-Session-durchgelassen" ;; esac
+case "$o3" in *"second instance"*) ;; *) fehler="$fehler Zwilling-mit-gleicher-Session-durchgelassen" ;; esac
 [ "$rc3" != 0 ] || fehler="$fehler tick-Exit-0-trotz-Zwilling"
 o4="$(KIT_ROLE=engineer-b KIT_SESSION_ID=sess-2 KIT_HOST_PID=$$ "$BIN/register.sh" 2>&1)" || fehler="$fehler andere-Rolle-abgewiesen"
 

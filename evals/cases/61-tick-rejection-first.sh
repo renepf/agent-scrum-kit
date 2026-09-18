@@ -16,7 +16,7 @@ KIT_ROLE=qa-ruthless "$BIN/status.sh" 21 in-progress "Grenzwert 0 ungetestet" > 
 
 a="$(KIT_ROLE=engineer-a "$BIN/tick.sh" 2>&1)"
 b="$(KIT_ROLE=engineer-b "$BIN/tick.sh" 2>&1)"
-pos_rueck="$(printf '%s\n' "$a" | grep -n 'ZURUECKGEWIESEN' | head -1 | cut -d: -f1)"
+pos_rueck="$(printf '%s\n' "$a" | grep -n 'REJECTED' | head -1 | cut -d: -f1)"
 pos_neu="$(printf '%s\n' "$a" | grep -n '#22 ' | head -1 | cut -d: -f1)"
 
 fehler=""
@@ -24,7 +24,7 @@ fehler=""
 [ -n "$pos_neu" ] || fehler="$fehler neues-Ticket-fehlt"
 [ -n "$pos_rueck" ] && [ -n "$pos_neu" ] && [ "$pos_rueck" -lt "$pos_neu" ] || fehler="$fehler Reihenfolge"
 printf '%s' "$a" | grep -q 'Grenzwert 0 ungetestet' || fehler="$fehler Befund-nicht-gezeigt"
-printf '%s' "$b" | grep -q 'ZURUECKGEWIESEN' && fehler="$fehler engineer-b-sieht-fremde-Rueckweisung"
+printf '%s' "$b" | grep -q 'REJECTED' && fehler="$fehler engineer-b-sieht-fremde-Rueckweisung"
 
 observe "engineer-a: Rueckweisung Zeile $pos_rueck, neues Ticket Zeile $pos_neu · engineer-b sieht keine fremde Rueckweisung: $(printf '%s' "$b" | grep -q ZURUECK && echo NEIN || echo ja)${fehler:+ · FEHLER:$fehler}"
 echo "OBSERVED: $OBSERVED"

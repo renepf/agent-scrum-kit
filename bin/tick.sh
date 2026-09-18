@@ -1,28 +1,28 @@
 #!/usr/bin/env bash
-# Eine Runde Lagebild. JEDE Rolle ruft das zu Beginn JEDER Loop-Runde auf.
+# One round of situational awareness. EVERY role calls this at the start of EVERY loop round.
 #
 #   export KIT_ROLE=qa-ruthless
 #   bin/tick.sh
 #
-# Idempotent. In dieser Reihenfolge:
-#   1. registrieren und Zwillingssperre erneuern — neue Session-ID holt das Gedaechtnis zurueck
-#   2. Rueckweisungen zuerst (nur Engineers): sie haben Vorrang vor jedem neuen Ticket
-#   3. eigene Tickets, dann freie Tickets aus der eigenen Warteschlange
-#   4. ungesehene Chat-Eintraege und Erwaehnungen @<rolle> — je genau einmal
-#   5. Tokenstand, STOP-Flag
-# Ohne aktiven Sprint endet es mit Exit 0 — eine wartende Rolle ist kein Fehler.
+# Idempotent. In this order:
+#   1. register and renew the twin lock — a new session id pulls the memory back
+#   2. rejections first (engineers only): they come before any new ticket
+#   3. your own tickets, then free tickets from your own queue
+#   4. unseen chat entries and mentions @<role> — each exactly once
+#   5. token state, STOP flag
+# Without an active sprint it ends with exit 0 — a waiting role is not an error.
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
-# --signal: Exit 4, wenn nichts fuer diese Rolle anliegt. Ohne den Schalter bleibt es bei 0 —
-# bestehende Aufrufer und Menschen sollen keinen neuen Fehlercode sehen. Die Waechter-Schleife
-# fragt damit, ob sich ein Modellstart lohnt: ein Tick kostet nichts, eine leere Runde ein Kontextfenster.
+# --signal: exit 4 when nothing is waiting for this role. Without the flag it stays 0 —
+# existing callers and humans should not see a new error code. The watchdog loop uses it to ask
+# whether a model start is worth it: a tick costs nothing, an empty round costs a context window.
 SIGNAL=0
 [ "${1:-}" = "--signal" ] && SIGNAL=1
 WORK=0
 
 R="$(role)"
 if [ ! -s "$CURRENT_FILE" ]; then
-  echo "[$R] kein aktiver Sprint. Der product-owner schneidet ihn mit bin/sprint-new.sh. Nichts zu tun."
+  echo "[$R] no active sprint. The product-owner cuts one with bin/sprint-new.sh. Nothing to do."
   exit 0
 fi
 
@@ -31,42 +31,42 @@ SID="$(session_id)"
 STATE="$SPRINT/.tick-$R"
 P="$KIT_LABEL_PREFIX"; O="$KIT_OWNER_PREFIX"
 
-# Hintergrund-Session: hat KIT_ROLE geerbt, ist aber keine Rolle — kein Anker, kein Tick.
+# Background session: it inherited KIT_ROLE but is not a role — no anchor, no tick.
 BG="$KIT_ROOT/adapters/$KIT_HOST/is-background.sh"
 if [ -x "$BG" ] && "$BG"; then
-  echo "[$R] Hintergrund-Session — keine Rolle, kein Tick. Nichts tun."
+  echo "[$R] background session — no role, no tick. Do nothing."
   exit 3
 fi
 
-# Anker toter oder neu vergebener PIDs wegraeumen. Sonst haelt die Zwillingssperre einen fremden
-# Prozess fuer eine laufende Rolle.
+# Clear away anchors of dead or reassigned PIDs. Otherwise the twin lock mistakes a foreign
+# process for a running role.
 for f in "$PID_ROLES"/*; do
   [ -f "$f" ] || continue
   host_alive "$(basename "$f")" || rm -f "$f"
 done
 
-# Rollen-Anker bei JEDEM Tick — nicht erst bei Neuregistrierung. Sonst fehlt er genau dann,
-# wenn er gebraucht wird: nach dem ersten Kontext-Reset.
+# Role anchor on EVERY tick — not only on a new registration. Otherwise it is missing exactly when
+# it is needed: after the first context reset.
 anchor_role "$R"
 
-# --- 1. Registrierung + Zwillingssperre --------------------------------------
+# --- 1. registration + twin lock ---------------------------------------------
 NEW_SESSION=0
 grep -q "| $R | $SID |" "$SPRINT/roster.md" 2>/dev/null || NEW_SESSION=1
-"$BIN_DIR/register.sh" "$SID" > /dev/null   # bricht ab, wenn ein Zwilling laeuft
+"$BIN_DIR/register.sh" "$SID" > /dev/null   # aborts when a twin is running
 if [ "$NEW_SESSION" = 1 ]; then
-  echo "[$R] neue Session $SID — Gedaechtnis zurueckholen (bin/brain.sh recall):"
+  echo "[$R] new session $SID — pulling the memory back (bin/brain.sh recall):"
   "$BIN_DIR/brain.sh" recall
 fi
 
-# --- 2./3. Tickets -----------------------------------------------------------
+# --- 2./3. tickets -----------------------------------------------------------
 QUEUE="$(printf '%s\n' "$KIT_QUEUE_MAP" | grep "^$R|" | cut -d'|' -f2 || true)"
 if [ -z "$QUEUE" ]; then
-  echo "[$R] nimmt keine Tickets auf."
+  echo "[$R] takes no tickets."
 else
-  "$BIN_DIR/preflight.sh" > /dev/null 2>&1 || { echo "[$R] Preflight FEHLGESCHLAGEN — stoppen und melden, nicht raten." >&2; exit 1; }
-  SPRINT_JSON="$("$BIN_DIR/tickets.sh" sprint)" || { echo "[$R] Ticketliste nicht lesbar — Fehlschlag, kein leerer Sprint." >&2; exit 1; }
+  "$BIN_DIR/preflight.sh" > /dev/null 2>&1 || { echo "[$R] preflight FAILED — stop and report, do not guess." >&2; exit 1; }
+  SPRINT_JSON="$("$BIN_DIR/tickets.sh" sprint)" || { echo "[$R] ticket list not readable — a failure, not an empty sprint." >&2; exit 1; }
 
-  # Rueckweisung: owner:<engineer> in in-progress, letzter Statuswechsel NICHT vom Engineer selbst.
+  # Rejection: owner:<engineer> in in-progress, last status change NOT by the engineer itself.
   case "$R" in
     engineer-*)
       IP="$(board_name in-progress)"
@@ -78,23 +78,23 @@ for i in json.load(sys.stdin):
     if p + "in-progress" in names and o in names:
         print(i["number"])
 ' "$P" "$O$R"); do
-        RUECK="$("$BIN_DIR/tickets.sh" comments "$n" | python3 -c '
+        REJECTED="$("$BIN_DIR/tickets.sh" comments "$n" | python3 -c '
 import json, re, sys
 me, n, ip = sys.argv[1], sys.argv[2], sys.argv[3]
 heads = [(m.group(1), m.group(2), b) for b in json.load(sys.stdin)
          for m in [re.match(r"^\*\*([^*]+)\*\* — ([a-z-]+) ", b)] if m]
 if heads and heads[-1][0] == ip and heads[-1][1] != me:
     note = heads[-1][2].split("\n", 2)[-1].strip()
-    print(f"↩ #{n} ZURUECKGEWIESEN von {heads[-1][1]} — hat Vorrang vor jedem neuen Ticket:")
+    print(f"↩ #{n} REJECTED by {heads[-1][1]} — comes before any new ticket:")
     print(f"    {note[:160]}")
-    print(f"    Befund lesen, fixen, pushen, dann status.sh {n} rfr. Alte PASS-Verdicts gelten fuer den neuen HEAD nicht.")
+    print(f"    Read the finding, fix it, push, then status.sh {n} rfr. Old PASS verdicts do not hold for the new HEAD.")
 ' "$R" "$n" "$IP")"
-        [ -z "$RUECK" ] || { printf '%s\n' "$RUECK"; WORK=1; }
+        [ -z "$REJECTED" ] || { printf '%s\n' "$REJECTED"; WORK=1; }
       done
       ;;
   esac
 
-  echo "── deine Warteschlange ($QUEUE) ──"
+  echo "── your queue ($QUEUE) ──"
   if printf '%s' "$SPRINT_JSON" | QUEUE="$QUEUE" python3 -c '
 import json, os, sys
 p, o, role = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -103,41 +103,41 @@ mine, free = [], []
 for i in json.load(sys.stdin):
     names = [l["name"] for l in i["labels"]]
     st = next((l[len(p):] for l in names if l.startswith(p)), "backlog")
-    owners = ",".join(l[len(o):] for l in names if l.startswith(o)) or "frei"
+    owners = ",".join(l[len(o):] for l in names if l.startswith(o)) or "free"
     line = "  #%-5s [%-11s] %-22s %s" % (i["number"], st, owners, i["title"][:50])
     if o + role in names:
         mine.append(line)
     elif "*" in want or st in want:
         free.append(line)
-print("  deine:"); print("\n".join(mine) if mine else "    (keins)")
-print("  frei fuer dich (" + ",".join(want) + "):"); print("\n".join(free) if free else "    (nichts — Runde beenden)")
+print("  yours:"); print("\n".join(mine) if mine else "    (none)")
+print("  free for you (" + ",".join(want) + "):"); print("\n".join(free) if free else "    (nothing — end the round)")
 sys.exit(0 if (mine or free) else 4)
 ' "$P" "$O" "$R"; then WORK=1; fi
 fi
 
-# --- 3b. Backlog ohne Artefaktkette -------------------------------------------
-# Wer backlog aufnimmt (requirements-engineer) oder alles sieht (product-owner), sieht hier, welchem
-# Ticket noch ein Glied fehlt. planned und sprint-new.sh lehnen genau diese Tickets ab.
+# --- 3b. backlog without the artefact chain -----------------------------------
+# Whoever takes backlog (requirements-engineer) or sees everything (product-owner) sees here which
+# ticket is still missing a link. planned and sprint-new.sh reject exactly these tickets.
 case ",$QUEUE," in
   *,backlog,*|*"*"*)
-    LUECKEN=""
+    GAPS=""
     for b in $("$BIN_DIR/tickets.sh" list "${P}backlog" 2>/dev/null); do
-      fehlt=""
+      missing=""
       for a in intent.md spec.md plan.md; do
-        grep -q '[^[:space:]]' "$TICKETS_DIR/$b/$a" 2>/dev/null || fehlt="$fehlt $a"
+        grep -q '[^[:space:]]' "$TICKETS_DIR/$b/$a" 2>/dev/null || missing="$missing $a"
       done
-      [ -n "$fehlt" ] && LUECKEN="$LUECKEN  #$b fehlt:$fehlt
+      [ -n "$missing" ] && GAPS="$GAPS  #$b missing:$missing
 "
     done
-    if [ -n "$LUECKEN" ]; then
-      echo "── backlog ohne Artefaktkette (so lehnen sprint-new.sh und planned ab) ──"
-      printf '%s' "$LUECKEN"
+    if [ -n "$GAPS" ]; then
+      echo "── backlog without the artefact chain (this is how sprint-new.sh and planned reject) ──"
+      printf '%s' "$GAPS"
       WORK=1
     fi
     ;;
 esac
 
-# --- 3c. Kanban: nur der product-owner plant, nur er sieht die Zahlen ----------
+# --- 3c. kanban: only the product-owner plans, only they see the numbers -------
 if [ "$R" = "product-owner" ] && [ -n "${SPRINT_JSON:-}" ]; then
   if printf '%s' "$SPRINT_JSON" | MIN="${KIT_MIN_PLANNED:-7}" STOP="${KIT_QUEUE_STOP:-2}" \
     ENG="$(printf '%s\n' $KIT_ROLES | grep -c '^engineer-')" python3 -c '
@@ -152,25 +152,25 @@ for i in json.load(sys.stdin):
 planned, wip = c.get("planned", 0), c.get("in-progress", 0)
 review = c.get("rfr", 0) + c.get("in-review", 0)
 test = c.get("rft", 0) + c.get("in-testing", 0)
-print("── Kanban ──")
-print("  geplant %d (Ziel mindestens %d) · in Arbeit %d (Engineers %d) · Pruefschlange %d · Testschlange %d"
+print("── kanban ──")
+print("  planned %d (target at least %d) · in progress %d (engineers %d) · review queue %d · test queue %d"
       % (planned, mn, wip, eng, review, test))
 if review > stop or test > stop:
-    print("  Planungsstopp: Pruef- oder Testschlange ueber %d. Nichts Neues planen, bis sie auf %d faellt." % (stop, stop))
+    print("  planning stop: review or test queue above %d. Plan nothing new until it drops to %d." % (stop, stop))
 elif planned < mn:
-    print("  zu wenig geplant: %d statt %d — nachschneiden, sonst laeuft das Team leer." % (planned, mn))
-hinweis = review > stop or test > stop or planned < mn or wip < eng
+    print("  too little planned: %d instead of %d — cut more, or the team runs dry." % (planned, mn))
+hint = review > stop or test > stop or planned < mn or wip < eng
 if wip < eng:
-    print("  %d Engineer(s) ohne Ticket: freies planned-Ticket aufnehmen, sonst ein nicht blockiertes." % (eng - wip))
-sys.exit(0 if hinweis else 4)
+    print("  %d engineer(s) without a ticket: take a free planned ticket, otherwise an unblocked one." % (eng - wip))
+sys.exit(0 if hint else 4)
 ' "$P"; then WORK=1; fi
 fi
 
-# --- 4. Chat: ungesehene Eintraege und Direktansprache, je genau einmal ----------
-# Gemerkt werden die gesehenen datei:zeile-Verweise, nicht eine Zeilenzahl. Eine Zahl
-# versagt, sobald zwei Eintraege dieselbe Minute tragen: der Index sortiert dann nach
-# Dateiname, und ein neuer Eintrag kann vor einem alten landen.
-[ -f "$SPRINT/INDEX.md" ] || "$BIN_DIR/reindex.sh" > /dev/null || die "reindex.sh fehlgeschlagen — Tick abgebrochen, nicht still weiter"
+# --- 4. chat: unseen entries and direct mentions, each exactly once --------------
+# What is remembered are the seen file:line references, not a line count. A number
+# fails as soon as two entries carry the same minute: the index then sorts by
+# file name, and a new entry can land before an old one.
+[ -f "$SPRINT/INDEX.md" ] || "$BIN_DIR/reindex.sh" > /dev/null || die "reindex.sh failed — tick aborted, not silently continued"
 SEEN="$SPRINT/.tick-$R"
 if with_lock "$SEEN.lock" python3 - "$SPRINT" "$R" "$SEEN" <<'PY2'
 import os, re, sys
@@ -185,12 +185,12 @@ if os.path.exists(seen_path):
     seen = {l.strip() for l in open(seen_path, encoding="utf-8") if l.strip()}
 new = [(ref, row) for ref, row in rows if ref not in seen]
 if not new:
-    print(f"[{role}] keine neuen Chat-Eintraege.")
+    print(f"[{role}] no new chat entries.")
 else:
-    print(f"── neu im Chat seit deinem letzten Tick ({len(new)}) ──")
+    print(f"── new in the chat since your last tick ({len(new)}) ──")
     for _, row in new:
         print(row)
-# Direktansprache: nur in NEUEN Eintraegen fremder Rollen. Einmal gezeigt, nie wieder.
+# Direct mention: only in NEW entries of other roles. Shown once, never again.
 mention = re.compile(r"@" + re.escape(role) + r"(?![a-z0-9-])")
 hits = []
 for ref, _ in new:
@@ -207,41 +207,41 @@ for ref, _ in new:
     if any(mention.search(l) for l in body):
         hits.append((ref, body[0][3:]))
 if hits:
-    print("── direkt an dich gerichtet ──")
+    print("── addressed directly to you ──")
     for ref, head in hits:
         print(f"  {ref}  {head}")
 tmp = seen_path + ".tmp"
 with open(tmp, "w", encoding="utf-8") as fh:
     fh.write("\n".join(sorted(seen | {ref for ref, _ in rows})) + "\n")
 os.replace(tmp, seen_path)
-# Eine neue Chat-Zeile allein rechtfertigt keinen Modellstart — sonst weckt jeder Statuswechsel
-# das ganze Team fuer eine Zeile. Direkt an dich gerichtet (@rolle) schon.
+# One new chat line alone does not justify a model start — otherwise every status change wakes
+# the whole team for one line. Addressed directly to you (@role) does.
 sys.exit(0 if hits else 4)
 PY2
 then WORK=1; fi
 
-# --- 5. Budget ---------------------------------------------------------------
+# --- 5. budget ---------------------------------------------------------------
 if [ -f "$SPRINT/budget.md" ]; then
   MINE="$(grep "^| $R |" "$SPRINT/budget.md" || true)"
-  [ -z "$MINE" ] || { echo "── dein Budget ──"; echo "$MINE"; }
-  case "$MINE" in *Warnung*) echo "  Warnung: kein neues Ticket annehmen. Deinen Loop NICHT beenden — weiter ticken."; WORK=1 ;; esac
+  [ -z "$MINE" ] || { echo "── your budget ──"; echo "$MINE"; }
+  case "$MINE" in *warning*) echo "  Warning: take no new ticket. Do NOT end your loop — keep ticking."; WORK=1 ;; esac
   if grep -q "^STOP $R\$" "$SPRINT/budget.md"; then
     WORK=1
     if [ "${KIT_ROLE_LOOP:-}" = "1" ]; then
-      echo "  ⚠ STOP: brain.sh handover (jedes gehaltene #<nr> mit Stand, SHA, naechstem Schritt), dann bin/restart-self.sh stop — die Waechter-Schleife startet dich frisch. Deinen Loop NICHT beenden."
+      echo "  ⚠ STOP: brain.sh handover (every held #<nr> with state, SHA, next step), then bin/restart-self.sh stop — the watchdog loop starts you fresh. Do NOT end your loop."
     else
       if [ -n "${ZELLIJ_SESSION_NAME:-}" ]; then
-        echo "  ⚠ STOP: brain.sh handover (jedes gehaltene #<nr> mit Stand, SHA, naechstem Schritt), dann bin/restart-self.sh stop — es oeffnet die Waechter-Schleife in einem neuen zellij-Tab. Deinen Loop NICHT beenden."
+        echo "  ⚠ STOP: brain.sh handover (every held #<nr> with state, SHA, next step), then bin/restart-self.sh stop — it opens the watchdog loop in a new zellij tab. Do NOT end your loop."
       else
-        echo "  ⚠ STOP: brain.sh handover und eine Zeile per say.sh. Weder Waechter-Schleife noch zellij: den Menschen um einen Neustart bitten. Deinen Loop NICHT beenden — weiter ticken."
+        echo "  ⚠ STOP: brain.sh handover and one line via say.sh. Neither a watchdog loop nor zellij: ask the human for a restart. Do NOT end your loop — keep ticking."
       fi
     fi
   fi
 fi
 
-# Der Ausgang: nur mit --signal wird "nichts zu tun" zu einem eigenen Code.
+# The exit: only with --signal does "nothing to do" become a code of its own.
 if [ "$WORK" = 0 ] && [ "$SIGNAL" = 1 ]; then
-  echo "[$R] nichts fuer dich — kein Modellstart noetig."
+  echo "[$R] nothing for you — no model start needed."
   exit 4
 fi
 exit 0

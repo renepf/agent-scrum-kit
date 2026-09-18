@@ -10,7 +10,7 @@ for f in "$KIT_ROOT"/roles/*.md; do
   b="$(basename "$f")"
   case "$b" in _COMMON.md|START-HERE.md) continue ;; esac
   for a in $(echo "$ABSCHNITTE" | tr '|' ' '); do :; done
-  for a in "Auftrag" "Besessener Status" "Aufnahmebedingung" "Arbeitsschritte" "Abgabebedingung" "Verdict-Format" "Harte Grenzen"; do
+  for a in "Mission" "Owned status" "Pick-up condition" "Working steps" "Hand-off condition" "Verdict format" "Hard limits"; do
     grep -q "^## $a" "$f" || fehlend="$fehlend $b:'$a'"
   done
 done

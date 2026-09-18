@@ -1,72 +1,72 @@
-# Langzeitgedaechtnis
+# Long-term memory
 
-Eine Datei je Fakt, mit Frontmatter. Je Rolle ein Ordner, dazu ein geteilter. Jeder Ordner hat einen
-**generierten** `INDEX.md` mit einer Zeile je Eintrag — nie von Hand schreiben. Werkzeug:
-`bin/brain.sh`. Der Tick holt das Gedaechtnis nach jedem Reset automatisch zurueck.
+One file per fact, with frontmatter. One folder per role, plus a shared one. Every folder has a
+**generated** `INDEX.md` with one line per entry — never write it by hand. Tool:
+`bin/brain.sh`. The tick pulls the memory back automatically after every reset.
 
 ```
 memory/
-├── _shared/INDEX.md            GENERIERT — Schwarmwissen
-├── _shared/facts/<slug>.md     geteilter Fakt; nur der Autor aendert oder loescht ihn
-└── <rolle>/
-    ├── INDEX.md                GENERIERT — Uebergaben, Fakten, Dokumente, Journal, offene Verweise
-    ├── log.md                  append-only Journal
-    ├── facts/<slug>.md         ein Fakt je Datei
-    ├── docs/<slug>.md          Arbeitsnotizen je Ticket, ueberschreibbar
-    └── handover/<zeit>.md      Uebergabe vor jedem Reset
+├── _shared/INDEX.md            GENERATED — swarm knowledge
+├── _shared/facts/<slug>.md     shared fact; only the author changes or deletes it
+└── <role>/
+    ├── INDEX.md                GENERATED — handovers, facts, documents, journal, open links
+    ├── log.md                  append-only journal
+    ├── facts/<slug>.md         one fact per file
+    ├── docs/<slug>.md          working notes per ticket, overwritable
+    └── handover/<time>.md      handover before every reset
 ```
 
-## Format eines Fakts
+## Format of a fact
 
 ```markdown
 ---
 name: <slug>
-description: <eine Zeile — danach wird beim Erinnern entschieden>
+description: <one line — recall is decided on it>
 type: user | feedback | project | reference
-author: <rolle>
+author: <role>
 updated: <YYYY-MM-DD HH:MM>
 ---
 
-<der Fakt. Bei feedback und project danach **Warum:** und **Wie anzuwenden:**.>
-Verwandte Fakten als [[ihr-slug]].
+<the fact. For feedback and project, follow with **Why:** and **How to apply:**.>
+Related facts as [[their-slug]].
 ```
 
-`brain.sh` schreibt das Frontmatter selbst. `[[slug]]` zeigt auf das `name:`-Feld eines anderen
-Fakts. Ein Verweis ohne Ziel ist kein Fehler: der Index listet ihn unter "Offene Verweise" — er
-markiert einen Fakt, der noch geschrieben werden sollte.
+`brain.sh` writes the frontmatter itself. `[[slug]]` points at the `name:` field of another
+fact. A link without a target is not an error: the index lists it under "Open links" — it
+marks a fact that still ought to be written.
 
-| Typ | Was hinein gehoert |
+| Type | What belongs in it |
 |---|---|
-| `user` | wer der Mensch ist: Rolle, Fachgebiet, Vorlieben |
-| `feedback` | wie gearbeitet werden soll — Korrekturen und bestaetigte Wege, mit Begruendung |
-| `project` | laufende Arbeit, Ziele, Randbedingungen, die nicht aus dem Code hervorgehen |
-| `reference` | Zeiger nach aussen: URLs, Dashboards, Tickets |
+| `user` | who the human is: role, expertise, preferences |
+| `feedback` | how the work should be done — corrections and confirmed ways, with the reason |
+| `project` | ongoing work, goals, constraints that do not follow from the code |
+| `reference` | pointers outwards: URLs, dashboards, tickets |
 
-## Regeln — `brain.sh` erzwingt die ersten drei
+## Rules — `brain.sh` enforces the first three
 
-1. **Vor dem Schreiben auf Dubletten pruefen.** Ein neuer Slug mit derselben Beschreibung wie ein
-   vorhandener Fakt wird abgelehnt. Denselben Slug neu zu schreiben ist der Weg, einen Fakt zu aendern.
-2. **Relative Datumsangaben in absolute umschreiben.** "gestern", "letzte Woche", "today" werden
-   abgelehnt. "2026-09-02" bleibt in drei Monaten richtig.
-3. **Nur die vier Typen** `user | feedback | project | reference`.
-4. **Falsch gewordene Fakten loeschen, nicht ergaenzen:** `brain.sh forget <slug>`, oder denselben
-   Slug mit dem richtigen Inhalt neu schreiben. Ein widerrufener und ein gueltiger Fakt zum selben
-   Thema sind schlechter als keiner.
-5. **Nichts speichern, was das Repo ohnehin festhaelt:** Codestruktur, behobene Fehler,
-   Git-Historie, der Inhalt von `AGENTS.md`.
-6. Nichts speichern, was nur fuer dieses eine Gespraech gilt.
-7. Ein Fakt beschreibt den Stand beim Schreiben. Nennt er eine Datei, eine Funktion oder einen
-   Schalter, prueft die lesende Session, ob es das noch gibt.
+1. **Check for duplicates before writing.** A new slug with the same description as an
+   existing fact is rejected. Rewriting the same slug is the way to change a fact.
+2. **Rewrite relative dates as absolute ones.** "yesterday", "last week", "today" are
+   rejected. "2026-09-02" is still right in three months.
+3. **Only the four types** `user | feedback | project | reference`.
+4. **Delete facts that turned wrong, do not amend them:** `brain.sh forget <slug>`, or write the same
+   slug again with the right content. A revoked and a valid fact on the same
+   subject are worse than none.
+5. **Store nothing the repo records anyway:** code structure, fixed faults,
+   git history, the content of `AGENTS.md`.
+6. Store nothing that holds only for this one conversation.
+7. A fact describes the state when it was written. If it names a file, a function or a
+   flag, the reading session checks whether it still exists.
 
-## Befehle
+## Commands
 
 ```bash
-TYPE=feedback bin/brain.sh note <slug> "<beschreibung>" <<'EOF'   # eigener Fakt
+TYPE=feedback bin/brain.sh note <slug> "<description>" <<'EOF'   # your own fact
 …
 EOF
-bin/brain.sh share <slug> "<beschreibung>" <<'EOF' … EOF          # Fakt fuer alle
-bin/brain.sh forget <slug> [--shared]                              # falsch geworden
-bin/brain.sh handover "<beschreibung>" <<'EOF' … EOF               # vor jedem Reset
-bin/brain.sh log "#<nr> · <betreff>" <<'EOF' … EOF                 # Journal
-bin/brain.sh recall                                                # nach Reset (macht der Tick)
+bin/brain.sh share <slug> "<description>" <<'EOF' … EOF          # a fact for everybody
+bin/brain.sh forget <slug> [--shared]                             # it turned wrong
+bin/brain.sh handover "<description>" <<'EOF' … EOF               # before every reset
+bin/brain.sh log "#<nr> · <subject>" <<'EOF' … EOF                # journal
+bin/brain.sh recall                                               # after a reset (the tick does it)
 ```

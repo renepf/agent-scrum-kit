@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Druckt die Session-Kennung oder scheitert. Nie raten.
+# Prints the session id or fails. Never guess.
 #
-# Reihenfolge, beide gemessen:
-#   1. Registry des eigenen claude-Prozesses: ~/.claude/sessions/<host-pid>.json, Feld sessionId.
-#      /clear laesst den Prozess stehen, vergibt aber eine neue Session-ID — die Registry bekommt
-#      sie nachweislich (Referenz-Loop, 2026-09-10: PID 6568 → neue Session ab 17:31).
-#   2. CLAUDE_CODE_SESSION_ID. Ob diese Variable nach /clear erneuert wird, ist NICHT gemessen —
-#      deshalb nur Rueckfall.
-# NICHT aus der juengsten Transkriptdatei ableiten: bei neun parallelen Sessions gehoert sie der
-# Session, die zuletzt geschrieben hat.
+# The order, both measured:
+#   1. the registry of your own claude process: ~/.claude/sessions/<host-pid>.json, field sessionId.
+#      /clear leaves the process standing but hands out a new session id — the registry demonstrably
+#      gets it (reference loop, 2026-09-10: PID 6568 → a new session from 17:31).
+#   2. CLAUDE_CODE_SESSION_ID. Whether this variable is renewed after /clear is NOT measured —
+#      hence only a fallback.
+# Do NOT derive it from the youngest transcript file: with nine parallel sessions that one belongs to
+# the session that wrote last.
 set -euo pipefail
 if [ -n "${KIT_SESSION_ID:-}" ]; then echo "$KIT_SESSION_ID"; exit 0; fi
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,5 +19,5 @@ if [ -n "$hp" ] && [ -f "$reg" ]; then
   [ -n "$sid" ] && { echo "$sid"; exit 0; }
 fi
 if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then echo "$CLAUDE_CODE_SESSION_ID"; exit 0; fi
-echo "keine Session-ID: weder Registry ~/.claude/sessions/<pid>.json noch CLAUDE_CODE_SESSION_ID — nicht raten" >&2
+echo "no session id: neither the registry ~/.claude/sessions/<pid>.json nor CLAUDE_CODE_SESSION_ID — do not guess" >&2
 exit 1

@@ -35,7 +35,7 @@ export PATH="$F:$PATH" ZELLIJ_LOG="$SANDBOX/zellij.log" ZELLIJ_SESSION_NAME="kit
 export KIT_ROLE=engineer-a KIT_HOST_PID="$ALT" KIT_RESTART_DELAY=1 KIT_LOOP_AFTER_SECONDS=20 KIT_LOOP_SLEEP=0
 unset KIT_ROLE_LOOP
 # Die "neue Session" der Schleife: haelt fest, dass sie lief, und setzt die Stopp-Datei.
-export KIT_LOOP_CLAUDE='date +%s >> "$KIT_ROOT/.role-loop/engineer-a.gestartet"; touch "$KIT_ROOT/.role-loop/engineer-a.stop"'
+export KIT_LOOP_CLAUDE='date +%s >> "$KIT_ROOT/.role-loop/engineer-a.started"; touch "$KIT_ROOT/.role-loop/engineer-a.stop"'
 # Seit die Schleife erst tickt und nur bei Arbeit startet (Fall 35), braucht engineer-a ein freies Ticket —
 # sonst wartet sie bis KIT_TICK_INTERVAL und startet den Host nie. Geprueft wird hier der Neustartweg.
 sandbox_plannable 59 "src/m59/**" > /dev/null
@@ -43,7 +43,7 @@ sandbox_issue 59 '{"labels":["status:planned","sprint:current"]}'
 "$BIN/brain.sh" handover "Stand 2026-09-15" <<<'Kein Ticket offen.' > /dev/null
 fehler=""
 d="$(KIT_RESTART_DRY_RUN=1 "$BIN/restart-self.sh" stop 2>&1)"
-case "$d" in *"zellij-Tab 'engineer-a (loop)'"*"role-loop.sh' 'engineer-a' --after $ALT"*) ;; *) fehler="$fehler trockenlauf:'$(echo "$d" | tr '\n' ' ' | cut -c1-160)'" ;; esac
+case "$d" in *"zellij tab 'engineer-a (loop)'"*"role-loop.sh' 'engineer-a' --after $ALT"*) ;; *) fehler="$fehler trockenlauf:'$(echo "$d" | tr '\n' ' ' | cut -c1-160)'" ;; esac
 [ ! -s "$ZELLIJ_LOG" ] || fehler="$fehler trockenlauf-rief-zellij"
 t0=$(date +%s)
 o="$("$BIN/restart-self.sh" stop 2>&1)"; rc=$?
@@ -51,10 +51,10 @@ o="$("$BIN/restart-self.sh" stop 2>&1)"; rc=$?
 grep -q "action new-tab --name engineer-a (loop) --layout" "$ZELLIJ_LOG" || fehler="$fehler kein-new-tab"
 for _ in $(seq 1 25); do kill -0 "$ALT" 2>/dev/null || break; sleep 1; done
 kill -0 "$ALT" 2>/dev/null && fehler="$fehler alter-host-lebt"
-for _ in $(seq 1 25); do [ -f "$KIT_ROOT/.role-loop/engineer-a.gestartet" ] && break; sleep 1; done
-[ -f "$KIT_ROOT/.role-loop/engineer-a.gestartet" ] || fehler="$fehler schleife-startete-nicht"
+for _ in $(seq 1 25); do [ -f "$KIT_ROOT/.role-loop/engineer-a.started" ] && break; sleep 1; done
+[ -f "$KIT_ROOT/.role-loop/engineer-a.started" ] || fehler="$fehler schleife-startete-nicht"
 L="$KIT_ROOT/.role-loop/engineer-a.log"
-w="$(grep -n "warte auf Ende von Host-PID $ALT" "$L" 2>/dev/null | head -1 | cut -d: -f1)"; s="$(grep -n 'starte claude' "$L" 2>/dev/null | head -1 | cut -d: -f1)"
+w="$(grep -n "waiting for host PID $ALT to end" "$L" 2>/dev/null | head -1 | cut -d: -f1)"; s="$(grep -n 'starting claude' "$L" 2>/dev/null | head -1 | cut -d: -f1)"
 [ -n "$w" ] && [ -n "$s" ] && [ "$w" -lt "$s" ] || fehler="$fehler reihenfolge(warte=$w,start=$s)"
 # zellij scheitert: nichts wird beendet
 rm -rf "$KIT_ROOT/.role-loop"

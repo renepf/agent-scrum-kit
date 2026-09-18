@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-CASE_DESC="Hintergrund-Session mit geerbter Rolle: Hook schweigt, Tick endet mit Exit 3 ohne Anker; eine normale Kind-Umgebung bleibt Rolle"
+CASE_DESC="background session mit geerbter Rolle: Hook schweigt, Tick endet mit Exit 3 ohne Anker; eine normale Kind-Umgebung bleibt Rolle"
 CASE_KIND="static"
 CASE_HOST="claude-code"
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
@@ -16,7 +16,7 @@ t1="$(CLAUDE_CODE_SESSION_KIND=bg KIT_ROLE=engineer-a KIT_HOST_PID=4711 KIT_SESS
 [ ! -f "$KIT_ROOT/.pid-roles/4711" ] || fehler="$fehler anker-geschrieben"
 # Gegenprobe: CLAUDE_CODE_CHILD_SESSION=1 steht in jeder Werkzeug-Umgebung — das darf NICHT sperren.
 h2="$(printf '{"source":"startup"}' | CLAUDE_CODE_CHILD_SESSION=1 KIT_ROLE=engineer-a "$H" 2>&1)"
-case "$h2" in *"Rolle **engineer-a**"*) ;; *) fehler="$fehler kind-umgebung-gesperrt" ;; esac
+case "$h2" in *"role **engineer-a**"*) ;; *) fehler="$fehler kind-umgebung-gesperrt" ;; esac
 observe "bg: Hook 0 Bytes (Kontext und --wake), Tick Exit $rt, kein Anker · CLAUDE_CODE_CHILD_SESSION=1: Hook liefert Rolle${fehler:+ · FEHLER:$fehler}"
 echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

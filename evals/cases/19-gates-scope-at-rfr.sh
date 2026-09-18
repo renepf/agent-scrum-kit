@@ -20,9 +20,9 @@ unveraendert() { # name nr befehl...
 }
 
 # a) Ledger ohne OWNS: planned abgelehnt
-sandbox_issue 42 '{"body":"AC-1: das Ergebnis ist messbar"}'
-printf '# Gates: #42\n\n- [ ] AC-1: das Ergebnis ist messbar\n  CHECK: python3 tools/check.py\n  EXPECT: gemessen\n  EVIDENCE: pending\n' | sandbox_ledger 42
-expect a-ohne-OWNS "$(st product-owner 42 planned)" '*ohne OWNS*'
+sandbox_issue 42 '{"body":"AC-1: the result is measurable"}'
+printf '# Gates: #42\n\n- [ ] AC-1: the result is measurable\n  CHECK: python3 tools/check.py\n  EXPECT: measured\n  EVIDENCE: pending\n' | sandbox_ledger 42
+expect a-ohne-OWNS "$(st product-owner 42 planned)" '*without OWNS*'
 
 # b) planned haelt OWNS als Revision 1 im eigenen Issue-Kommentar fest
 sandbox_issue 41 '{"pr":{"number":410,"head":"41414141aa","comments":[],"files":["src/export/writer.py","tests/export/test_writer.py","README.md"]}}'
@@ -34,7 +34,7 @@ st engineer-a 41 in-progress > /dev/null || fail b:in-progress
 # c) README.md ausserhalb: nichts geschrieben (schon beim ersten Versuch), abgelehnt, genau diese Datei genannt
 unveraendert c-schreibt-nichts 41 st engineer-a 41 rfr
 oc="$(st engineer-a 41 rfr)"
-expect c-ausserhalb "$oc" '*ausserhalb*README.md*'
+expect c-ausserhalb "$oc" '*outside OWNS*README.md*'
 case "$oc" in *writer.py*) fail c:Datei-in-OWNS-genannt ;; esac
 
 # d) Engineer erweitert OWNS im Ledger selbst: zaehlt nicht
@@ -45,35 +45,35 @@ expect d-Selbst-Erweiterung "$(st engineer-a 41 rfr)" '*README.md*revise.sh*'
 KIT_ROLE=engineer-a "$BIN/tickets.sh" comment 41 "**Notiz** — engineer-a · jetzt · session \`x\`
 
 OWNS Revision 9: \`src/**, tests/**, README.md\`"
-expect d2-fremde-Freigabezeile "$(st engineer-a 41 rfr)" '*Revision 1*ausserhalb*README.md*'
+expect d2-fremde-Freigabezeile "$(st engineer-a 41 rfr)" '*revision 1*outside OWNS*README.md*'
 
 # e) Revision abgelehnt: falsche Rolle, Aufruf ungleich Ledger, ganze Wurzel, ** im Segment,
 #    nur umsortiert, absoluter Pfad. Keine Ablehnung schreibt einen Kommentar.
 k0="$(kommentare)"
-expect e1-Rolle "$(rv engineer-a "src/export/**, tests/export/**, README.md" "brauche README")" '*nur der product-owner*'
-expect e2-ungleich-Ledger "$(rv product-owner "src/**" "anders als das Ledger")" '*das Ledger nennt*'
+expect e1-Rolle "$(rv engineer-a "src/export/**, tests/export/**, README.md" "README needed")" '*only by the product-owner*'
+expect e2-ungleich-Ledger "$(rv product-owner "src/**" "different from the ledger")" '*the ledger names*'
 # Die Ledger-Pruefung selbst muss ablehnen ("abgelehnt — Zeile ..."), nicht erst der Vergleich mit dem Aufruf,
 # der ihre Fehlermeldung als "das Ledger nennt '...'" zitieren wuerde.
 sandbox_plannable 41 "**"
-expect e3-Wurzel "$(rv product-owner "**" "alles")" '*abgelehnt — Zeile*ganze Wurzel*'
+expect e3-Wurzel "$(rv product-owner "**" "everything")" '*rejected — line*whole root*'
 sandbox_plannable 41 "src**"
-expect e4-Segment "$(rv product-owner "src**" "Segment")" '*abgelehnt — Zeile*ganzes Pfadsegment*'
+expect e4-Segment "$(rv product-owner "src**" "segment")" '*rejected — line*whole path segment*'
 sandbox_plannable 41 "tests/export/**, src/export/**"
-expect e5-unveraendert "$(rv product-owner "tests/export/**,src/export/**" "nur umsortiert")" '*keine neue Revision*'
+expect e5-unveraendert "$(rv product-owner "tests/export/**,src/export/**" "only reordered")" '*no new revision*'
 sandbox_plannable 41 "/etc/**"
-expect e6-absolut "$(rv product-owner "/etc/**" "absolut")" '*abgelehnt — Zeile*relativ*'
+expect e6-absolut "$(rv product-owner "/etc/**" "absolute")" '*rejected — line*must be relative*'
 sandbox_plannable 41 "src/export/**, tests/export/**, README.md"
-sandbox_issue 41 '{"body":"AC-1: Export schreibt eine Datei\nAC-2: README nennt den Export"}'
-expect e7-AC-ohne-Gate "$(rv product-owner "src/export/**, tests/export/**, README.md" "AC-2 fehlt im Ledger")" '*abgelehnt — AC ohne Gate*AC-2*'
+sandbox_issue 41 '{"body":"AC-1: the export writes a file\nAC-2: the README names the export"}'
+expect e7-AC-ohne-Gate "$(rv product-owner "src/export/**, tests/export/**, README.md" "AC-2 missing in the ledger")" '*rejected — AC without a gate*AC-2*'
 n=$((n + 1)); [ "$(kommentare)" = "$k0" ] || fail "e:Kommentar-trotz-Ablehnung(${k0}->$(kommentare))"
 n=$((n + 1)); [ "$(revision)" = 1 ] || fail "e:revision='$(revision)'"
 
 # f) product-owner gibt README frei: Revision 2 nennt alten Umfang, neuen Umfang und Grund
 sandbox_plannable 41 "src/export/**, tests/export/**, README.md"
-rv product-owner "README.md, src/export/**, tests/export/**" "AC-1 verlangt den Hinweis im README" > /dev/null || fail f:revise
+rv product-owner "README.md, src/export/**, tests/export/**" "AC-1 requires the hint in the README" > /dev/null || fail f:revise
 n=$((n + 1)); [ "$(revision)" = 2 ] || fail "f:revision='$(revision)'"
 kf="$(KIT_ROLE=product-owner "$BIN/tickets.sh" comments 41 | python3 -c 'import json,sys; print(" ".join(c for c in json.load(sys.stdin) if c.startswith("**OWNS Revision 2**")))')"
-expect f-Kommentar "$kf" '*Revision 1*src/export/*OWNS Revision 2:*README.md*AC-1 verlangt den Hinweis*'
+expect f-Kommentar "$kf" '*revision 1*src/export/*OWNS Revision 2:*README.md*AC-1 requires the hint*'
 
 # g) Gegenprobe: jetzt geht rfr durch
 expect g-rfr "$(st engineer-a 41 rfr)" '*in-progress → rfr*'
@@ -81,7 +81,7 @@ expect g-rfr "$(st engineer-a 41 rfr)" '*in-progress → rfr*'
 # h) ohne verknuepften PR keine Abgabe
 sandbox_plannable 43
 st product-owner 43 planned > /dev/null; st engineer-b 43 in-progress > /dev/null
-expect h-ohne-PR "$(st engineer-b 43 rfr)" '*kein verknuepfter PR*'
+expect h-ohne-PR "$(st engineer-b 43 rfr)" '*no linked PR*'
 
 # i) Globs: je Form ein Treffer und ein Nicht-Treffer; eine leere Dateiliste ist ein Fehlschlag
 while IFS='|' read -r g f soll; do
@@ -105,7 +105,7 @@ README.md|x/README.md|draussen
 a?.md|ab.md|drin
 a?.md|a/.md|draussen
 TABELLE
-expect i-leere-Liste "$(printf '' | python3 "$BIN/gates.py" scope "src/**" 2>&1)" '*leer*'
+expect i-leere-Liste "$(printf '' | python3 "$BIN/gates.py" scope "src/**" 2>&1)" '*is empty*'
 
 # j) unzulaessiges OWNS lehnt planned ab
 for bad in "**" "./**" "*" "**/*" "src**" "/etc/**" "../x/**"; do
@@ -132,9 +132,9 @@ db["pulls"] = {
 print(json.dumps(db))
 PY
 )"
-expect k-Umbenennung "$(st engineer-a 60 rfr)" '*ausserhalb*legacy/billing.py*'
-expect k-zwei-PRs "$(st engineer-a 61 rfr)" '*mehrere verknuepfte PRs*'
-expect k-Dateiliste-Fehler "$(FAKE_GH_FAIL=pr-files st engineer-a 62 rfr)" '*Dateiliste nicht lesbar*'
+expect k-Umbenennung "$(st engineer-a 60 rfr)" '*outside OWNS*legacy/billing.py*'
+expect k-zwei-PRs "$(st engineer-a 61 rfr)" '*several linked PRs*'
+expect k-Dateiliste-Fehler "$(FAKE_GH_FAIL=pr-files st engineer-a 62 rfr)" '*file list not readable*'
 expect k-Gegenprobe "$(st engineer-a 63 rfr)" '*in-progress → rfr*'
 
 observe "$((n - falsch))/$n Pruefungen bestanden · Datei-Backend: OWNS-Pflicht, Revision 1 am Issue, ausserhalb, Selbst-Erweiterung, fremde Freigabezeile, 7 abgelehnte Revisionen, Revision 2, rfr, ohne PR · 14 Globs + leere Liste · 7 unzulaessige OWNS · gh: Umbenennung, zwei PRs, Dateiliste-Fehler, Gegenprobe${fehler:+ · FEHLER:$fehler}"

@@ -21,4 +21,4 @@ cd "$KIT_WORKTREE_ROOT"
 # The round prompt is the host-neutral one from roles/START-HERE.md.
 exec qwen --auth-type openai --model "$KIT_LOCAL_MODEL" --openai-api-key local \
   --openai-base-url "$KIT_LOCAL_BASE_URL" --session-id "$KIT_SESSION_ID" \
-  -i "Fuehre bin/tick.sh aus. Liegt nichts fuer dich an, beende die Runde. Sonst arbeite deine Rolle laut $ROLE_FILE: ein Ticket zur Zeit, aufgreifen heisst sofort den In-Status setzen, kein Subagent."
+  -i "Run bin/tick.sh. If nothing is waiting for you, end the round. Otherwise work your role per $ROLE_FILE: one ticket at a time, picking up means setting the In status immediately, no subagent."

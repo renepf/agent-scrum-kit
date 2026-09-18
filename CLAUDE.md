@@ -1,4 +1,4 @@
 @AGENTS.md
 
-Der Arbeitsvertrag steht in `AGENTS.md`. Diese Datei importiert ihn, damit
-Hosts, die `CLAUDE.md` erwarten, denselben Text sehen. Nichts hier duplizieren.
+The working contract is in `AGENTS.md`. This file imports it so that
+hosts expecting `CLAUDE.md` see the same text. Duplicate nothing here.

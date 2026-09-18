@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# Einen Chat-Eintrag in die EIGENE Rollendatei anhaengen und neu indizieren.
+# Append a chat entry to your OWN role file and reindex.
 #
-#   bin/say.sh "#712 · PR #755 gruen, 14 Tests" <<'EOF'
-#   Offen: Netzabbruch mitten im Aufruf → @qa-ruthless bitte pruefen.
+#   bin/say.sh "#712 · PR #755 green, 14 tests" <<'EOF'
+#   Open: network drop in the middle of the call → @qa-ruthless please check.
 #   EOF
 #
-# Append-only. Bestehende Zeilen werden nie geaendert — der Index verweist auf
-# feste Zeilennummern, die fuer immer gueltig bleiben muessen.
+# Append-only. Existing lines are never changed — the index points at
+# fixed line numbers that must stay valid forever.
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
-[ $# -ge 1 ] || die "Aufruf: bin/say.sh \"<betreff>\" < <rumpf>"
+[ $# -ge 1 ] || die "usage: bin/say.sh \"<subject>\" < <body>"
 
 SPRINT="$(sprint_dir)"
 R="$(role)"
 FILE="$SPRINT/chat/$R.md"
 SUBJECT="$1"
 
-# Ticketnummer vom Betreff abtrennen, wenn sie vorn steht.
+# Split the ticket number off the subject when it comes first.
 TICKET="-"
 case "$SUBJECT" in
   \#[0-9]*) TICKET="${SUBJECT%% *}"; SUBJECT="${SUBJECT#* }" ;;
@@ -27,15 +27,15 @@ mkdir -p "$SPRINT/chat"
 BODY="$(cat)"
 
 append_entry() {
-  [ -f "$FILE" ] || printf '# chat · %s\n\nAppend-only. Bestehende Zeilen werden nie editiert —\nder Index verweist auf feste Zeilennummern.\n' "$R" > "$FILE"
+  [ -f "$FILE" ] || printf '# chat · %s\n\nAppend-only. Existing lines are never edited —\nthe index points at fixed line numbers.\n' "$R" > "$FILE"
   {
     printf '\n## %s · %s · %s · %s\n' "$(now)" "$R" "$TICKET" "$SUBJECT"
     printf '%s\n' "$BODY"
   } >> "$FILE"
 }
 
-# Sperre je Datei: zwei Sessions derselben Rolle wuerden sonst eine Zeile verlieren.
+# One lock per file: two sessions of the same role would otherwise lose a line.
 with_lock "$FILE.lock" append_entry
 
 "$(dirname "${BASH_SOURCE[0]}")/reindex.sh" > /dev/null
-echo "notiert in chat/$R.md:$(wc -l < "$FILE" | tr -d ' ')"
+echo "noted in chat/$R.md:$(wc -l < "$FILE" | tr -d ' ')"

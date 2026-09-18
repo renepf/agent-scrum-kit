@@ -8,9 +8,9 @@ n=0; ohne=""; hashes=""
 for f in "$KIT_ROOT"/roles/*.md; do
   case "$(basename "$f")" in START-HERE.md) continue ;; esac
   n=$((n + 1))
-  block="$(grep -A4 '^## Eiserne Regel' "$f")"
+  block="$(grep -A4 '^## Iron Rule' "$f")"
   case "$block" in
-    *"spawnt niemals einen Subagenten"*) hashes="$hashes$(printf '%s' "$block" | shasum | cut -d' ' -f1)
+    *"never spawns a subagent"*) hashes="$hashes$(printf '%s' "$block" | shasum | cut -d' ' -f1)
 " ;;
     *) ohne="$ohne $(basename "$f")" ;;
   esac

@@ -19,7 +19,7 @@ h1="$(shasum "$KIT_BOARD_ENV_FILE" | cut -d' ' -f1)"
 
 o2="$(KIT_BOARD_FIXTURE="$F/passt-nicht.json" "$BIN/board-check.sh" --write 2>&1)"; r2=$?
 [ "$r2" = 1 ] || fehler="$fehler falsches-Board-Exit-$r2"
-for erwartet in "Board-Option In Testing.*fehlt" "Board-Option Todo.*ueberzaehlig" "FAIL  Reihenfolge" "Label owner:qa-ruthless.*fehlt"; do
+for erwartet in "board option In Testing.*missing" "board option Todo.*surplus" "FAIL  order" "label owner:qa-ruthless.*missing"; do
   printf '%s' "$o2" | grep -qE "$erwartet" || fehler="$fehler nicht-erkannt:'$erwartet'"
 done
 h2="$(shasum "$KIT_BOARD_ENV_FILE" | cut -d' ' -f1)"

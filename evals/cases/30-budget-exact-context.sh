@@ -7,7 +7,7 @@ sandbox; trap sandbox_cleanup EXIT
 SPRINT="$(sandbox_sprint)"
 
 {
-  printf '# roster\n\n| Zeit | Rolle | Session-ID | Host |\n|---|---|---|---|\n'
+  printf '# roster\n\n| Time | Role | Session-ID | Host |\n|---|---|---|---|\n'
   printf '| 2026-01-01 00:00 | engineer-a | sess-quiet | test-fixture |\n'
   printf '| 2026-01-01 00:00 | engineer-b | sess-warn | test-fixture |\n'
   printf '| 2026-01-01 00:00 | qa-ruthless | sess-stop | test-fixture |\n'

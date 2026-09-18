@@ -7,7 +7,7 @@ sandbox; trap sandbox_cleanup EXIT
 SPRINT="$(sandbox_sprint)"
 
 {
-  printf '# roster\n\n| Zeit | Rolle | Session-ID | Host |\n|---|---|---|---|\n'
+  printf '# roster\n\n| Time | Role | Session-ID | Host |\n|---|---|---|---|\n'
   printf '| 2026-01-01 00:00 | engineer-a | gibt-es-nicht | test-fixture |\n'
 } > "$SPRINT/roster.md"
 
@@ -22,8 +22,8 @@ b="$(grep '| engineer-a |' "$SPRINT/budget.md")"
 chmod +x "$KIT_ROOT/adapters/test-fixture/transcript-path.sh"
 
 fehler=""
-case "$a" in *UNKNOWN*"nicht gefunden"*) ;; *) fehler="$fehler A='$a'" ;; esac
-case "$b" in *UNKNOWN*"keine Transkripte"*Notbremse*) ;; *) fehler="$fehler B='$b'" ;; esac
+case "$a" in *UNKNOWN*"not found"*) ;; *) fehler="$fehler A='$a'" ;; esac
+case "$b" in *UNKNOWN*"no transcripts"*"emergency brake"*) ;; *) fehler="$fehler B='$b'" ;; esac
 case "$a$b" in *"| 0 |"*) fehler="$fehler Null-statt-UNKNOWN" ;; esac
 
 observe "A: Session unbekannt → '$(echo "$a" | awk -F'|' '{gsub(/^ +| +$/,"",$6); print $6}')' · B: Host ohne Transkripte → '$(echo "$b" | awk -F'|' '{gsub(/^ +| +$/,"",$6); print $6}')'${fehler:+ · FEHLER:$fehler}"

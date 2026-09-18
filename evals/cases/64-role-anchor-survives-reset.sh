@@ -17,7 +17,7 @@ grep -q '| qa-ruthless | nach-reset |' "$SANDBOX/sprints/S-001-eval/roster.md" |
 # Fremder Host-Prozess ohne Anker: keine geratene Rolle.
 out2="$(env -u KIT_ROLE KIT_HOST_PID=999999 "$BIN/tick.sh" 2>&1)"; rc2=$?
 [ "$rc2" != 0 ] || fehler="$fehler fremder-Prozess-bekam-Rolle"
-case "$out2" in *"Rolle unbekannt"*) ;; *) fehler="$fehler keine-klare-Meldung" ;; esac
-observe "Anker nach Tick: $anker · ohne KIT_ROLE neu registriert als qa-ruthless: $(grep -c '| qa-ruthless | nach-reset |' "$SANDBOX/sprints/S-001-eval/roster.md") · fremder Prozess: Exit $rc2, 'Rolle unbekannt'${fehler:+ · FEHLER:$fehler}"
+case "$out2" in *"role unknown"*) ;; *) fehler="$fehler keine-klare-Meldung" ;; esac
+observe "Anker nach Tick: $anker · ohne KIT_ROLE neu registriert als qa-ruthless: $(grep -c '| qa-ruthless | nach-reset |' "$SANDBOX/sprints/S-001-eval/roster.md") · fremder Prozess: Exit $rc2, 'role unknown'${fehler:+ · FEHLER:$fehler}"
 echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

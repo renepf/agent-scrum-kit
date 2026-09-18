@@ -1,37 +1,37 @@
 #!/usr/bin/env bash
-# Prueft, ob das GitHub Project und die Repo-Labels das Statusmodell aus kit.env abbilden.
+# Checks whether the GitHub Project and the repo labels mirror the status model from kit.env.
 #
-#   bin/board-check.sh            nur pruefen, Exit 0 = alles abgebildet
-#   bin/board-check.sh --write    bei Erfolg die IDs atomar nach board.env schreiben
+#   bin/board-check.sh            check only, exit 0 = everything mirrored
+#   bin/board-check.sh --write    on success, write the IDs atomically to board.env
 #
-# Geprueft wird:
-#   1. das Project existiert und hat ein Einfachauswahl-Feld "Status"
-#   2. jede Board-Option aus KIT_STATUS_MAP existiert mit genau diesem Namen
-#   3. das Board hat keine Option, die der Loop nie setzt
-#   4. die Reihenfolge der Optionen folgt der Vorwaertskante
-#   5. im Repo existieren die Labels status:<schluessel> (ausser done), owner:<rolle>, Sprint-Label
+# What is checked:
+#   1. the project exists and has a single-select field "Status"
+#   2. every board option from KIT_STATUS_MAP exists under exactly that name
+#   3. the board has no option the loop never sets
+#   4. the order of the options follows the forward edge
+#   5. the repo has the labels status:<key> (except done), owner:<role>, sprint label
 #
-# Ein fehlgeschlagener gh-Aufruf ist ein Fehlschlag, kein "Board leer".
+# A failed gh call is a failure, not an "empty board".
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 WRITE=0; [ "${1:-}" = "--write" ] && WRITE=1
 
-[ "$KIT_BOARD" = "github-project" ] || die "KIT_BOARD ist '$KIT_BOARD'. Der Board-Check gilt nur fuer KIT_BOARD=github-project."
-case "$KIT_PROJECT_OWNER$KIT_PROJECT_NUMBER" in *UNKNOWN*) die "KIT_PROJECT_OWNER oder KIT_PROJECT_NUMBER steht auf UNKNOWN (kit.env)" ;; esac
+[ "$KIT_BOARD" = "github-project" ] || die "KIT_BOARD is '$KIT_BOARD'. The board check applies only to KIT_BOARD=github-project."
+case "$KIT_PROJECT_OWNER$KIT_PROJECT_NUMBER" in *UNKNOWN*) die "KIT_PROJECT_OWNER or KIT_PROJECT_NUMBER still says UNKNOWN (kit.env)" ;; esac
 
-# Quellen. Evals setzen die Fixture-Variablen und pruefen ohne Netz.
+# Sources. Evals set the fixture variables and check without the network.
 if [ -n "${KIT_BOARD_FIXTURE:-}" ]; then
   PROJECT_JSON="$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))["project"]))' "$KIT_BOARD_FIXTURE")"
   FIELDS_JSON="$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))["fields"]))' "$KIT_BOARD_FIXTURE")"
   LABELS_JSON="$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))["labels"]))' "$KIT_BOARD_FIXTURE")"
 else
-  "$BIN_DIR/preflight.sh" > /dev/null || die "Preflight fehlgeschlagen — stoppen und melden"
+  "$BIN_DIR/preflight.sh" > /dev/null || die "preflight failed — stop and report"
   PROJECT_JSON="$(gh project view "$KIT_PROJECT_NUMBER" --owner "$KIT_PROJECT_OWNER" --format json 2>&1)" \
-    || die "Project $KIT_PROJECT_OWNER/$KIT_PROJECT_NUMBER nicht lesbar: $PROJECT_JSON"
+    || die "project $KIT_PROJECT_OWNER/$KIT_PROJECT_NUMBER not readable: $PROJECT_JSON"
   FIELDS_JSON="$(gh project field-list "$KIT_PROJECT_NUMBER" --owner "$KIT_PROJECT_OWNER" --format json 2>&1)" \
-    || die "Felder nicht lesbar: $FIELDS_JSON"
+    || die "fields not readable: $FIELDS_JSON"
   LABELS_JSON="$(gh label list --repo "$KIT_REPO" --limit 500 --json name 2>&1)" \
-    || die "Labels von $KIT_REPO nicht lesbar: $LABELS_JSON"
+    || die "labels of $KIT_REPO not readable: $LABELS_JSON"
 fi
 
 OWNING_ROLES="engineer-a engineer-b qa-ruthless simplicity-reviewer security-engineer acceptance-tester"
@@ -42,37 +42,37 @@ import json, sys
 smap, lp, op, sprint, owning, pj, fj, lj = sys.argv[1:9]
 want = [tuple(l.split("|", 1)) for l in smap.strip().splitlines() if "|" in l]
 project = json.loads(pj); fields = json.loads(fj)
-fields = fields["fields"] if isinstance(fields, dict) else fields   # gh: {"fields":[…]}, Fixture: […]
+fields = fields["fields"] if isinstance(fields, dict) else fields   # gh: {"fields":[…]}, fixture: […]
 labels = {l["name"] for l in json.loads(lj)}
 
 rows, fail = [], False
 status = next((f for f in fields if f.get("name") == "Status"), None)
 if not status or "options" not in status:
-    print("FAIL|Feld 'Status'|Einfachauswahl-Feld 'Status' fehlt auf dem Board")
+    print("FAIL|field 'Status'|single-select field 'Status' missing on the board")
     sys.exit(0)
 opts = [(o["name"], o["id"]) for o in status["options"]]
 names = [n for n, _ in opts]
 
 for key, name in want:
     if name in names:
-        print(f"OK|Board-Option {name}|{key} → {dict(opts)[name]}")
+        print(f"OK|board option {name}|{key} → {dict(opts)[name]}")
     else:
-        print(f"FAIL|Board-Option {name}|fehlt — Schluessel '{key}' kann nicht gesetzt werden")
+        print(f"FAIL|board option {name}|missing — key '{key}' cannot be set")
 for n in names:
     if n not in [w[1] for w in want]:
-        print(f"FAIL|Board-Option {n}|ueberzaehlig — der Loop setzt diesen Status nie")
+        print(f"FAIL|board option {n}|surplus — the loop never sets this status")
 present = [n for n in names if n in [w[1] for w in want]]
 expected = [w[1] for w in want if w[1] in names]
-print(("OK" if present == expected else "FAIL") + f"|Reihenfolge|board: {' → '.join(present)}")
+print(("OK" if present == expected else "FAIL") + f"|order|board: {' → '.join(present)}")
 for key, _ in want:
     if key == "done":
         continue
     l = lp + key
-    print(("OK" if l in labels else "FAIL") + f"|Label {l}|" + ("vorhanden" if l in labels else "fehlt im Repo"))
+    print(("OK" if l in labels else "FAIL") + f"|label {l}|" + ("present" if l in labels else "missing in the repo"))
 for r in owning.split():
     l = op + r
-    print(("OK" if l in labels else "FAIL") + f"|Label {l}|" + ("vorhanden" if l in labels else "fehlt im Repo"))
-print(("OK" if sprint in labels else "FAIL") + f"|Label {sprint}|" + ("vorhanden" if sprint in labels else "fehlt im Repo"))
+    print(("OK" if l in labels else "FAIL") + f"|label {l}|" + ("present" if l in labels else "missing in the repo"))
+print(("OK" if sprint in labels else "FAIL") + f"|label {sprint}|" + ("present" if sprint in labels else "missing in the repo"))
 
 env = [f'KIT_PROJECT_ID="{project["id"]}"', f'KIT_STATUS_FIELD_ID="{status["id"]}"']
 for key, name in want:
@@ -82,7 +82,7 @@ print("ENV|" + "\\n".join(env))
 PY
 )"
 
-printf '%-5s %-34s %s\n' "" "Pruefpunkt" "Befund"
+printf '%-5s %-34s %s\n' "" "check point" "finding"
 FAILS=0
 while IFS='|' read -r verdict what detail; do
   [ "$verdict" = "ENV" ] && continue
@@ -92,15 +92,15 @@ done <<< "$RESULT"
 
 echo
 if [ "$FAILS" -gt 0 ]; then
-  echo "board-check: $FAILS Pruefpunkt(e) FAIL — das Board bildet das Statusmodell nicht ab. board.env unveraendert."
+  echo "board-check: $FAILS check point(s) FAIL — the board does not mirror the status model. board.env unchanged."
   exit 1
 fi
-echo "board-check: alle Pruefpunkte OK — $KIT_PROJECT_OWNER/projects/$KIT_PROJECT_NUMBER bildet das Statusmodell ab."
+echo "board-check: all check points OK — $KIT_PROJECT_OWNER/projects/$KIT_PROJECT_NUMBER mirrors the status model."
 if [ "$WRITE" = 1 ]; then
   {
-    echo "# GENERIERT von bin/board-check.sh --write am $(now). Nicht von Hand editieren."
+    echo "# GENERATED by bin/board-check.sh --write on $(now). Do not edit by hand."
     echo "# Project: $KIT_PROJECT_OWNER/projects/$KIT_PROJECT_NUMBER"
     printf '%b\n' "$(printf '%s\n' "$RESULT" | grep '^ENV|' | cut -d'|' -f2-)"
   } | atomic_write "$BOARD_ENV"
-  echo "board.env geschrieben: $(grep -c '^KIT_' "$BOARD_ENV") IDs"
+  echo "board.env written: $(grep -c '^KIT_' "$BOARD_ENV") IDs"
 fi

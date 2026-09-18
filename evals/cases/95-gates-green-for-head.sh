@@ -16,19 +16,19 @@ P="$SANDBOX/projekt"
 mkdir -p "$P/tools"
 cat > "$P/tools/check_export.py" <<'PY'
 import pathlib, sys
-if pathlib.Path("export.txt").read_text().strip() != "3 zeilen":
-    print("export falsch")
+if pathlib.Path("export.txt").read_text().strip() != "3 rows":
+    print("export wrong")
     sys.exit(1)
-print("export geprueft: 3 zeilen")
+print("export checked: 3 rows")
 PY
-echo "3 zeilen" > "$P/export.txt"
+echo "3 rows" > "$P/export.txt"
 git -C "$P" init -q && git -C "$P" add -A && git -C "$P" commit -qm eins || { echo "OBSERVED: git-Commit im Sandkasten gescheitert (Identitaet aus ~/.gitconfig?)"; exit 1; }
 head1="$(git -C "$P" rev-parse HEAD)"; h1="${head1:0:8}"
 
 pr() { # <head> <labels-json>
   sandbox_issue 51 "{\"labels\":$2,\"pr\":{\"number\":510,\"head\":\"$1\",\"comments\":[],\"checks\":\"pass\",\"state\":\"OPEN\",\"files\":[\"export.txt\"]}}"
   for v in "QA PASS" "SIMPLICITY PASS" "SECURITY PASS" "MERGE-GATE OK"; do sandbox_pr_comment 51 "$v — HEAD \`${1:0:8}\`, eval
-AC-1: Mutation Zeilenpruefung aus → rot"; done
+AC-1: mutation row check off → red"; done
 }
 ledger() { # <check> <expect>
   sandbox_ledger 51 <<LEDGER
@@ -36,18 +36,18 @@ ledger() { # <check> <expect>
 
 OWNS: export.txt, tools/**
 
-- [ ] AC-1: Export hat 3 Zeilen
+- [ ] AC-1: the export has 3 rows
   CHECK: $1
   EXPECT: $2
   EVIDENCE: pending
 
-- [ ] AC-2: Hinweis am laufenden Bau sichtbar
+- [ ] AC-2: hint visible on the running build
   EVIDENCE: pending
 LEDGER
 }
-GUT_CHECK="python3 tools/check_export.py"; GUT_EXPECT="export geprueft: 3 zeilen"
+GUT_CHECK="python3 tools/check_export.py"; GUT_EXPECT="export checked: 3 rows"
 IN_REVIEW='["status:in-review","owner:qa-ruthless"]'
-sandbox_issue 51 '{"body":"AC-1: Export hat 3 Zeilen\nAC-2: Hinweis am laufenden Bau sichtbar"}'
+sandbox_issue 51 '{"body":"AC-1: the export has 3 rows\nAC-2: hint visible on the running build"}'
 pr "$head1" "$IN_REVIEW"
 ledger "$GUT_CHECK" "$GUT_EXPECT"
 rft() { KIT_ROLE=qa-ruthless "$BIN/status.sh" 51 rft x 2>&1; }
@@ -55,10 +55,10 @@ run() { (cd "$P" && KIT_ROLE=engineer-a "$BIN/gates.sh" run 51 2>&1); }
 L="$SANDBOX/tickets/51/GATES.md"
 
 # a) drei PASS, aber AC-1 nie gelaufen: rft abgelehnt
-expect a-nie-gelaufen "$(rft)" '*abgelehnt*AC-1*'
+expect a-nie-gelaufen "$(rft)" '*rejected*AC-1*'
 
 # b) Lauf auf dem HEAD des PR: AC-1 abgehakt, Beleg nennt HEAD; rft geht durch
-expect b-lauf "$(run)" '*AC-1*gruen*'
+expect b-lauf "$(run)" '*AC-1*green*'
 check b-abgehakt grep -q '^- \[x\] AC-1:' "$L"
 check b-beleg-head grep -q "EVIDENCE: v1 head=$h1 " "$L"
 check b-manuell-unberuehrt grep -q '^- \[ \] AC-2:' "$L"
@@ -68,7 +68,7 @@ expect b-rft "$(rft)" '*in-review → rft*'
 echo "notiz" > "$P/NOTIZ.md"; git -C "$P" add -A && git -C "$P" commit -qm zwei
 head2="$(git -C "$P" rev-parse HEAD)"; h2="${head2:0:8}"
 pr "$head2" "$IN_REVIEW"
-expect c-alter-HEAD "$(rft)" '*abgelehnt*AC-1*'
+expect c-alter-HEAD "$(rft)" '*rejected*AC-1*'
 
 # d) Arbeitsbaum steht nicht auf dem HEAD des PR: kein Lauf, kein Beleg
 git -C "$P" checkout -q "$head1"
@@ -78,7 +78,7 @@ check d-ledger-unveraendert [ "$(cat "$L")" = "$vorher" ]
 git -C "$P" checkout -q -
 
 # e) Lauf auf dem neuen HEAD: rft geht durch
-expect e-lauf "$(run)" '*AC-1*gruen*'
+expect e-lauf "$(run)" '*AC-1*green*'
 expect e-rft "$(rft)" '*in-review → rft*'
 
 # f) Gate-Definition nach dem Lauf geaendert: der Beleg passt nicht mehr
@@ -88,12 +88,12 @@ import sys
 p = sys.argv[1]; t = open(p).read()
 open(p, "w").write(t.replace("CHECK: python3 tools/check_export.py", "CHECK: python3 tools/check_export.py --neu"))
 PY
-expect f-definition-geaendert "$(rft)" '*abgelehnt*AC-1*'
+expect f-definition-geaendert "$(rft)" '*rejected*AC-1*'
 
 # g) Fehlschlaege: Exit 0 ohne EXPECT, EXPECT mit Exit 1, Zeitueberschreitung. Jeder hakt ab und setzt pending.
 #    Die Zeitgrenze kommt aus kit.env — eine Umgebungsvariable vor dem Aufruf ueberschreibt sie nicht.
 echo 'KIT_GATE_TIMEOUT="2"' >> "$KIT_ENV_FILE"
-for fall in "exit0-ohne-expect|$GUT_CHECK|export geprueft: 4 zeilen" \
+for fall in "exit0-ohne-expect|$GUT_CHECK|export checked: 4 rows" \
             "expect-mit-exit1|python3 -c \"print('$GUT_EXPECT'); import sys; sys.exit(1)\"|$GUT_EXPECT" \
             "zeitueberschreitung|python3 -c \"import time; time.sleep(5); print('$GUT_EXPECT')\"|$GUT_EXPECT"; do
   name="${fall%%|*}"; rest="${fall#*|}"; chk="${rest%%|*}"; exp="${rest#*|}"
@@ -110,18 +110,18 @@ PY
   check "g-$name-nicht-abgehakt" grep -q '^- \[ \] AC-1:' "$L"
   n=$((n + 1)); [ "$(grep -A3 '^- \[ \] AC-1:' "$L" | grep -c 'EVIDENCE: pending')" = 1 ] || fail "g-$name-nicht-pending"
 done
-expect g-zeit-gemeldet "$og" '*Zeit*'
-expect g-rft "$(rft)" '*abgelehnt*AC-1*'
+expect g-zeit-gemeldet "$og" '*timed out*'
+expect g-rft "$(rft)" '*rejected*AC-1*'
 
 # h) Merge: AC-1 gruen, AC-2 manuell ohne Beleg → abgelehnt; Beleg nur durch acceptance-tester; dann Merge
 ledger "$GUT_CHECK" "$GUT_EXPECT"
 pr "$head2" '["status:in-testing","owner:acceptance-tester"]'
 run > /dev/null
 merge() { KIT_ROLE=product-owner "$BIN/merge.sh" 51 2>&1; }
-expect h-manuell-ohne-beleg "$(merge)" '*abgelehnt*AC-2*'
-expect h-attest-rolle "$(KIT_ROLE=engineer-a "$BIN/gates.sh" attest 51 AC-2 "gesehen" 2>&1)" '*acceptance-tester*'
-expect h-attest-ausfuehrbar "$(KIT_ROLE=acceptance-tester "$BIN/gates.sh" attest 51 AC-1 "gesehen" 2>&1)" '*AC-1*ausfuehrbar*'
-expect h-attest "$(KIT_ROLE=acceptance-tester "$BIN/gates.sh" attest 51 AC-2 "Hinweis sichtbar, Screenshot hinweis.png" 2>&1)" '*AC-2*'
+expect h-manuell-ohne-beleg "$(merge)" '*rejected*AC-2*'
+expect h-attest-rolle "$(KIT_ROLE=engineer-a "$BIN/gates.sh" attest 51 AC-2 "seen" 2>&1)" '*acceptance-tester*'
+expect h-attest-ausfuehrbar "$(KIT_ROLE=acceptance-tester "$BIN/gates.sh" attest 51 AC-1 "seen" 2>&1)" '*AC-1*executable*'
+expect h-attest "$(KIT_ROLE=acceptance-tester "$BIN/gates.sh" attest 51 AC-2 "hint visible, screenshot hint.png" 2>&1)" '*AC-2*'
 check h-beleg-head grep -q "EVIDENCE: manual head=$h2 by=acceptance-tester" "$L"
 expect h-merge "$(merge)" '*in-testing → done*'
 

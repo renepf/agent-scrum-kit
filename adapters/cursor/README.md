@@ -1,40 +1,42 @@
+🇬🇧 English · [🇩🇪 Deutsch](README.de.md)
+
 # Adapter: cursor
 
-Teilweise verifiziert am 2026-09-09: `cursor-agent --help` auf dieser Maschine gelesen.
+Partly verified on 2026-09-09: `cursor-agent --help` read on this machine.
 
-## 1. Session starten
+## 1. Start a session
 
 ```bash
-cd <dein-projekt>/agent-scrum-kit     # im Kit-Ordner, nicht im Projekt
+cd <your-project>/agent-scrum-kit     # in the kit folder, not in the project
 export KIT_ROLE=engineer-a
 export KIT_HOST=cursor
 cursor-agent
 ```
 
-Belegte Schalter aus `cursor-agent --help`:
+Attested flags from `cursor-agent --help`:
 
-- `-p, --print` — nicht-interaktiv, mit vollem Werkzeugzugriff
+- `-p, --print` — non-interactive, with full tool access
 - `--output-format text|json|stream-json`
-- `--resume [chatId]`, `--continue` — Sitzung fortsetzen
+- `--resume [chatId]`, `--continue` — continue a session
 - `--model <name>`, `--list-models`
 
-## 2. Rollendatei laden
+## 2. Load a role file
 
 ```bash
-cursor-agent "Lies roles/engineer.md und uebernimm die Rolle engineer-a."
+cursor-agent "Read roles/engineer.md and take over the role engineer-a."
 ```
 
-`.cursorrules` im Repo-Wurzelverzeichnis zeigt auf `AGENTS.md`, den Arbeitsvertrag.
+`.cursorrules` in the repo root points at `AGENTS.md`, the working contract.
 
-## 3. Session-Kennung
+## 3. Session id
 
-`UNKNOWN — cursor-agent kennt eine chatId (--resume [chatId]), aber wo sie abgelegt wird,
-ist nicht geprueft. Zu pruefen unter ~/.cursor/ (Kandidaten: chats/, agents/, projects/).`
+`UNKNOWN — cursor-agent knows a chatId (--resume [chatId]), but where it is stored
+is not checked. To check under ~/.cursor/ (candidates: chats/, agents/, projects/).`
 
-Bis das geklaert ist: `KIT_SESSION_ID` von Hand setzen.
+Until that is settled: set `KIT_SESSION_ID` by hand.
 
-## 4. Tokenbudget
+## 4. Token budget
 
-`UNKNOWN — Format und Ort der Transkripte nicht geprueft.` `transcript-path.sh` scheitert
-deshalb bewusst. Folge: `budget.md` traegt `UNKNOWN` ein, und die Rolle faellt auf die
-Notbremse zurueck — Ruhestand nach `KIT_MAX_TICKETS` Tickets.
+`UNKNOWN — the format and the place of the transcripts are not checked.` `transcript-path.sh`
+therefore fails on purpose. The consequence: `budget.md` records `UNKNOWN`, and the role falls back to the
+emergency brake — retirement after `KIT_MAX_TICKETS` tickets.

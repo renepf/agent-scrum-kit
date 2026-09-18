@@ -25,7 +25,7 @@ pruefe() {
   [ -z "$(fake_gh_get "$nr" comments)" ] || fehler="$fehler $fall:kommentar"
   grep -qE "issue (edit|comment|close) $nr" "$FAKE_GH_LOG" && fehler="$fehler $fall:schreibaufruf-nach-fehler"
   [ "$(chat_zeilen)" = "$chat_vorher" ] || fehler="$fehler $fall:chat-eintrag"
-  case "$out" in *Board*) ;; *) fehler="$fehler $fall:meldung-nennt-board-nicht" ;; esac
+  case "$out" in *[Bb]oard*) ;; *) fehler="$fehler $fall:meldung-nennt-board-nicht" ;; esac
   bericht="$bericht $fall:rc=$rc"
 }
 chat_zeilen() { cat "$SANDBOX"/sprints/*/chat/*.md 2>/dev/null | wc -l | tr -d ' '; }
@@ -58,7 +58,7 @@ out="$(FAKE_GH_FAIL=readback "$BIN/status.sh" 24 in-review "eval" 2>&1)"; rc=$?
 [ -z "$(fake_gh_get 24 comments)" ] || fehler="$fehler D:kommentar"
 grep -qE "issue (edit|comment|close) 24" "$FAKE_GH_LOG" && fehler="$fehler D:schreibaufruf-nach-fehler"
 [ "$(grep -c 'readback PVTI_24' "$FAKE_GH_LOG")" = 4 ] || fehler="$fehler D:$(grep -c 'readback PVTI_24' "$FAKE_GH_LOG")-Leseversuche-statt-4"
-case "$out" in *Board*) ;; *) fehler="$fehler D:meldung-nennt-board-nicht" ;; esac
+case "$out" in *[Bb]oard*) ;; *) fehler="$fehler D:meldung-nennt-board-nicht" ;; esac
 bericht="$bericht D:rc=$rc"
 
 observe "A graphql-Fehler, B item-edit-Fehler, C fehlende Options-ID, D Zuruecklesen leer:$bericht · $([ -z "$fehler" ] && echo "Label, Board, Kommentar, Chat unveraendert" || echo "FEHLER:$fehler")"

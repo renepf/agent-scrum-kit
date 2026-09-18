@@ -1,135 +1,135 @@
-# LOOP — Betriebsprotokoll des Agenten-Teams
+# LOOP — operating protocol of the agent team
 
-Host-unabhaengig. Wie eine Session **startet**, steht in `adapters/<host>/README.md`.
-Wie das Team eingerichtet wird, steht in `INSTALL.md`.
+Host-independent. How a session **starts** is in `adapters/<host>/README.md`.
+How the team is set up is in `INSTALL.md`.
 
-## 1. Grundsatz
+## 1. Principle
 
-Jede Rolle ist eine eigene Session in einem eigenen Terminal, mit eigenem Kontextfenster.
-**Es werden keine Subagenten gespawnt.** Jede Session arbeitet im Haupt-Thread an genau einem
-Ticket zur Zeit, und je Rolle laeuft genau **ein** Prozess.
+Every role is its own session in its own terminal, with its own context window.
+**No subagents are spawned.** Every session works in the main thread on exactly one
+ticket at a time, and per role exactly **one** process runs.
 
-Zwei Wahrheiten, strikt getrennt:
+Two truths, strictly separated:
 
-| Was | Wo | Wer schreibt |
+| What | Where | Who writes |
 |---|---|---|
-| **Ticketstatus** — wo steht das Ticket | Status-Feld des GitHub Projects (`KIT_BOARD=github-project`), Label als Spiegel | nur `bin/status.sh` |
-| **Besitz** — wer haelt es gerade | Label `owner:<rolle>` | nur `bin/status.sh` und `bin/claim.sh` |
-| **Begruendung, Befund, Querverkehr** | `sprints/<sprint>/chat/<rolle>.md` | jede Rolle nur ihre eigene Datei |
+| **Ticket status** — where the ticket stands | status field of the GitHub Project (`KIT_BOARD=github-project`), the label as a mirror | only `bin/status.sh` |
+| **Ownership** — who holds it right now | label `owner:<role>` | only `bin/status.sh` and `bin/claim.sh` |
+| **Reasoning, findings, cross-talk** | `sprints/<sprint>/chat/<role>.md` | every role only its own file |
 
-Der Chat entscheidet **nie**, wer dran ist. Faellt der Chat aus, laeuft der Loop weiter.
+The chat **never** decides whose turn it is. If the chat fails, the loop runs on.
 
-Besitz haengt am Label, nicht am Assignee: alle Sessions teilen oft **einen** Account, und der
-Assignee kann `engineer-a` und `engineer-b` nicht unterscheiden.
+Ownership hangs on the label, not on the assignee: all sessions often share **one** account, and the
+assignee cannot tell `engineer-a` and `engineer-b` apart.
 
-## 2. Statusmodell — acht Zustaende
+## 2. Status model — eight states
 
-| # | Schluessel | Board | Bedeutung | Besitz (`owner:`) | Weiter wenn |
+| # | Key | Board | Meaning | Ownership (`owner:`) | On when |
 |---|---|---|---|---|---|
-| 1 | `backlog` | Backlog | Ticket existiert, noch nicht geschnitten | — (product-owner) | Story + ACs stehen, Loesungsweg abgestimmt |
-| 2 | `planned` | Planned | im Sprint, bereit zur Aufnahme | **niemand** | ein Engineer nimmt auf |
-| 3 | `in-progress` | In progress | Implementierung laeuft | genau **ein** Engineer | fertig **und** PR offen |
-| 4 | `rfr` | RfR | Ready for Review — wartet | **niemand** | ein Pruefer nimmt auf |
-| 5 | `in-review` | In review | Pruefer arbeiten **aktiv**, parallel | qa-ruthless, simplicity-reviewer, security-engineer | alle drei PASS fuer den aktuellen HEAD |
-| 6 | `rft` | RfT | Ready for Testing — wartet | **niemand** | acceptance-tester nimmt auf |
-| 7 | `in-testing` | In Testing | Acceptance-Test am laufenden Bau | acceptance-tester | ACCEPTANCE PASS, MERGE-GATE OK, PO-Entscheid |
-| 8 | `done` | Done | gemergt und geschlossen, **kein** Label | — | — |
+| 1 | `backlog` | Backlog | the ticket exists, not cut yet | — (product-owner) | story + ACs stand, solution path agreed |
+| 2 | `planned` | Planned | in the sprint, ready to be picked up | **nobody** | an engineer picks it up |
+| 3 | `in-progress` | In progress | implementation is running | exactly **one** engineer | finished **and** the PR open |
+| 4 | `rfr` | RfR | Ready for Review — waiting | **nobody** | a reviewer picks it up |
+| 5 | `in-review` | In review | reviewers work **actively**, in parallel | qa-ruthless, simplicity-reviewer, security-engineer | all three PASS for the current HEAD |
+| 6 | `rft` | RfT | Ready for Testing — waiting | **nobody** | the acceptance-tester picks it up |
+| 7 | `in-testing` | In Testing | acceptance test against the running build | acceptance-tester | ACCEPTANCE PASS, MERGE-GATE OK, the PO decision |
+| 8 | `done` | Done | merged and closed, **no** label | — | — |
 
-**Ready heisst wartend, In heisst aktiv.** Wer ein Ticket aufgreift, setzt **sofort** den
-In-Status; ein weiterer Pruefer steigt mit `bin/claim.sh` ein.
+**Ready means waiting, In means active.** Whoever picks a ticket up sets the
+In status **immediately**; a further reviewer joins with `bin/claim.sh`.
 
-### Erlaubte Kanten — genau diese
+### Allowed edges — exactly these
 
 ```
 backlog → planned → in-progress → rfr → in-review → rft → in-testing → done
                         ▲                    │                    │
                         └────────────────────┴────────────────────┘
-                                   Rueckwaertskante
+                                   backward edge
 ```
 
-| Kante | Wer darf | Pruefung vor dem Schreiben |
+| Edge | Who may | Check before writing |
 |---|---|---|
-| `backlog → planned` | product-owner | **Ledger:** `tickets/<nr>/GATES.md` hat je `AC-<n>` des Issues ein Gate |
-| `planned → in-progress` | engineer-a, engineer-b | setzt `owner:<engineer>` |
-| `in-progress → rfr` | der Engineer mit `owner:` | fremder Besitz wird abgelehnt; **Umfang:** jede Datei des PR liegt in der freigegebenen OWNS-Revision |
-| `rfr → in-review` | ein Pruefer | setzt `owner:<pruefer>`, weitere Pruefer bleiben |
-| `in-review → rft` | ein Pruefer | **Gate:** QA PASS, SIMPLICITY PASS, SECURITY PASS fuer den aktuellen HEAD; jedes ausfuehrbare Gate des Ledgers lief fuer diesen HEAD gruen; Lint ohne Fehler; je ausfuehrbarem Gate eine QA-Mutationszeile |
+| `backlog → planned` | product-owner | **ledger:** `tickets/<nr>/GATES.md` has one gate per `AC-<n>` of the issue |
+| `planned → in-progress` | engineer-a, engineer-b | sets `owner:<engineer>` |
+| `in-progress → rfr` | the engineer with `owner:` | foreign ownership is refused; **scope:** every file of the PR lies within the approved OWNS revision |
+| `rfr → in-review` | a reviewer | sets `owner:<reviewer>`, further reviewers stay |
+| `in-review → rft` | a reviewer | **gate:** QA PASS, SIMPLICITY PASS, SECURITY PASS for the current HEAD; every executable gate of the ledger ran green for this HEAD; lint without an error; one QA mutation line per executable gate |
 | `rft → in-testing` | acceptance-tester | — |
-| `in-testing → done` | product-owner, oder merge-gate mit `PO OK` fuer den aktuellen HEAD | normal ueber `bin/merge.sh`; jedes Gate fuer den aktuellen HEAD gruen oder belegt; kein offenes `ABANDON` |
-| `in-review → in-progress` | ein Pruefer | `owner:` zurueck an den Engineer aus der Kommentarhistorie |
-| `in-testing → in-progress` | acceptance-tester, merge-gate, product-owner | dasselbe |
+| `in-testing → done` | product-owner, or merge-gate with `PO OK` for the current HEAD | normally through `bin/merge.sh`; every gate green or attested for the current HEAD; no open `ABANDON` |
+| `in-review → in-progress` | a reviewer | `owner:` back to the engineer from the comment history |
+| `in-testing → in-progress` | acceptance-tester, merge-gate, product-owner | the same |
 
-Jeder andere Uebergang wird abgelehnt. Nach einer Rueckweisung laeuft **dieselbe Schleife von
-vorn**: in-progress → rfr → in-review → rft → in-testing. Keine Abkuerzung, kein "kleiner Fix".
+Every other transition is refused. After a rejection **the same loop runs from the
+start**: in-progress → rfr → in-review → rft → in-testing. No shortcut, no "small fix".
 
-### Reihenfolge in `bin/status.sh`
+### Order in `bin/status.sh`
 
-1. **Alles pruefen, bevor irgendetwas geschrieben wird:** Kante, Rolle, Besitz, Gate. Eine
-   abgelehnte Transition fasst weder Board noch Label noch Kommentar an.
-2. **Board zuerst**, dann den Wert **zuruecklesen**. Weicht er ab oder scheitert der Aufruf,
-   bricht das Skript ab, und das Label bleibt unveraendert.
-3. Label als Spiegel, `owner:`-Besitz, Issue-Kommentar mit Rolle, Session-ID und Zeit, Chat.
+1. **Check everything before anything is written:** edge, role, ownership, gate. A
+   refused transition touches neither the board nor the label nor a comment.
+2. **The board first**, then **read the value back**. If it differs or the call fails,
+   the script aborts, and the label stays unchanged.
+3. The label as a mirror, `owner:` ownership, an issue comment with the role, session id and time, the chat.
 
-### Verdicts gelten nur fuer einen HEAD
+### Verdicts hold for one HEAD only
 
-Ein Verdict ist ein PR-Kommentar, dessen erste Zeile mit `<VERDICT> — HEAD \`<sha8>\`` beginnt.
-Ein Push entwertet alle Verdicts fuer den alten HEAD. `status.sh` und `merge.sh` pruefen das
-maschinell.
+A verdict is a PR comment whose first line starts with `<VERDICT> — HEAD \`<sha8>\``.
+A push invalidates every verdict for the old HEAD. `status.sh` and `merge.sh` check that
+mechanically.
 
-### Gate-Ledger je Ticket
+### Gate ledger per ticket
 
-Vor `planned` hat jedes Ticket einen pruefbaren Vertrag unter `tickets/<nr>/GATES.md` (Ort:
-`KIT_TICKETS_DIR`). Das Issue nennt jedes Acceptance-Kriterium als eigene Zeile
-`AC-<n>: <beobachtbares ergebnis>`, das Ledger hat fuer jede dieser IDs ein Gate. Format und Regeln
-stammen aus unlazy (MIT), die Einzelheiten stehen in `bin/gates.py`.
+Before `planned` every ticket has a checkable contract under `tickets/<nr>/GATES.md` (location:
+`KIT_TICKETS_DIR`). The issue names every acceptance criterion as its own line
+`AC-<n>: <observable result>`, and the ledger has one gate for each of those ids. Format and rules
+come from unlazy (MIT); the details are in `bin/gates.py`.
 
 ```
-# Gates: #<nr> <titel>
+# Gates: #<nr> <title>
 
-OWNS: <pfade, die dieses Ticket aendern darf, z.B. src/export/**, tests/export/**>
+OWNS: <paths this ticket may change, e.g. src/export/**, tests/export/**>
 
-- [ ] AC-1: <ergebnis>
-  CHECK: <befehl, der das Ergebnis direkt misst>
-  EXPECT: <text, den nur der Erfolg druckt>
+- [ ] AC-1: <result>
+  CHECK: <command that measures the result directly>
+  EXPECT: <text only success prints>
   EVIDENCE: pending
 
-- [ ] AC-2: <ergebnis, das nur ein Mensch am laufenden Bau sieht>
+- [ ] AC-2: <result only a human sees on the running build>
   EVIDENCE: pending
 ```
 
-Jede `AC-<n>` im Issue-Text zaehlt, in jeder Schreibweise, ausser in Codebloecken und HTML-Kommentaren.
+Every `AC-<n>` in the issue text counts, in every spelling, except inside code blocks and HTML comments.
 
-`planned` haelt `OWNS:` in seinem Issue-Kommentar als Zeile `OWNS Revision 1: \`<globs>\`` fest.
-Diese Zeile ist die Freigabe. `rfr` liest nur Kommentare, deren erste Zeile der product-owner
-geschrieben hat, und nimmt die hoechste Revision. Aendert jemand `OWNS:` im Ledger, erweitert das
-nichts, bis der product-owner `bin/revise.sh <nr> "<globs>" "<grund>"` ausfuehrt: die Globs im Aufruf
-muessen dem Ledger gleichen, der Kommentar nennt alten und neuen Umfang und den Grund.
+`planned` records `OWNS:` in its issue comment as the line `OWNS Revision 1: \`<globs>\``.
+That line is the approval. `rfr` reads only comments whose first line was written by the product-owner,
+and takes the highest revision. If somebody changes `OWNS:` in the ledger, that extends
+nothing until the product-owner runs `bin/revise.sh <nr> "<globs>" "<reason>"`: the globs in the call
+must equal the ledger, and the comment names the old and the new scope and the reason.
 
-OWNS-Globs: `**` ueber Verzeichnisgrenzen und nur als ganzes Segment, `*` und `?` innerhalb eines
-Namens, `/` am Ende heisst alles darunter, ein Pfad ohne Glob ist genau eine Datei. Verboten sind
-absolute Pfade, `..` und alles, was die ganze Wurzel freigibt (`**`, `*`, `./**`). Bei einer
-Umbenennung zaehlt auch der alte Pfad.
+OWNS globs: `**` crosses directory boundaries and only as a whole segment, `*` and `?` inside a
+name, a trailing `/` means everything below, a path without a glob is exactly one file. Forbidden are
+absolute paths, `..` and anything that frees the whole root (`**`, `*`, `./**`). On a
+rename the old path counts too.
 
-Zwei Tickets desselben Sprints halten nie dieselbe Datei. Ein Pfad ohne Glob ist eine Datei: er
-ueberschneidet sich mit einem Glob, der ihn trifft. Zwei Globs gelten nur dann als getrennt, wenn ein
-woertliches Pfadsegment abweicht, bevor auf einer Seite ein Glob-Zeichen steht — `src/*.py` und
-`src/*.kt` gelten also als ueberlappend. Im Zweifel lehnt das Kit ab. Ein Sprint-Ticket ohne Freigabe
-haelt nichts.
+Two tickets of the same sprint never hold the same file. A path without a glob is one file: it
+overlaps with a glob that matches it. Two globs count as separate only when a
+literal path segment differs before a glob character stands on either side — so `src/*.py` and
+`src/*.kt` count as overlapping. In doubt the kit refuses. A sprint ticket without an approval
+holds nothing.
 
-`bin/gates.sh run <nr>` fuehrt im Arbeitsbaum des PR jedes ausfuehrbare Gate aus, nur wenn der
-Arbeitsbaum auf dem HEAD des PR steht. Gruen heisst Exit 0 und `EXPECT` in stdout plus stderr; dann
-steht `- [x]` und `EVIDENCE: v1 head=<sha8> def=<digest> …`, sonst `- [ ]` und `EVIDENCE: pending`.
-Ein Beleg gilt nur fuer diesen HEAD und diese Definition aus `CHECK`, `EXPECT` und `CWD`: ein Push
-oder eine geaenderte Zeile macht ihn ungueltig. Zeitgrenze je Gate: `KIT_GATE_TIMEOUT` Sekunden. Ein
-manuelles Gate belegt der acceptance-tester oder der product-owner fuer den aktuellen HEAD:
-`bin/gates.sh attest <nr> <gate> "<beleg>"`. `CHECK` ist Shell-Code aus dem Ledger und laeuft mit den
-Rechten der Session, die ihn startet.
+`bin/gates.sh run <nr>` runs every executable gate in the worktree of the PR, only when the
+worktree stands on the HEAD of the PR. Green means exit 0 and `EXPECT` in stdout plus stderr; then
+`- [x]` and `EVIDENCE: v1 head=<sha8> def=<digest> …` stand there, otherwise `- [ ]` and `EVIDENCE: pending`.
+Evidence holds only for this HEAD and this definition of `CHECK`, `EXPECT` and `CWD`: a push
+or a changed line invalidates it. Time limit per gate: `KIT_GATE_TIMEOUT` seconds. A
+manual gate is attested by the acceptance-tester or the product-owner for the current HEAD:
+`bin/gates.sh attest <nr> <gate> "<evidence>"`. `CHECK` is shell code from the ledger and runs with the
+rights of the session that starts it.
 
-Ein AC, das sich nicht liefern laesst, faellt nie still weg. Wer es aufgibt, schreibt an Spalte 1
-`ABANDON: AC-<n> <grund und uebergabe>` ins Ledger. Review und Lauf ueberspringen dieses Gate;
-`merge.sh` und `status.sh <nr> done` lehnen mit `HANDOFF REQUIRED` ab, solange die Zeile steht. Das
-letzte Wort hat der product-owner: er nimmt das AC per Folgeticket aus Issue und Ledger, oder er
-schickt das Ticket zurueck.
+An AC that cannot be delivered never falls away silently. Whoever gives it up writes at column 1
+`ABANDON: AC-<n> <reason and handover>` into the ledger. Review and run skip that gate;
+`merge.sh` and `status.sh <nr> done` refuse with `HANDOFF REQUIRED` while the line stands. The
+last word has the product-owner: they take the AC out of issue and ledger with a follow-up ticket, or they
+send the ticket back.
 
 `planned` also records the definition of every gate as `GATES Revision 1: \`AC-1=<digest>, …\``
 next to `OWNS Revision 1`. Before any check, `merge.sh` prints a merge report: each AC of the issue
@@ -138,198 +138,198 @@ ABANDONED, no gate in the ledger), `definition changed since approval` where a d
 the files in the diff. A failed read shows as `UNKNOWN` in the report. The report is a measurement
 for the product-owner, not a check: it rejects nothing.
 
-Grenze: Die Rolle kommt wie ueberall im Kit aus `KIT_ROLE` oder dem Anker. Wer sich als
-product-owner ausgibt, kann freigeben. Der Kommentar macht das in der Issue-Historie sichtbar,
-verhindern kann das Kit es nicht.
+A limit: as everywhere in the kit, the role comes from `KIT_ROLE` or the anchor. Whoever passes
+themselves off as the product-owner can approve. The comment makes that visible in the issue history;
+the kit cannot prevent it.
 
-| Pruefung | Wo | Lehnt ab, wenn |
+| Check | Where | Refuses when |
 |---|---|---|
-| Referenzbefund | `status.sh <nr> planned` | `KIT_REFERENCE_CMD` ist gesetzt und `spec.md` hat keine Zeile `REFERENCE:`. Der `requirements-engineer` fuehrt den Befehl in seiner eigenen Sitzung aus und traegt den Befund ein |
-| Artefaktkette | `status.sh <nr> planned` | `tickets/<nr>/intent.md`, `spec.md` oder `plan.md` fehlt oder ist leer. Der `requirements-engineer` schreibt intent und spec, den Plan mit dem product-owner |
-| Deckung | `status.sh <nr> planned` | das Ledger fehlt oder ist formal kaputt, das Issue nennt keine AC, eine AC hat kein Gate, das Ledger nennt eine AC, die das Issue nicht kennt, das Ledger nennt kein oder ein unzulaessiges `OWNS:`, ein Gate ist schon abgehakt oder per `ABANDON` aufgegeben |
-| Ueberlappung | `status.sh <nr> planned`, `bin/revise.sh`, `bin/sprint-new.sh` | ein OWNS-Glob kann dieselbe Datei meinen wie die Freigabe eines anderen offenen Sprint-Tickets; bei `sprint-new.sh` wie das Ledger eines anderen Tickets im Schnitt |
-| Lint | `status.sh <nr> planned`, `status.sh <nr> rft` | ein Orakel kann nicht fallen: `CHECK` gibt festen Text aus, `EXPECT` ist ein Wort wie `ok` oder `fertig`, ein `EXPECT`-Regex sieht aus wie ein Pfad, `EXPECT` ist nur eine Zahl aus dem Issue. Hinweise lehnen nicht ab und stehen im planned-Kommentar: manuelles Gate, Zahl im Titel eines manuellen Gates, Taetigkeit statt Ergebnis, ueberwiegend manuelles Ledger |
-| QA-Mutation je Gate | `status.sh <nr> rft` | fuer ein ausfuehrbares Gate steht in keinem `QA PASS` fuer den aktuellen HEAD eine Zeile `<gate>: Mutation <was> → rot` |
-| Gruen fuer HEAD | `status.sh <nr> rft` | ein ausfuehrbares Gate hat keinen gruenen Beleg fuer den aktuellen HEAD, oder seine Definition hat sich seit dem Lauf geaendert |
-| Weglassen sichtbar | `bin/merge.sh <nr>`, `status.sh <nr> done` | ein Gate steht auf `ABANDON` (`HANDOFF REQUIRED`) |
-| Belegt vor Merge | `bin/merge.sh <nr>` | wie oben, dazu ein manuelles Gate ohne Beleg fuer den aktuellen HEAD |
-| Umfang | `status.sh <nr> rfr` | kein oder mehr als ein verknuepfter PR, keine Freigabe am Issue, die Dateiliste ist leer oder nicht lesbar, eine Datei des PR liegt ausserhalb der hoechsten freigegebenen Revision |
+| reference finding | `status.sh <nr> planned` | `KIT_REFERENCE_CMD` is set and `spec.md` has no `REFERENCE:` line. The `requirements-engineer` runs the command in their own session and records the finding |
+| artefact chain | `status.sh <nr> planned` | `tickets/<nr>/intent.md`, `spec.md` or `plan.md` is missing or empty. The `requirements-engineer` writes intent and spec, the plan with the product-owner |
+| coverage | `status.sh <nr> planned` | the ledger is missing or formally broken, the issue names no AC, an AC has no gate, the ledger names an AC the issue does not know, the ledger names no or an invalid `OWNS:`, a gate is already ticked or given up via `ABANDON` |
+| overlap | `status.sh <nr> planned`, `bin/revise.sh`, `bin/sprint-new.sh` | an OWNS glob can mean the same file as the approval of another open sprint ticket; with `sprint-new.sh` as the ledger of another ticket in the cut |
+| lint | `status.sh <nr> planned`, `status.sh <nr> rft` | an oracle cannot fall: `CHECK` prints fixed text, `EXPECT` is a word like `ok` or `fertig`, an `EXPECT` regex looks like a path, `EXPECT` is only a number from the issue. Hints do not refuse and stand in the planned comment: a manual gate, a number in the title of a manual gate, an activity instead of a result, a mostly manual ledger |
+| QA mutation per gate | `status.sh <nr> rft` | for an executable gate no `QA PASS` for the current HEAD carries a line `<gate>: mutation <what> → red` |
+| green for the HEAD | `status.sh <nr> rft` | an executable gate has no green evidence for the current HEAD, or its definition has changed since the run |
+| omission visible | `bin/merge.sh <nr>`, `status.sh <nr> done` | a gate stands on `ABANDON` (`HANDOFF REQUIRED`) |
+| attested before the merge | `bin/merge.sh <nr>` | as above, plus a manual gate without evidence for the current HEAD |
+| scope | `status.sh <nr> rfr` | no linked PR or more than one, no approval on the issue, the file list is empty or not readable, a file of the PR lies outside the highest approved revision |
 
-### Letztes Wort: product-owner
+### The last word: product-owner
 
-Vor `done` stehen im PR, beide fuer den aktuellen HEAD: `MERGE-GATE OK` vom merge-gate, dann die
-Entscheidung des product-owner. Er merged selbst per `bin/merge.sh`, oder schreibt `PO OK`, womit
-merge-gate `bin/merge.sh` ausfuehren darf. `merge.sh` prueft die Freigaben, misst die CI **frisch**,
-merged, prueft `MERGED` und setzt `done`.
+Before `done` two things stand in the PR, both for the current HEAD: `MERGE-GATE OK` from the merge-gate, then the
+decision of the product-owner. They merge themselves with `bin/merge.sh`, or write `PO OK`, which lets
+merge-gate run `bin/merge.sh`. `merge.sh` checks the approvals, measures CI **fresh**,
+merges, checks `MERGED` and sets `done`.
 
-## 3. Cast — zehn Sessions
+## 3. Cast — ten sessions
 
-| Rolle | Auftrag | Nimmt auf (`KIT_QUEUE_MAP`) |
+| Role | Mission | Picks up (`KIT_QUEUE_MAP`) |
 |---|---|---|
-| `product-owner` | Sprint, Stories, ACs, Takt, letztes Wort | alle |
-| `requirements-engineer` | `intent.md` und `spec.md` je Ticket, `plan.md` mit dem product-owner | `backlog` |
-| `engineer-a`, `engineer-b` | Implementierung, TDD, PR | `planned`, Rueckweisungen zuerst |
-| `qa-ruthless` | fehlende Tests, Mutationen, Acceptance-Tests | `rfr`, `in-review` |
-| `simplicity-reviewer` | Loeschliste, Verdict zum Loesungsweg vor `planned` | `rfr`, `in-review` |
-| `security-engineer` | Eingaben, Rechte, Krypto, Logs, Netz | `rfr`, `in-review` |
-| `acceptance-tester` | ACs am laufenden Bau | `rft` |
-| `merge-gate` | ganzheitlicher Review, CI, Freigabe | `in-testing` |
-| `watchdog` | Tokenstand, Zwillinge, Schlange, Commit | — |
+| `product-owner` | sprint, stories, ACs, cadence, the last word | all |
+| `requirements-engineer` | `intent.md` and `spec.md` per ticket, `plan.md` with the product-owner | `backlog` |
+| `engineer-a`, `engineer-b` | implementation, TDD, PR | `planned`, rejections first |
+| `qa-ruthless` | missing tests, mutations, acceptance tests | `rfr`, `in-review` |
+| `simplicity-reviewer` | deletion list, verdict on the solution path before `planned` | `rfr`, `in-review` |
+| `security-engineer` | inputs, permissions, crypto, logs, network | `rfr`, `in-review` |
+| `acceptance-tester` | ACs against the running build | `rft` |
+| `merge-gate` | holistic review, CI, approval | `in-testing` |
+| `watchdog` | token state, twins, queue, commit | — |
 
-Ausserhalb des Loops: `kit-maintainer` — Aenderungen an Jobbeschreibungen als Pull Request.
+Outside the loop: `kit-maintainer` — changes to job descriptions as a pull request.
 
-## 4. Loop-Reihenfolge
+## 4. Loop order
 
 ### Start
 
-1. `product-owner` und `simplicity-reviewer` zuerst: der product-owner braucht vor `planned` das
-   Verdict zum Loesungsweg, und erst `sprint-new.sh` legt `sprints/CURRENT` an.
-2. `watchdog`, damit Budget und Zwillinge ab dem ersten Ticket gemessen werden.
-3. Alle uebrigen sofort danach. Sie brauchen keinen Sonderfall: `tick.sh` meldet "kein aktiver
-   Sprint" und endet mit Exit 0; sobald der Sprint steht, registriert es sie beim naechsten Tick.
+1. `product-owner` and `simplicity-reviewer` first: before `planned` the product-owner needs the
+   verdict on the solution path, and only `sprint-new.sh` creates `sprints/CURRENT`.
+2. `watchdog`, so that budget and twins are measured from the first ticket on.
+3. Everybody else right after. They need no special case: `tick.sh` reports "no active
+   sprint" and ends with exit 0; as soon as the sprint stands, it registers them at the next tick.
 
-### Jede Runde, jede Rolle
+### Every round, every role
 
-1. `bin/tick.sh` — Registrierung und Zwillingssperre, nach Reset `brain.sh recall`.
-2. **Rueckweisungen zuerst** (Engineers).
-3. Eigene Tickets (`owner:<rolle>`) fortsetzen, bevor ein freies aufgenommen wird.
-4. Ein freies Ticket aus der eigenen Warteschlange aufnehmen — sofort den In-Status setzen.
-5. Nichts davon: Runde beenden.
+1. `bin/tick.sh` — registration and twin lock, after a reset `brain.sh recall`.
+2. **Rejections first** (engineers).
+3. Continue your own tickets (`owner:<role>`) before picking up a free one.
+4. Pick up a free ticket from your own queue — set the In status immediately.
+5. None of that: end the round.
 
-### Feste Intervalle
+### Fixed intervals
 
-| Rolle | Intervall | Grund |
+| Role | Interval | Reason |
 |---|---|---|
-| `watchdog` | 5 min | reines Messen, muss STOP und Zwillinge rechtzeitig sehen |
-| `engineer-a`, `engineer-b` | 5 min | `planned` und Rueckweisungen schnell aufgreifen |
-| `qa-ruthless`, `simplicity-reviewer`, `security-engineer` | 5 min | `rfr` ist der haeufigste Wartezustand; das `rft`-Gate darf nicht der Engpass sein |
-| `acceptance-tester` | 10 min | Geraeteschlange ist seriell, schnelleres Pollen bringt nichts |
-| `merge-gate` | 10 min | wartet auf `in-testing` und gruene CI, beides dauert |
-| `product-owner` | 10 min | haelt den Takt, sieht alle Zustaende |
-| `requirements-engineer` | 10 min | arbeitet vor dem Sprint; ein Ticket im `backlog` wartet nicht auf Minuten |
+| `watchdog` | 5 min | pure measuring, must see STOP and twins in time |
+| `engineer-a`, `engineer-b` | 5 min | pick up `planned` and rejections quickly |
+| `qa-ruthless`, `simplicity-reviewer`, `security-engineer` | 5 min | `rfr` is the most frequent waiting state; the `rft` gate must not be the bottleneck |
+| `acceptance-tester` | 10 min | the device queue is serial, polling faster brings nothing |
+| `merge-gate` | 10 min | waits for `in-testing` and green CI, both take time |
+| `product-owner` | 10 min | holds the cadence, sees every state |
+| `requirements-engineer` | 10 min | works ahead of the sprint; a ticket in the `backlog` does not wait on minutes |
 
-Runden ueberlappen innerhalb einer Session nicht. Ein Tick kostet rund zwei API-Aufrufe; neun
-Rollen im 5- bis 10-Minuten-Takt liegen weit unter 5 000 Aufrufen je Stunde.
+Rounds do not overlap inside one session. A tick costs about two API calls; nine
+roles on a 5 to 10 minute cadence stay far below 5 000 calls an hour.
 
-## 4a. Kanban — Durchsatz statt Halde
+## 4a. Kanban — throughput instead of a pile
 
-Der Tick misst je Runde und zeigt es dem product-owner: geplant, in Arbeit, Pruefschlange (`rfr` und
-`in-review`), Testschlange (`rft` und `in-testing`). Die Zahlen sind eine Messung, kein Tor — entscheiden
-muss der product-owner.
+Every round the tick measures and shows it to the product-owner: planned, in progress, review queue (`rfr` and
+`in-review`), test queue (`rft` and `in-testing`). The numbers are a measurement, not a gate — the decision
+is the product-owner's.
 
-| Regel | Wert | Warum |
+| Rule | Value | Why |
 |---|---|---|
-| geplant mindestens | `KIT_MIN_PLANNED` (7) | ein Engineer ohne freies Ticket steht still |
-| in Arbeit | so viele wie Engineers | mehr erzeugt Halde, weniger laesst Kapazitaet liegen |
-| Planungsstopp | Pruef- oder Testschlange ueber `KIT_QUEUE_STOP` (2) | vorn nachlegen hilft hinten nicht |
-| blockiertes Ticket | Grund melden, nicht blockiertes aufnehmen | Warten ist teurer als Wechseln |
+| planned at least | `KIT_MIN_PLANNED` (7) | an engineer without a free ticket stands still |
+| in progress | as many as there are engineers | more creates a pile, fewer leaves capacity idle |
+| planning stop | review or test queue above `KIT_QUEUE_STOP` (2) | adding at the front does not help at the back |
+| a blocked ticket | report the reason, pick up an unblocked one | waiting is more expensive than switching |
 
-`bin/sprint-new.sh` lehnt ein Ticket ohne vollstaendige Artefaktkette ab, `status.sh <nr> planned` ebenso.
+`bin/sprint-new.sh` refuses a ticket without a complete artefact chain, and so does `status.sh <nr> planned`.
 
 ## 5. Sprint
 
-Ein Sprint umfasst `KIT_SPRINT_TICKETS` Tickets im Takt von `KIT_TICKET_MINUTES` Minuten, zwei
-Engineers parallel. Ueberzieht einer, startet sein naechstes Ticket am naechsten Rasterpunkt.
+A sprint holds `KIT_SPRINT_TICKETS` tickets on a cadence of `KIT_TICKET_MINUTES` minutes, two
+engineers in parallel. If one overruns, their next ticket starts at the next grid point.
 
 ```
 sprints/S-<nnn>-<slug>/
-├── sprint.md      # Ziel, Tickets, Start, Definition of Done
-├── roster.md      # GENERIERT — Rolle, Session-ID, Host, Host-PID
-├── INDEX.md       # GENERIERT — alle Chat-Zeilen chronologisch, mit datei:zeile
-├── budget.md      # GENERIERT — Kontextstand je Session (watchdog)
-├── simqueue.md    # wer haelt gerade ein exklusives Geraet
-├── .lease-<rolle> # GENERIERT — Zwillingssperre: Session-ID, Host-PID, Zeit
-└── chat/<rolle>.md
+├── sprint.md      # goal, tickets, start, definition of done
+├── roster.md      # GENERATED — role, session id, host, host PID
+├── INDEX.md       # GENERATED — every chat line chronologically, with file:line
+├── budget.md      # GENERATED — context state per session (watchdog)
+├── simqueue.md    # who holds an exclusive device right now
+├── .lease-<role>  # GENERATED — twin lock: session id, host PID, time
+└── chat/<role>.md
 ```
 
-## 6. Chat — append-only, mit generiertem Index
+## 6. Chat — append-only, with a generated index
 
-Jede Rolle schreibt **nur** ihre eigene Datei und haengt nur an. Bestehende Zeilen werden **nie**
-editiert — die Zeilennummern im Index muessen fuer immer gueltig bleiben. `bin/say.sh` haengt unter
-Sperre an und baut `INDEX.md` **vollstaendig neu**, atomar (temporaer schreiben, dann umbenennen).
+Every role writes **only** its own file and only appends. Existing lines are **never**
+edited — the line numbers in the index must stay valid forever. `bin/say.sh` appends under
+a lock and rebuilds `INDEX.md` **completely**, atomically (write to a temporary file, then rename).
 
-## 7. Nur eine Rolle committet
+## 7. Only one role commits
 
-Alle Sessions laufen auf derselben Maschine im selben Ordner und sehen einander sofort. Git ist nur
-Historie. Neun parallele `git pull --rebase` waeren die einzige echte Konfliktquelle — deshalb
-committet ausschliesslich der `watchdog`, im Takt, per `bin/commit.sh`.
+Every session runs on the same machine in the same folder and sees the others at once. Git is only
+history. Nine parallel `git pull --rebase` would be the only real source of conflict — that is why
+only the `watchdog` commits, on its interval, with `bin/commit.sh`.
 
-## 8. Zwillingssperre
+## 8. Twin lock
 
-Je Rolle laeuft genau ein Prozess. `register.sh` (vom Tick aufgerufen) schreibt
-`.lease-<rolle>` mit Session-ID, Host-PID und Zeit. Lebt die eingetragene PID noch, ist die Sperre
-juenger als `KIT_LEASE_MINUTES` und ist die eigene PID eine andere, bricht der Tick mit
-"zweite Instanz" ab. Anlass: eine Session wurde zweimal fortgesetzt; zwei Prozesse derselben Rolle
-arbeiteten parallel, und `owner:<rolle>` trennt Rollen, nicht Zwillinge.
+Per role exactly one process runs. `register.sh` (called by the tick) writes
+`.lease-<role>` with the session id, the host PID and a time. If the recorded PID still lives, the lock
+is younger than `KIT_LEASE_MINUTES` and your own PID is a different one, the tick aborts with
+"second instance". The reason: a session was resumed twice; two processes of the same role
+worked in parallel, and `owner:<role>` separates roles, not twins.
 
-Kann der Adapter die Host-PID nicht ermitteln, warnt die Sperre nur (`UNKNOWN`) und blockiert nicht.
+If the adapter cannot determine the host PID, the lock only warns (`UNKNOWN`) and does not block.
 
-"Lebt" heisst: unter der PID laeuft ein **Host**-Prozess (`adapters/<host>/host-alive.sh`), nicht nur
-irgendein Prozess — PIDs werden neu vergeben. Jeder Tick raeumt Anker toter oder neu vergebener PIDs
-weg. Eine Hintergrund-Session, die die Rolle nur geerbt hat, tickt nicht (`is-background.sh`).
+"Lives" means: a **host** process runs under the PID (`adapters/<host>/host-alive.sh`), not merely
+some process — PIDs are handed out again. Every tick clears away anchors of dead or reassigned PIDs.
+A background session that only inherited the role does not tick (`is-background.sh`).
 
-Eine Rolle beendet ihren Loop **nie** selbst, auch nicht bei Warnung oder STOP, und stellt keine
-Rueckfrage, die auf Eingabe wartet. Beides hat im Betrieb eines Referenz-Loops das ganze Team
-angehalten (`evals/findings/2026-09-14-lehren-aus-dem-referenz-loop.md`).
+A role **never** ends its loop itself, not on a warning and not on STOP, and it asks no
+question that waits for input. Both halted the whole team while a reference loop was
+running (`evals/findings/2026-09-14-lessons-from-the-reference-loop.md`).
 
-## 9. Gedaechtnis
+## 9. Memory
 
-Der Chat ist das Gespraech eines Sprints. `memory/<rolle>/` ist das Gedaechtnis einer Rolle ueber
-Sprints und Resets hinweg, `memory/_shared/` das Wissen aller. Werkzeug `bin/brain.sh`, Regeln
-`memory/README.md`. Der Tick holt es nach jedem Reset automatisch zurueck.
+The chat is the conversation of one sprint. `memory/<role>/` is the memory of a role across
+sprints and resets, `memory/_shared/` the knowledge of everybody. The tool is `bin/brain.sh`, the rules
+are `memory/README.md`. The tick pulls it back automatically after every reset.
 
-## 9a. Kein Modell ohne Arbeit
+## 9a. No model without work
 
-Ein Tick ist Bash und `gh`: er kostet keine Tokens. Eine leere Modellrunde kostet ein ganzes
-Kontextfenster. Deshalb fragt die Waechter-Schleife vor jedem Start:
+A tick is bash and `gh`: it costs no tokens. An empty model round costs a whole
+context window. That is why the watchdog loop asks before every start:
 
 ```bash
-bin/tick.sh --signal     # Exit 4 = nichts fuer dich, kein Modellstart noetig
+bin/tick.sh --signal     # exit 4 = nothing for you, no model start needed
 ```
 
-Ohne den Schalter bleibt der Exitcode 0 — Menschen und bestehende Aufrufer sehen keinen neuen Code.
+Without the flag the exit code stays 0 — humans and existing callers see no new code.
 
-Als Arbeit zaehlen: eine Rueckweisung, ein eigenes oder freies Ticket der eigenen Warteschlange, eine
-Luecke in der Artefaktkette (wer `backlog` aufnimmt), ein Kanban-Hinweis (product-owner), eine
-Erwaehnung `@<rolle>` im Chat, Warnung oder STOP im Budget. **Nicht** als Arbeit zaehlt eine neue
-Chat-Zeile ohne Erwaehnung: sonst weckt jeder Statuswechsel das ganze Team fuer eine Zeile. Gezeigt
-wird sie trotzdem, sobald die Rolle aus einem anderen Grund laeuft.
+What counts as work: a rejection, your own or a free ticket of your own queue, a
+gap in the artefact chain (for whoever picks up `backlog`), a kanban hint (product-owner), a
+mention `@<role>` in the chat, a warning or STOP in the budget. What does **not** count as work is a new
+chat line without a mention: otherwise every status change wakes the whole team for one line. It is shown
+anyway as soon as the role runs for another reason.
 
-Wer ein Ticket weiterreicht, weckt die Rollen, die den neuen Zustand aufnehmen: `bin/status.sh` legt
-`.role-loop/<rolle>.wake` an. Die Marke startet kein Modell — sie beendet nur das Warten, geprueft
-wird wieder mit dem Tick. Geht sie verloren, weckt das Intervall (`KIT_TICK_INTERVAL`, Schritte von
-`KIT_TICK_POLL`) die Rolle ohnehin. Damit steht nie etwas still, und leere Runden kosten nichts.
+Whoever hands a ticket on wakes the roles that pick up the new state: `bin/status.sh` creates
+`.role-loop/<role>.wake`. The mark starts no model — it only ends the waiting, and the check is
+done by the tick again. If it gets lost, the interval (`KIT_TICK_INTERVAL`, in steps of
+`KIT_TICK_POLL`) wakes the role anyway. So nothing ever stands still, and empty rounds cost nothing.
 
-## 10. Tokenbudget und Reset
+## 10. Token budget and reset
 
-1. **Watchdog, echte Zahl.** `bin/budget.sh` liest die Transkripte des Hosts. Ab `KIT_WARN_TOKENS`
-   nimmt die Rolle kein neues Ticket an, ab `KIT_STOP_TOKENS` steht `STOP <rolle>` in `budget.md`.
-2. **Notbremse, ohne Watchdog.** Nach `KIT_MAX_TICKETS` Tickets ohnehin Ruhestand — auch wenn der
-   Watchdog ausfaellt oder der Host keine Transkripte schreibt.
+1. **Watchdog, the real number.** `bin/budget.sh` reads the transcripts of the host. From `KIT_WARN_TOKENS`
+   on, the role takes no new ticket; from `KIT_STOP_TOKENS` on, `STOP <role>` stands in `budget.md`.
+2. **The emergency brake, without a watchdog.** After `KIT_MAX_TICKETS` tickets retirement anyway — even when the
+   watchdog fails or the host writes no transcripts.
 
-**Kontextgroesse** ist der groesste Eingabestand eines **einzelnen** Turns
-(`input_tokens` + `cache_read_input_tokens` + `cache_creation_input_tokens`), **nicht** die Summe.
+**Context size** is the largest input state of a **single** turn
+(`input_tokens` + `cache_read_input_tokens` + `cache_creation_input_tokens`), **not** the sum.
 
-Reset immer an einer Ticketgrenze: `brain.sh handover` → Kontext leeren (**nicht verdichten**).
-Der Host-Prozess darf dabei weiterleben: die Rolle haengt am Anker `.pid-roles/<host-pid>`, nicht am
-Kontext. Der naechste Tick erkennt die neue Session-ID, registriert sie und zeigt die Uebergabe.
+A reset always at a ticket boundary: `brain.sh handover` → clear the context (**do not compact**).
+The host process may live on: the role hangs on the anchor `.pid-roles/<host-pid>`, not on the
+context. The next tick recognises the new session id, registers it and shows the handover.
 
-Autonom geht das mit `bin/restart-self.sh`. Es beendet den Host-Prozess nur, wenn (1) eine Uebergabe
-juenger als 10 Minuten existiert und (2) diese Uebergabe jedes Sprint-Ticket mit `owner:<rolle>` als
-`#<nr>` nennt — mitten im Ticket zuruecksetzen ist damit erlaubt, die Uebergabe traegt dann Stand, SHA
-und naechsten Schritt. Neu gestartet wird auf einem von zwei Wegen:
+Autonomously that works with `bin/restart-self.sh`. It ends the host process only when (1) a handover
+younger than 10 minutes exists and (2) that handover names every sprint ticket with `owner:<role>` as
+`#<nr>` — resetting in the middle of a ticket is allowed that way, and the handover then carries state, SHA
+and next step. The restart happens on one of two paths:
 
-- **unter der Waechter-Schleife** (`adapters/<host>/role-loop.sh`): Prozess beenden, die Schleife startet neu;
-- **in zellij ohne Schleife**: einen Tab `<rolle> (loop)` mit `role-loop.sh <rolle> --after <pid>` oeffnen und
-  den Prozess erst beenden, wenn die Schleife nachweislich laeuft. Die Schleife wartet, bis unter der
-  alten PID kein Host mehr lebt.
+- **under the watchdog loop** (`adapters/<host>/role-loop.sh`): end the process, the loop starts it again;
+- **in zellij without a loop**: open a tab `<role> (loop)` with `role-loop.sh <role> --after <pid>` and
+  end the process only once the loop demonstrably runs. The loop waits until no host lives under the
+  old PID any more.
 
-Gibt es keinen der beiden Wege, oder scheitert das Oeffnen des Tabs, beendet das Skript nichts.
+If neither path exists, or opening the tab fails, the script ends nothing.
 
-## 11. Geraete-Schlange und Ueberleben
+## 11. Device queue and survival
 
-Exklusive Geraete werden nie parallel benutzt: Eintrag in `simqueue.md`, warten bis oben. Ein
-`HAELT`-Eintrag aelter als 30 Minuten wird vom Watchdog entfernt.
+Exclusive devices are never used in parallel: an entry in `simqueue.md`, wait until you are at the top. A
+`HOLDS` entry older than 30 minutes is removed by the watchdog.
 
-Naehert sich das Konto-Limit, pausieren **alle** Sessions. Keine neuen Aufnahmen. Der Watchdog
-meldet es und gibt erst frei, wenn das Limit zurueckgesetzt ist.
+If the account limit comes close, **every** session pauses. No new pick-ups. The watchdog
+reports it and releases only when the limit has been reset.

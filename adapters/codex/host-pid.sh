@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-# UNKNOWN — Name des Host-Prozesses fuer codex nicht geprueft. Ohne PID warnt die Zwillingssperre nur.
+# UNKNOWN — the name of the host process for codex is not measured. Without a PID the twin lock only warns.
 exit 1

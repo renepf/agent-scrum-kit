@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# SessionStart-Hook fuer claude-code. Gibt einer Kit-Rolle nach Start, /clear oder resume ihren
-# Auftrag zurueck. Ohne Rolle (kein KIT_ROLE, kein Anker) gibt er nichts aus — fremde Sessions
-# merken nichts.
+# SessionStart hook for claude-code. Gives a kit role its assignment back after a start, /clear or
+# resume. Without a role (no KIT_ROLE, no anchor) it prints nothing — other sessions
+# notice nothing.
 #
-#   session-start.sh          Kontext-Modus: JSON mit additionalContext auf stdout
-#   session-start.sh --wake   Weck-Modus fuer einen zweiten Hook-Eintrag mit asyncRewake:
-#                             bei startup|clear|resume Text auf stderr und exit 2 — das weckt die
-#                             Session und macht den Text zum naechsten Turn, ohne Eingabe.
-#                             Bei compact und fork still (Referenz-Messung 2026-09-11: fork
-#                             feuerte zusaetzlich und haette doppelt geweckt).
+#   session-start.sh          context mode: JSON with additionalContext on stdout
+#   session-start.sh --wake   wake mode for a second hook entry with asyncRewake:
+#                             on startup|clear|resume, text on stderr and exit 2 — that wakes the
+#                             session and makes the text the next turn, without any input.
+#                             On compact and fork it stays silent (reference measurement 2026-09-11: fork
+#                             fired additionally and would have woken it twice).
 KIT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 INPUT="$(cat 2>/dev/null || true)"
 SOURCE="$(printf '%s' "$INPUT" | python3 -c 'import json,sys
@@ -26,20 +26,20 @@ fi
 case "$R" in engineer-a|engineer-b) FILE=engineer.md ;; *) FILE="$R.md" ;; esac
 [ -f "$KIT_ROOT/roles/$FILE" ] || exit 0
 case "$R" in product-owner|acceptance-tester|merge-gate) IV=10m ;; *) IV=5m ;; esac
-EXTRA=""; [ "$R" = "watchdog" ] && EXTRA=" Danach bin/budget.sh, vier Blicke, bin/commit.sh."
+EXTRA=""; [ "$R" = "watchdog" ] && EXTRA=" Afterwards bin/budget.sh, four looks, bin/commit.sh."
 
-CTX="AGENT-SCRUM-KIT — ROLLENANKER (SessionStart: $SOURCE)
-Du bist die Rolle **$R**. Das gilt auch nach /clear: dein Kontext ist neu, deine Rolle nicht.
+CTX="AGENT-SCRUM-KIT — ROLE ANCHOR (SessionStart: $SOURCE)
+You are the role **$R**. That holds after /clear too: your context is new, your role is not.
 
-Sofort, in dieser Reihenfolge:
-1. Lies roles/_COMMON.md und roles/$FILE.
-2. Fuehre bin/tick.sh aus. Er erkennt die neue Session, registriert dich neu und zeigt deine letzte Uebergabe.
-3. Setze an der letzten Uebergabe fort.
-4. Pruefe, ob dein Loop laeuft (CronList). Wenn nicht:
-   /loop $IV Fuehre bin/tick.sh aus. Liegt nichts fuer dich an, beende die Runde. Sonst arbeite deine Rolle laut roles/$FILE: ein Ticket zur Zeit, aufgreifen heisst sofort den In-Status setzen, kein Subagent.$EXTRA
+At once, in this order:
+1. Read roles/_COMMON.md and roles/$FILE.
+2. Run bin/tick.sh. It recognises the new session, registers you again and shows your last handover.
+3. Carry on from the last handover.
+4. Check whether your loop is running (CronList). If not:
+   /loop $IV Run bin/tick.sh. If nothing is waiting for you, end the round. Otherwise work your role per roles/$FILE: one ticket at a time, picking up means setting the In status immediately, no subagent.$EXTRA
 
-Nie AskUserQuestion und nie CronDelete fuer deinen eigenen Loop: Rueckfragen nur per bin/say.sh mit @owner, sicheren Standard nennen, weiter ticken.
-Die Skripte kennen deine Rolle auch ohne KIT_ROLE ueber den Anker in .pid-roles/."
+Never AskUserQuestion and never CronDelete for your own loop: ask only via bin/say.sh with @owner, name the safe default, keep ticking.
+The scripts know your role even without KIT_ROLE, through the anchor in .pid-roles/."
 
 if [ "${1:-}" = "--wake" ]; then
   case "$SOURCE" in startup|clear|resume) ;; *) exit 0 ;; esac

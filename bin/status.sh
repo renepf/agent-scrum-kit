@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Ticketstatus wechseln — Board, Label und Besitz in einem Kommando.
+# Change a ticket status — board, label and ownership in one command.
 #
-#   bin/status.sh 712 in-progress "aufgenommen, Worktree offen"
+#   bin/status.sh 712 in-progress "picked up, worktree open"
 #
-# Reihenfolge, die zwei echte Fehlerquellen schliesst:
-#   0. ALLES pruefen, bevor irgendetwas geschrieben wird: Kante, Rolle, Besitz, Gate.
-#      Eine abgelehnte Transition fasst weder Board noch Label an.
-#   1. Board zuerst (die Wahrheit). Scheitert es, bleibt das Label unveraendert.
-#   2. Label als Spiegel, owner:<rolle> als Besitz, Kommentar, Chat.
+# An order that closes two real sources of error:
+#   0. check EVERYTHING before anything is written: edge, role, ownership, gate.
+#      A rejected transition touches neither board nor label.
+#   1. board first (the truth). If it fails, the label stays unchanged.
+#   2. label as the mirror, owner:<role> as ownership, comment, chat.
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 T="$BIN_DIR/tickets.sh"
@@ -15,7 +15,7 @@ P="$KIT_LABEL_PREFIX"; O="$KIT_OWNER_PREFIX"
 REVIEWERS="qa-ruthless simplicity-reviewer security-engineer"
 ENGINEERS="engineer-a engineer-b"
 
-# Die einzigen erlaubten Kanten. Zwei davon sind die Rueckwaertskante.
+# The only allowed edges. Two of them are the backward edge.
 EDGES="
 backlog>planned
 planned>in-progress
@@ -28,75 +28,75 @@ in-review>in-progress
 in-testing>in-progress
 "
 
-[ $# -ge 2 ] || die "Aufruf: bin/status.sh <ticket> <status> [kommentar]"
+[ $# -ge 2 ] || die "usage: bin/status.sh <ticket> <status> [comment]"
 TICKET="$1"; NEW="$2"; NOTE="${3:-}"
-case " $KIT_STATES " in *" $NEW "*) ;; *) die "unbekannter Status '$NEW'. Erlaubt: $KIT_STATES" ;; esac
+case " $KIT_STATES " in *" $NEW "*) ;; *) die "unknown status '$NEW'. Allowed: $KIT_STATES" ;; esac
 
 R="$(role)"
 SID="$(session_id)"
-"$BIN_DIR/preflight.sh" > /dev/null || die "Preflight fehlgeschlagen — stoppen und melden, nicht umgehen"
+"$BIN_DIR/preflight.sh" > /dev/null || die "preflight failed — stop and report, do not work around it"
 
 in_list() { case " $2 " in *" $1 "*) return 0 ;; esac; return 1; }
 
-LABELS="$("$T" labels "$TICKET")" || die "#$TICKET: Labels nicht lesbar — Fehlschlag, kein Zustand"
+LABELS="$("$T" labels "$TICKET")" || die "#$TICKET: labels not readable — a failure, not a state"
 OLD="$(printf '%s\n' "$LABELS" | grep "^$P" | head -1 | sed "s|^$P||" || true)"
 [ -n "$OLD" ] || OLD="backlog"
 OWNERS_NOW="$(printf '%s\n' "$LABELS" | grep "^$O" | sed "s|^$O||" | tr '\n' ' ' || true)"
 
-[ "$OLD" != "$NEW" ] || die "#$TICKET steht bereits auf '$NEW' — kein Uebergang"
+[ "$OLD" != "$NEW" ] || die "#$TICKET is already on '$NEW' — no transition"
 case "$EDGES" in
   *"$OLD>$NEW"*) ;;
-  *) die "unerlaubter Uebergang '$OLD' → '$NEW'. Erlaubt ab '$OLD': $(printf '%s\n' "$EDGES" | grep "^$OLD>" | sed "s|^$OLD>||" | tr '\n' ' ')" ;;
+  *) die "forbidden transition '$OLD' → '$NEW'. Allowed from '$OLD': $(printf '%s\n' "$EDGES" | grep "^$OLD>" | sed "s|^$OLD>||" | tr '\n' ' ')" ;;
 esac
 
-# --- 0. Rolle, Besitz, Gate — vor jedem Schreibzugriff ---------------------------
+# --- 0. role, ownership, gate — before any write --------------------------------
 OWNER=""; KEEP=""; OWNS_LEDGER=""; GATES_LEDGER=""; LINT_MSG=""
 case "$NEW" in
   backlog|planned)
-    [ "$R" = "product-owner" ] || die "'$NEW' setzt nur der product-owner, nicht $R"
+    [ "$R" = "product-owner" ] || die "'$NEW' is set only by the product-owner, not $R"
     if [ "$NEW" = "planned" ]; then
-      # Kein Code ohne pruefbaren Vertrag: jede AC des Issues hat ein Gate, das Ledger nennt seinen Umfang.
-      BODY="$("$T" body "$TICKET")" || die "#$TICKET: Issue-Text nicht lesbar — Fehlschlag, kein Zustand"
+      # No code without a checkable contract: every AC of the issue has a gate, the ledger names its scope.
+      BODY="$("$T" body "$TICKET")" || die "#$TICKET: issue text not readable — a failure, not a state"
       OWNS_LEDGER="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" planned "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
-        || die "#$TICKET: planned abgelehnt — $OWNS_LEDGER"
+        || die "#$TICKET: planned rejected — $OWNS_LEDGER"
       # The approved definition of every gate: merge.sh reports a CHECK changed after this point.
       GATES_LEDGER="$(python3 "$BIN_DIR/gates.py" definitions "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
-        || die "#$TICKET: planned abgelehnt — $GATES_LEDGER"
-      # Kein Orakel, das nicht fallen kann. Hinweise lehnen nicht ab, sie stehen im Kommentar.
+        || die "#$TICKET: planned rejected — $GATES_LEDGER"
+      # No oracle that cannot fall. Hints do not reject, they go into the comment.
       LINT_MSG="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" lint "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
-        || die "#$TICKET: planned abgelehnt — Lint:
+        || die "#$TICKET: planned rejected — lint:
 $LINT_MSG"
-      # Artefaktkette je Ticket: intent.md (Problem und Warum), spec.md (beobachtbares Verhalten),
-      # plan.md (Schritte und Dateien). Fehlt ein Glied, plant der product-owner ins Blaue; der
-      # requirements-engineer liefert sie, bevor ein Ticket in den Sprint geht.
-      for KETTE in intent.md spec.md plan.md; do
-        grep -q '[^[:space:]]' "$TICKETS_DIR/$TICKET/$KETTE" 2>/dev/null \
-          || die "#$TICKET: planned abgelehnt — $KETTE fehlt oder ist leer unter $TICKETS_DIR/$TICKET/ (requirements-engineer)"
+      # Artefact chain per ticket: intent.md (problem and why), spec.md (observable behaviour),
+      # plan.md (steps and files). With a link missing the product-owner plans blind; the
+      # requirements-engineer supplies it before a ticket enters the sprint.
+      for CHAIN in intent.md spec.md plan.md; do
+        grep -q '[^[:space:]]' "$TICKETS_DIR/$TICKET/$CHAIN" 2>/dev/null \
+          || die "#$TICKET: planned rejected — $CHAIN is missing or empty under $TICKETS_DIR/$TICKET/ (requirements-engineer)"
       done
-      # Gibt es eine Referenz zum Vergleichen (KIT_REFERENCE_CMD), gehoert der Befund in die spec.md:
-      # eine Zeile "REFERENCE: <was geprueft wurde, mit Zeit>". Ohne konfigurierte Referenz verlangt das
-      # Kit nichts — es kennt das Projekt nicht.
+      # If there is a reference to compare against (KIT_REFERENCE_CMD), the finding belongs in spec.md:
+      # one line "REFERENCE: <what was checked, with a time>". Without a configured reference the kit
+      # demands nothing — it does not know the project.
       if [ -n "${KIT_REFERENCE_CMD:-}" ]; then
         grep -q '^REFERENCE:' "$TICKETS_DIR/$TICKET/spec.md" 2>/dev/null \
-          || die "#$TICKET: planned abgelehnt — spec.md ohne REFERENCE-Zeile, obwohl KIT_REFERENCE_CMD gesetzt ist (requirements-engineer prueft gegen die Referenz und traegt den Befund ein)"
+          || die "#$TICKET: planned rejected — spec.md without a REFERENCE line although KIT_REFERENCE_CMD is set (the requirements-engineer checks against the reference and records the finding)"
       fi
-      # Kein Ueberlappen: kein Pfad, den ein anderes freigegebenes Ticket des Sprints schon haelt.
+      # No overlap: no path that another approved ticket of the sprint already holds.
       CLAIMS="$(sprint_claims "$TICKET")" || exit 1
       OVERLAP="$(printf '#%s\t%s\n%s\n' "$TICKET" "$OWNS_LEDGER" "$CLAIMS" | python3 "$BIN_DIR/gates.py" overlap "#$TICKET" 2>&1)" \
-        || die "#$TICKET: planned abgelehnt — $OVERLAP"
+        || die "#$TICKET: planned rejected — $OVERLAP"
     fi
     ;;
   in-progress)
     if in_list "$R" "$ENGINEERS"; then
-      [ "$OLD" = "planned" ] || die "$R nimmt nur aus 'planned' auf. Eine Rueckweisung setzt der Pruefer."
+      [ "$OLD" = "planned" ] || die "$R picks up only from 'planned'. A rejection is set by the reviewer."
       OWNER="$R"
     else
       case "$OLD" in
-        in-review)  in_list "$R" "$REVIEWERS" || die "aus 'in-review' weist nur ein Pruefer zurueck, nicht $R" ;;
-        in-testing) in_list "$R" "acceptance-tester merge-gate product-owner" || die "aus 'in-testing' weisen nur acceptance-tester, merge-gate oder product-owner zurueck, nicht $R" ;;
+        in-review)  in_list "$R" "$REVIEWERS" || die "out of 'in-review' only a reviewer rejects, not $R" ;;
+        in-testing) in_list "$R" "acceptance-tester merge-gate product-owner" || die "out of 'in-testing' only acceptance-tester, merge-gate or product-owner reject, not $R" ;;
       esac
-      # Rueckwaertskante: der Engineer ist der, der das Ticket zuletzt auf in-progress gesetzt
-      # hat — steht in den Kommentaren, die dieses Skript selbst schreibt. Nicht raten.
+      # Backward edge: the engineer is the one who last set the ticket to in-progress —
+      # it is in the comments this script writes itself. Do not guess.
       IP="$(board_name in-progress)"
       OWNER="$("$T" comments "$TICKET" | python3 -c '
 import json, re, sys
@@ -105,44 +105,44 @@ hits = [m.group(1) for b in json.load(sys.stdin)
         for m in [re.match(re.escape(head) + r"(engineer-[ab]) ", b)] if m]
 print(hits[-1] if hits else "")
 ' "$IP")"
-      [ -n "$OWNER" ] || die "#$TICKET: kein frueherer Engineer in der Kommentarhistorie — nicht raten"
+      [ -n "$OWNER" ] || die "#$TICKET: no earlier engineer in the comment history — do not guess"
     fi
     ;;
   rfr)
-    in_list "$R" "$ENGINEERS" || die "'rfr' setzt nur ein Engineer, nicht $R"
-    in_list "$R" "$OWNERS_NOW" || die "#$TICKET gehoert nicht $R (Besitz: ${OWNERS_NOW:-niemand})"
-    # Umfang: jede Datei des PR liegt in der OWNS-Revision, die der product-owner am Issue freigegeben hat.
-    COMMENTS="$("$T" comments "$TICKET")" || die "#$TICKET: Kommentare nicht lesbar — Fehlschlag, kein Zustand"
-    APPROVAL="$(printf '%s' "$COMMENTS" | python3 "$BIN_DIR/gates.py" approved 2>&1)" || die "#$TICKET: rfr abgelehnt — $APPROVAL"
+    in_list "$R" "$ENGINEERS" || die "'rfr' is set only by an engineer, not $R"
+    in_list "$R" "$OWNERS_NOW" || die "#$TICKET does not belong to $R (ownership: ${OWNERS_NOW:-nobody})"
+    # Scope: every file of the PR lies within the OWNS revision the product-owner approved on the issue.
+    COMMENTS="$("$T" comments "$TICKET")" || die "#$TICKET: comments not readable — a failure, not a state"
+    APPROVAL="$(printf '%s' "$COMMENTS" | python3 "$BIN_DIR/gates.py" approved 2>&1)" || die "#$TICKET: rfr rejected — $APPROVAL"
     PR_LINE="$("$T" pr "$TICKET" 2>&1)" \
-      || die "#$TICKET: rfr abgelehnt — kein verknuepfter PR lesbar (closes #$TICKET im PR-Text?)${PR_LINE:+: $PR_LINE}"
-    FILES="$("$T" pr-files "${PR_LINE%% *}")" || die "PR #${PR_LINE%% *}: Dateiliste nicht lesbar — Fehlschlag, kein Zustand"
+      || die "#$TICKET: rfr rejected — no linked PR readable (closes #$TICKET in the PR text?)${PR_LINE:+: $PR_LINE}"
+    FILES="$("$T" pr-files "${PR_LINE%% *}")" || die "PR #${PR_LINE%% *}: file list not readable — a failure, not a state"
     SCOPE_MSG="$(printf '%s\n' "$FILES" | python3 "$BIN_DIR/gates.py" scope "${APPROVAL#*$'\t'}" 2>&1)" \
-      || die "#$TICKET: rfr abgelehnt (OWNS Revision ${APPROVAL%%$'\t'*}) — $SCOPE_MSG"
+      || die "#$TICKET: rfr rejected (OWNS revision ${APPROVAL%%$'\t'*}) — $SCOPE_MSG"
     ;;
   in-review)
-    in_list "$R" "$REVIEWERS" || die "'in-review' nimmt nur ein Pruefer auf, nicht $R"
+    in_list "$R" "$REVIEWERS" || die "'in-review' is picked up only by a reviewer, not $R"
     OWNER="$R"; KEEP="$REVIEWERS"
     ;;
   rft)
-    in_list "$R" "$REVIEWERS" || die "'rft' setzt nur ein Pruefer, nicht $R"
+    in_list "$R" "$REVIEWERS" || die "'rft' is set only by a reviewer, not $R"
     verdicts_missing "$TICKET" "QA PASS" "SIMPLICITY PASS" "SECURITY PASS"
-    [ -z "$VERDICT_MISSING" ] || die "#$TICKET: rft abgelehnt — im PR #$VERDICT_PR fehlt fuer HEAD $VERDICT_HEAD8:$VERDICT_MISSING. Format der ersten Zeile: '<VERDICT> — HEAD \`$VERDICT_HEAD8\`, ...'"
-    # Die Verdicts ersetzen den Abgleich nicht: jedes ausfuehrbare Gate lief fuer diesen HEAD gruen.
+    [ -z "$VERDICT_MISSING" ] || die "#$TICKET: rft rejected — in PR #$VERDICT_PR the following is missing for HEAD $VERDICT_HEAD8:$VERDICT_MISSING. Format of the first line: '<VERDICT> — HEAD \`$VERDICT_HEAD8\`, ...'"
+    # The verdicts do not replace the comparison: every executable gate ran green for this HEAD.
     GATE_MSG="$(python3 "$BIN_DIR/gates.py" unmet "$TICKETS_DIR/$TICKET/GATES.md" "$VERDICT_HEAD8" runnable 2>&1)" \
-      || die "#$TICKET: rft abgelehnt — $GATE_MSG"
-    # Ein CHECK kann seit planned abgeschwaecht und dafuer gruen gelaufen sein: der Lint laeuft erneut.
-    BODY="$("$T" body "$TICKET")" || die "#$TICKET: Issue-Text nicht lesbar — Fehlschlag, kein Zustand"
+      || die "#$TICKET: rft rejected — $GATE_MSG"
+    # A CHECK may have been weakened since planned and run green because of it: the lint runs again.
+    BODY="$("$T" body "$TICKET")" || die "#$TICKET: issue text not readable — a failure, not a state"
     LINT_RFT="$(printf '%s\n' "$BODY" | python3 "$BIN_DIR/gates.py" lint "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" \
-      || die "#$TICKET: rft abgelehnt — Lint:
+      || die "#$TICKET: rft rejected — lint:
 $LINT_RFT"
-    # QA nennt je ausfuehrbarem Gate die Mutation, die genau dieses Gate rot macht.
-    PR_COMMENTS="$("$T" pr-comments "$VERDICT_PR")" || die "PR #$VERDICT_PR: Kommentare nicht lesbar — Fehlschlag, kein Zustand"
+    # Per executable gate, QA names the mutation that turns exactly that gate red.
+    PR_COMMENTS="$("$T" pr-comments "$VERDICT_PR")" || die "PR #$VERDICT_PR: comments not readable — a failure, not a state"
     QA_MSG="$(printf '%s' "$PR_COMMENTS" | python3 "$BIN_DIR/gates.py" qa-lines "$TICKETS_DIR/$TICKET/GATES.md" "$VERDICT_HEAD8" 2>&1)" \
-      || die "#$TICKET: rft abgelehnt — $QA_MSG"
+      || die "#$TICKET: rft rejected — $QA_MSG"
     ;;
   in-testing)
-    [ "$R" = "acceptance-tester" ] || die "'in-testing' nimmt nur der acceptance-tester auf, nicht $R"
+    [ "$R" = "acceptance-tester" ] || die "'in-testing' is picked up only by the acceptance-tester, not $R"
     OWNER="$R"
     ;;
   done)
@@ -150,31 +150,31 @@ $LINT_RFT"
       product-owner) ;;
       merge-gate)
         verdicts_missing "$TICKET" "PO OK"
-        [ -z "$VERDICT_MISSING" ] || die "#$TICKET: done abgelehnt — kein 'PO OK — HEAD \`$VERDICT_HEAD8\`' im PR #$VERDICT_PR. Der product-owner hat das letzte Wort."
+        [ -z "$VERDICT_MISSING" ] || die "#$TICKET: done rejected — no 'PO OK — HEAD \`$VERDICT_HEAD8\`' in PR #$VERDICT_PR. The product-owner has the last word."
         ;;
-      *) die "'done' setzt nur der product-owner, oder merge-gate mit PO OK — nicht $R" ;;
+      *) die "'done' is set only by the product-owner, or by merge-gate with PO OK — not $R" ;;
     esac
-    # Auch am Merge vorbei kein done, solange ein AC per ABANDON aufgegeben ist.
-    HANDOFF="$(python3 "$BIN_DIR/gates.py" abandoned "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" || die "#$TICKET: done abgelehnt — $HANDOFF"
+    # Not even past the merge is there a done while an AC is given up via ABANDON.
+    HANDOFF="$(python3 "$BIN_DIR/gates.py" abandoned "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" || die "#$TICKET: done rejected — $HANDOFF"
     ;;
 esac
 
-# --- 1. Board zuerst ------------------------------------------------------------
+# --- 1. board first -------------------------------------------------------------
 if [ "$KIT_BOARD" = "github-project" ]; then
   KEY="KIT_OPTION_$(echo "$NEW" | tr 'a-z-' 'A-Z_')"
   OPT="${!KEY:-}"
-  [ -n "$OPT" ] || die "keine Board-Option fuer '$NEW' in board.env — bin/board-check.sh --write laufen lassen"
-  "$T" board-set "$TICKET" "$OPT" "$(board_name "$NEW")" || die "Board-Status nicht gesetzt — Label bleibt absichtlich unveraendert"
+  [ -n "$OPT" ] || die "no board option for '$NEW' in board.env — run bin/board-check.sh --write"
+  "$T" board-set "$TICKET" "$OPT" "$(board_name "$NEW")" || die "board status not set — the label stays unchanged on purpose"
 fi
 
-# --- 2. Label als Spiegel -------------------------------------------------------
+# --- 2. label as the mirror -----------------------------------------------------
 for l in $(printf '%s\n' "$LABELS" | grep "^$P" || true); do
   "$T" rm-label "$TICKET" "$l"
 done
 [ "$NEW" = "done" ] || "$T" add-label "$TICKET" "$P$NEW"
 
-# Besitz ueber owner:<rolle>. Alle Sessions teilen oft EINEN Account — der Assignee kann
-# engineer-a und engineer-b nicht unterscheiden, das Label kann es.
+# Ownership via owner:<role>. All sessions often share ONE account — the assignee cannot tell
+# engineer-a and engineer-b apart, the label can.
 for o in $OWNERS_NOW; do
   if [ "$o" = "$OWNER" ] || in_list "$o" "$KEEP"; then continue; fi
   "$T" rm-label "$TICKET" "$O$o"
@@ -184,27 +184,27 @@ if [ -z "$OWNER" ]; then
   for a in $("$T" assignees "$TICKET"); do "$T" unassign "$TICKET" "$a"; done
 fi
 
-# Bei planned ist dieser Kommentar zugleich die Freigabe des Umfangs (bin/gates.py approved).
+# On planned this comment is at the same time the approval of the scope (bin/gates.py approved).
 "$T" comment "$TICKET" "**$(board_name "$NEW")** — $R · $(now) · session \`$SID\`
 
-${NOTE:-_kein Kommentar_}${OWNS_LEDGER:+
+${NOTE:-_no comment_}${OWNS_LEDGER:+
 
 OWNS Revision 1: \`$OWNS_LEDGER\`}${GATES_LEDGER:+
 GATES Revision 1: \`$GATES_LEDGER\`}${LINT_MSG:+
 
-Lint-Hinweise:
+Lint hints:
 $LINT_MSG}"
 
 [ "$NEW" != "done" ] || "$T" close "$TICKET"
 
 if [ -f "$CURRENT_FILE" ]; then
   KIT_ROLE="$R" "$BIN_DIR/say.sh" "#$TICKET · $(board_name "$NEW")" <<EOF > /dev/null
-${NOTE:-Statuswechsel ohne Kommentar.}
+${NOTE:-Status change without a comment.}
 EOF
 fi
 
-# Wer den neuen Zustand aufnimmt, wird geweckt: sonst wartet er bis zum naechsten Intervall,
-# obwohl die Arbeit schon daliegt. Verliert sich die Marke, weckt ihn das Intervall (Rueckfalllinie).
+# Whoever picks up the new state is woken: otherwise they wait for the next interval although
+# the work is already there. If the mark gets lost, the interval wakes them (fallback line).
 wake_roles "$NEW"
 
 echo "#$TICKET: $OLD → $NEW${OWNER:+ (owner:$OWNER)}"

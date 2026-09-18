@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-echo "UNKNOWN — Transkripte fuer hermes beim Owner erfragen." >&2
+echo "UNKNOWN — ask the owner for the transcripts for hermes." >&2
 exit 1

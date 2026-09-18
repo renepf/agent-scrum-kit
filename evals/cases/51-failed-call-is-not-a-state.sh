@@ -28,7 +28,7 @@ nachher="$(KIT_ENV_FILE="$SANDBOX/kit.env" "$BIN/tickets.sh" labels 5 | tr '\n' 
 fehler=""
 [ "$rc" != 0 ] || fehler="$fehler status.sh-hat-nicht-abgebrochen"
 [ "$vorher" = "$nachher" ] || fehler="$fehler Label-geaendert($vorher->$nachher)"
-case "$out" in *[Ff]ehl*) ;; *) fehler="$fehler keine-Fehlermeldung" ;; esac
+case "$out" in *ERROR*) ;; *) fehler="$fehler keine-Fehlermeldung" ;; esac
 
 observe "Exitcode $rc · Label vor '$vorher' nach '$nachher' · Meldung: $(echo "$out" | tail -1 | cut -c1-60)${fehler:+ · FEHLER:$fehler}"
 echo "OBSERVED: $OBSERVED"

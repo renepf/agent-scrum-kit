@@ -22,14 +22,14 @@ sandbox_plannable 7
 rm -f "$SANDBOX/tickets/7/intent.md" "$SANDBOX/tickets/7/spec.md" "$SANDBOX/tickets/7/plan.md"
 
 # Die Kette wird Glied fuer Glied benannt, nicht als Sammelmeldung: intent.md zuerst.
-abgelehnt a-ohne-intent '*planned abgelehnt*intent.md*'
+abgelehnt a-ohne-intent '*planned rejected*intent.md*'
 art intent.md "Problem: der Export fehlt"
-abgelehnt b-ohne-spec '*planned abgelehnt*spec.md*'
+abgelehnt b-ohne-spec '*planned rejected*spec.md*'
 art spec.md "Verhalten: eine Datei je Lauf"
-abgelehnt c-ohne-plan '*planned abgelehnt*plan.md*'
+abgelehnt c-ohne-plan '*planned rejected*plan.md*'
 # Eine leere Datei ist kein Artefakt.
 art plan.md ""
-abgelehnt d-plan-leer '*planned abgelehnt*plan.md*'
+abgelehnt d-plan-leer '*planned rejected*plan.md*'
 
 art plan.md "Schritte: 1. Modul, 2. Test"
 out="$(plan)"; rc=$?

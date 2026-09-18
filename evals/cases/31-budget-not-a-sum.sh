@@ -9,7 +9,7 @@ SPRINT="$(sandbox_sprint)"
 # sess-sumtrap: drei Turns zu je 120000. Summe waere 360000 (ueber Stopp),
 # der groesste Turn ist 120000 (unauffaellig).
 {
-  printf '# roster\n\n| Zeit | Rolle | Session-ID | Host |\n|---|---|---|---|\n'
+  printf '# roster\n\n| Time | Role | Session-ID | Host |\n|---|---|---|---|\n'
   printf '| 2026-01-01 00:00 | engineer-a | sess-sumtrap | test-fixture |\n'
 } > "$SPRINT/roster.md"
 

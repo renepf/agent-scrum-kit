@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Druckt die PID des claude-Prozesses, unter dem dieser Aufruf laeuft, oder scheitert.
-# Die Kette ist: Skript -> Shell des Werkzeugaufrufs -> claude (gemessen 2026-09-10).
-# Die PID bleibt ueber alle Werkzeugaufrufe einer Session gleich; zwei Instanzen haben zwei.
+# Prints the PID of the claude process this call runs under, or fails.
+# The chain is: script -> shell of the tool call -> claude (measured 2026-09-10).
+# The PID stays the same across every tool call of a session; two instances have two.
 set -euo pipefail
 p=$$
 for _ in 1 2 3 4 5 6 7 8 9 10; do

@@ -7,7 +7,7 @@ sandbox; trap sandbox_cleanup EXIT
 SPRINT="$(sandbox_sprint)"
 
 {
-  printf '# roster\n\n| Zeit | Rolle | Session-ID | Host |\n|---|---|---|---|\n'
+  printf '# roster\n\n| Time | Role | Session-ID | Host |\n|---|---|---|---|\n'
   printf '| 2026-01-01 00:00 | engineer-a | sess-quiet | test-fixture |\n'
   printf '| 2026-01-01 00:00 | engineer-b | sess-warn | test-fixture |\n'
   printf '| 2026-01-01 00:00 | qa-ruthless | sess-stop | test-fixture |\n'
@@ -21,10 +21,10 @@ stop_zeile="$(grep '^STOP ' "$SPRINT/budget.md" | tr '\n' ' ')"
 
 fehler=""
 [ "$lq" = "ok" ] || fehler="$fehler engineer-a=$lq"
-case "$lw" in Warnung*) ;; *) fehler="$fehler engineer-b=$lw" ;; esac
-case "$ls_" in *STOPP*) ;; *) fehler="$fehler qa-ruthless=$ls_" ;; esac
+case "$lw" in warning*) ;; *) fehler="$fehler engineer-b=$lw" ;; esac
+case "$ls_" in *STOP*) ;; *) fehler="$fehler qa-ruthless=$ls_" ;; esac
 [ "$stop_zeile" = "STOP qa-ruthless " ] || fehler="$fehler flag='$stop_zeile'"
 
-observe "1150→ok · 260000→Warnung · 300010→STOPP · Flagzeile '$(echo "$stop_zeile" | sed 's/ $//')'${fehler:+ · FEHLER:$fehler}"
+observe "1150→ok · 260000→warning · 300010→STOP · Flagzeile '$(echo "$stop_zeile" | sed 's/ $//')'${fehler:+ · FEHLER:$fehler}"
 echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

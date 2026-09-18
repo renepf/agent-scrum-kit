@@ -18,7 +18,7 @@ printf 'Verhalten: eine Datei je Lauf\n' > "$SANDBOX/tickets/8/spec.md"
 # 1. Referenz konfiguriert, spec.md ohne Beleg: abgelehnt, nichts geschrieben.
 ref "echo referenz-lauf"
 s1="$(sandbox_snap 8)"; out="$(plan)"; s2="$(sandbox_snap 8)"
-pruef a-ohne-REFERENCE "$out" '*planned abgelehnt*REFERENCE*'
+pruef a-ohne-REFERENCE "$out" '*planned rejected*REFERENCE*'
 n=$((n + 1)); [ "$s1" = "$s2" ] || fail "a-Zustand-veraendert"
 
 # 2. Mit Beleg in der spec.md geht es durch.

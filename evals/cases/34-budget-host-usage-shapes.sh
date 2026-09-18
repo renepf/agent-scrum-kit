@@ -13,7 +13,7 @@ SPRINT="$(sandbox_sprint)"
 # sess-qwen: turns 20228 and 30000 → 30000 (not 30100 with the cache, not the sum 50228)
 # sess-pi:   turns 1713+5+0 and 1000+2000+10 → 3010
 {
-  printf '# roster\n\n| Zeit | Rolle | Session-ID | Host |\n|---|---|---|---|\n'
+  printf '# roster\n\n| Time | Role | Session-ID | Host |\n|---|---|---|---|\n'
   printf '| 2026-01-01 00:00 | engineer-a | sess-qwen | test-fixture |\n'
   printf '| 2026-01-01 00:00 | engineer-b | sess-pi | test-fixture |\n'
   printf '| 2026-01-01 00:00 | qa-ruthless | sess-nousage | test-fixture |\n'

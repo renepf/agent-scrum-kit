@@ -56,8 +56,8 @@ sandbox_issue 99 '{"labels":["status:in-testing","owner:acceptance-tester"],"pr"
 # b) a rejected merge prints the report first and writes nothing
 s1="$(sandbox_snap 99)"
 out="$(KIT_ROLE=product-owner "$BIN/merge.sh" 99 2>&1)"
-expect b-rejected "$out" '*Merge abgelehnt*'
-expect b-report-before-rejection "$out" '*Merge report #99*PR #990*HEAD 99999999*Merge abgelehnt*'
+expect b-rejected "$out" '*merge rejected*'
+expect b-report-before-rejection "$out" '*Merge report #99*PR #990*HEAD 99999999*merge rejected*'
 expect b-AC-1-not-green "$out" '*
   AC-1: not green (*'
 expect b-AC-2-not-green "$out" '*
@@ -105,6 +105,6 @@ expect e-merged "$out" '*in-testing → done*'
 expect e-no-approval "$out" "*approved definitions: none on the issue*"
 refuse e-no-change-flag "$out" '*definition changed*'
 
-observe "$((n - failed))/$n checks passed · planned records GATES Revision 1 · report before rejection, each AC once, files listed · failed reads UNKNOWN · changed definition and AC without gate shown, merge not blocked · no GATES line reported${errors:+ · FEHLER:$errors}"
+observe "$((n - failed))/$n checks passed · planned records GATES Revision 1 · report before rejection, each AC once, files listed · failed reads UNKNOWN · changed definition and AC without gate shown, merge not blocked · no GATES line reported${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
 [ -z "$errors" ]

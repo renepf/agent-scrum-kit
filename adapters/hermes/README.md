@@ -1,25 +1,27 @@
+🇬🇧 English · [🇩🇪 Deutsch](README.de.md)
+
 # Adapter: hermes
 
-Produkt: Hermes — eigenstaendiger Harness (Angabe des Owners, 2026-09-09)
+Product: Hermes — a harness of its own (the owner's statement, 2026-09-09)
 
-Alles Weitere ist offen. Es wurde nichts geprueft und nichts angenommen.
+Everything else is open. Nothing was checked and nothing assumed.
 
-## 1. Session starten
+## 1. Start a session
 
-`UNKNOWN — Startbefehl, Sessionkennung und Werkzeugnamen beim Owner erfragen`
+`UNKNOWN — ask the owner for the start command, the session id and the tool names`
 
-## 2. Rollendatei laden
+## 2. Load a role file
 
-`UNKNOWN — Startbefehl, Sessionkennung und Werkzeugnamen beim Owner erfragen`
+`UNKNOWN — ask the owner for the start command, the session id and the tool names`
 
-Ob der Host `AGENTS.md` von sich aus liest, ist ungeprueft. Falls nicht, muss der Vertrag
-im ersten Prompt mitgegeben werden.
+Whether the host reads `AGENTS.md` by itself is not checked. If it does not, the contract must be
+handed over in the first prompt.
 
-## 3. Session-Kennung
+## 3. Session id
 
-`UNKNOWN — Startbefehl, Sessionkennung und Werkzeugnamen beim Owner erfragen`
+`UNKNOWN — ask the owner for the start command, the session id and the tool names`
 
-## 4. Tokenbudget
+## 4. Token budget
 
-`UNKNOWN — schreibt dieser Host Transkripte mit usage-Feldern? Beim Owner erfragen.`
-Bis das geklaert ist, gilt die Notbremse: Ruhestand nach `KIT_MAX_TICKETS` Tickets.
+`UNKNOWN — does this host write transcripts with usage fields? Ask the owner.`
+Until that is settled, the emergency brake applies: retirement after `KIT_MAX_TICKETS` tickets.

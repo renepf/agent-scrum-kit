@@ -16,7 +16,7 @@ o0="$(hook startup 2>&1)"; r0=$?
 mkdir -p "$KIT_ROOT/.pid-roles"; echo engineer-b > "$PIDF"
 o1="$(hook clear 2>/dev/null)"; r1=$?
 ctx="$(printf '%s' "$o1" | python3 -c 'import json,sys; print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])' 2>/dev/null)"
-case "$ctx" in *"Rolle **engineer-b**"*"roles/engineer.md"*"/loop 5m"*) ;; *) fehler="$fehler kontext-falsch" ;; esac
+case "$ctx" in *"role **engineer-b**"*"roles/engineer.md"*"/loop 5m"*) ;; *) fehler="$fehler kontext-falsch" ;; esac
 
 wake=""
 for s in startup clear resume compact fork; do

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Druckt die Transkriptpfade zu einer Session-Kennung, einen je Zeile.
+# Prints the transcript paths for a session id, one per line.
 set -euo pipefail
-[ $# -ge 1 ] || { echo "Aufruf: transcript-path.sh <session-id>" >&2; exit 2; }
+[ $# -ge 1 ] || { echo "usage: transcript-path.sh <session-id>" >&2; exit 2; }
 found=0
 for p in "$HOME"/.claude/projects/*/"$1".jsonl; do
   [ -e "$p" ] || continue

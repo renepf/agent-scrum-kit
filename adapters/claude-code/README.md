@@ -1,10 +1,12 @@
+🇬🇧 English · [🇩🇪 Deutsch](README.de.md)
+
 # Adapter: claude-code
 
-Auf dieser Maschine verifiziert am 2026-09-09.
+Verified on this machine on 2026-09-09.
 
-## 1. Session starten
+## 1. Start a session
 
-Ein Terminal je Rolle, alle im selben Ordner:
+One terminal per role, all in the same folder:
 
 ```bash
 cd "$KIT_WORKTREE_ROOT"
@@ -12,152 +14,152 @@ export KIT_ROLE=engineer-a
 claude
 ```
 
-## 2. Rollendatei laden und Dauerbetrieb
+## 2. Load the role file and run continuously
 
-Erster Prompt, woertlich, mit Intervall und Datei aus `roles/START-HERE.md`:
+The first prompt, verbatim, with the interval and the file from `roles/START-HERE.md`:
 
 ```
-/loop 5m Fuehre bin/tick.sh aus. Liegt nichts fuer dich an, beende die Runde. Sonst arbeite deine
-Rolle laut roles/engineer.md: ein Ticket zur Zeit, aufgreifen heisst sofort den In-Status setzen,
-kein Subagent.
+/loop 5m Run bin/tick.sh. If nothing is waiting for you, end the round. Otherwise work your
+role per roles/engineer.md: one ticket at a time, picking up means setting the In status immediately,
+no subagent.
 ```
 
-`/loop` mit festem Intervall startet die Runde auch dann, wenn die Rolle gerade auf nichts wartet.
-Eine leere Runde endet nach dem Tick.
+`/loop` with a fixed interval starts the round even when the role is waiting for nothing.
+An empty round ends after the tick.
 
-## 3. Session-Kennung, Host-PID, Kontext-Reset
+## 3. Session id, host PID, context reset
 
-- **Host-PID:** `host-pid.sh` geht die Prozesskette hoch bis zum Prozess `claude`. Die PID bleibt ueber
-  alle Werkzeugaufrufe einer Session gleich — **und ueber `/clear` hinweg**.
-- **Session-Kennung:** `session-id.sh` liest zuerst `~/.claude/sessions/<host-pid>.json` (Feld
-  `sessionId`), dann `CLAUDE_CODE_SESSION_ID`. Gemessen 2026-09-14 in sauberer Umgebung: nach `/clear`
-  traegt die Registry die neue ID bei gleicher PID. Ob `CLAUDE_CODE_SESSION_ID` ebenfalls wechselt, ist
-  in sauberer Umgebung **nicht gemessen**. Nie aus der juengsten Transkriptdatei ableiten.
-- **Lebender Host:** `host-alive.sh <pid>` prueft den Prozessnamen `claude`. Eine PID wird nach dem
-  Ende neu vergeben; ein Anker darf dann nicht als laufende Rolle gelten. `bin/tick.sh` raeumt Anker
-  toter oder neu vergebener PIDs bei jedem Tick weg.
-- **Hintergrund-Sessions:** `is-background.sh` erkennt `CLAUDE_CODE_SESSION_KIND=bg`. Solche Sessions
-  erben `KIT_ROLE`, sind aber keine Rolle. **Nicht** `CLAUDE_CODE_CHILD_SESSION` pruefen: die Variable
-  steht in der Werkzeug-Umgebung jeder Session (Referenz-Messung 2026-09-14).
-- **Rolle ueber `/clear`:** `bin/tick.sh` schreibt bei jedem Tick `.pid-roles/<host-pid>`. Ohne
-  `KIT_ROLE` liest `bin/common.sh` die Rolle dort.
-- **Start-Hook:** `settings.json` haengt `session-start.sh` zweimal an `SessionStart`: einmal fuer den
-  Rollenanker als Kontext, einmal mit `--wake` (asyncRewake), das die Session nach `startup`, `clear`
-  und `resume` ohne Eingabe weckt. Gemessen: Start ohne Prompt registriert sich; nach `/clear` liest
-  die Session ihre Rolle neu, tickt (neue ID im Roster) und findet ihren laufenden `/loop`.
-- **Kein Modell ohne Arbeit:** vor jedem Start fuehrt die Schleife `bin/tick.sh --signal` aus. Exit 4 heisst
-  "nichts fuer dich": dann startet sie kein `claude`, sondern wartet bis `KIT_TICK_INTERVAL` Sekunden in
-  Schritten von `KIT_TICK_POLL` — oder kuerzer, wenn ein Statuswechsel `.role-loop/<rolle>.wake` anlegt.
-- **Waechter-Schleife:** `role-loop.sh <rolle> [--after <pid>]` startet `claude -n <rolle> --settings … --mcp-config
-  .mcp.json` und startet neu, sobald es endet. Mit `--after` wartet sie bis 120 s, bis unter der PID kein
-  `claude` mehr lebt — so oeffnet `bin/restart-self.sh` sie in einem zellij-Tab, bevor sich die alte Session
-  beendet. Stoppen: `touch .role-loop/<rolle>.stop`. Gemessen mit
-  vorgetaeuschtem `claude` (Fall 68: Neustart, Stopp, Aufgeben, Zwilling) und mit echtem `claude`
-  (Fall 77: Selbst-Neustart per `restart-self.sh`, neue PID und Session-ID ohne Eingabe). Das
-  Vertrauen in den Ordner speichert claude in `~/.claude.json` (`hasTrustDialogAccepted`), deshalb
-  haengt der Neustart nicht am Dialog.
-- **Absturzschutz beachten:** endet `claude` dreimal in Folge nach weniger als 60 s, gibt die Schleife
-  auf. Eine Rolle, die sich direkt nach dem Wecken erneut zuruecksetzt, zaehlt dabei als schneller
-  Abbruch.
+- **Host PID:** `host-pid.sh` walks up the process chain to the process `claude`. The PID stays the same
+  across every tool call of a session — **and across `/clear`**.
+- **Session id:** `session-id.sh` reads `~/.claude/sessions/<host-pid>.json` first (field
+  `sessionId`), then `CLAUDE_CODE_SESSION_ID`. Measured 2026-09-14 in a clean environment: after `/clear`
+  the registry carries the new id under the same PID. Whether `CLAUDE_CODE_SESSION_ID` changes as well is
+  **not measured** in a clean environment. Never derive it from the youngest transcript file.
+- **A living host:** `host-alive.sh <pid>` checks the process name `claude`. A PID is handed out again after
+  the process ends; an anchor must not then count as a running role. `bin/tick.sh` clears away anchors
+  of dead or reassigned PIDs at every tick.
+- **Background sessions:** `is-background.sh` recognises `CLAUDE_CODE_SESSION_KIND=bg`. Such sessions
+  inherit `KIT_ROLE` but are not a role. Do **not** check `CLAUDE_CODE_CHILD_SESSION`: that variable
+  stands in the tool environment of every session (reference measurement 2026-09-14).
+- **The role across `/clear`:** `bin/tick.sh` writes `.pid-roles/<host-pid>` at every tick. Without
+  `KIT_ROLE`, `bin/common.sh` reads the role there.
+- **Start hook:** `settings.json` attaches `session-start.sh` to `SessionStart` twice: once for the
+  role anchor as context, once with `--wake` (asyncRewake), which wakes the session after `startup`, `clear`
+  and `resume` without any input. Measured: a start without a prompt registers itself; after `/clear` the
+  session reads its role again, ticks (a new id in the roster) and finds its running `/loop`.
+- **No model without work:** before every start the loop runs `bin/tick.sh --signal`. Exit 4 means
+  "nothing for you": it then starts no `claude` but waits up to `KIT_TICK_INTERVAL` seconds in
+  steps of `KIT_TICK_POLL` — or less, when a status change creates `.role-loop/<role>.wake`.
+- **Watchdog loop:** `role-loop.sh <role> [--after <pid>]` starts `claude -n <role> --settings … --mcp-config
+  .mcp.json` and starts it again as soon as it ends. With `--after` it waits up to 120 s until no
+  `claude` lives under that PID — that is how `bin/restart-self.sh` opens it in a zellij tab before the old session
+  ends. Stopping: `touch .role-loop/<role>.stop`. Measured with a
+  faked `claude` (case 68: restart, stop, giving up, twin) and with a real `claude`
+  (case 77: a self restart through `restart-self.sh`, a new PID and session id without any input). claude stores
+  the trust in the folder in `~/.claude.json` (`hasTrustDialogAccepted`), which is why the restart does
+  not hang on the dialog.
+- **Mind the crash guard:** if `claude` ends three times in a row after less than 60 s, the loop gives
+  up. A role that resets itself again right after being woken counts as a fast
+  abort.
 
-**Messfalle fuer Tests:** Wer `claude` aus einer laufenden claude-Session heraus startet, vererbt
-`CLAUDE_CODE_CHILD_SESSION=1`, `CLAUDE_PID` und den Messaging-Socket. Die gestartete Session schrieb
-dann weder Registry noch Transkript am ueblichen Ort. Testsessions deshalb mit `env -i` und nur
-`HOME PATH USER LANG TERM KIT_ROLE` starten (so in Fall 75 und 76).
+**A measuring trap for tests:** whoever starts `claude` from inside a running claude session inherits
+`CLAUDE_CODE_CHILD_SESSION=1`, `CLAUDE_PID` and the messaging socket. The started session then wrote
+neither the registry nor a transcript in the usual place. So start test sessions with `env -i` and only
+`HOME PATH USER LANG TERM KIT_ROLE` (as in cases 75 and 76).
 
-## 4. Empfohlene Einstellungen fuer Opus 5
+## 4. Recommended settings for Opus 5
 
-Quelle: NotebookLM-Sammlung des Owners ("Claude Best Principles", abgefragt 2026-09-09).
-**Von mir nicht nachgemessen** — die Namen der Umgebungsvariablen in Punkt 3 unten habe ich
-nicht gegen die Claude-Code-Dokumentation geprueft.
+Source: the owner's NotebookLM collection ("Claude Best Principles", queried 2026-09-09).
+**Not re-measured by me** — I did not check the names of the environment variables in point 3 below
+against the Claude Code documentation.
 
-1. **Modell explizit setzen**, nie auf Standardwerte verlassen: `claude-opus-5`.
-2. **Thinking nicht abschalten.** Abschalten fuehrt zu fehlerhaften Werkzeugaufrufen und
-   sichtbaren internen Tags. Steuere Kosten stattdessen ueber den Effort-Grad:
-   `medium` ist der Arbeitsbereich, `low` fuer Routine, `high` erzeugt Overthinking und
-   Kursabweichung.
-3. **Subagenten maschinell sperren** — die eiserne Regel steht sonst nur im Text:
+1. **Set the model explicitly**, never rely on defaults: `claude-opus-5`.
+2. **Do not switch thinking off.** Switching it off leads to faulty tool calls and
+   visible internal tags. Control the cost through the effort level instead:
+   `medium` is the working range, `low` for routine, `high` produces overthinking and
+   drift.
+3. **Lock subagents mechanically** — otherwise the iron rule stands only in the text:
    ```bash
    export CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=0
    export CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=0
    ```
-   `UNKNOWN — Namen gegen die Claude-Code-Dokumentation pruefen, Beleg bisher nur die
-   NotebookLM-Quelle.` Die Eval `no-subagent` prueft das Verhalten, nicht die Variable.
-4. **Kein `/compact`.** Verdichten verliert den Grossteil der technischen Details. Bei vollem
-   Kontext: Uebergabe schreiben, Kontext leeren, neu starten. So steht es in
-   `protocols/LOOP.md` Abschnitt 7.
-5. **Keine "pruefe deine Antwort nochmal"-Anweisungen** in Prompts. Opus 5 verifiziert
-   selbst; zusaetzliche Aufforderungen erzeugen Over-Verification und kosten Token ohne
-   Gegenwert. Deshalb verlangt `AGENTS.md` eine **Messung**, keine Nachpruefschleife.
-6. **Regeldateien schlank halten.** Ueber 300 Zeilen verschlechtern das Ergebnis messbar.
-   `AGENTS.md` bleibt bewusst darunter, Details liegen in Unterordnern mit Routing-Tabelle.
+   `UNKNOWN — check the names against the Claude Code documentation, the only evidence so far is the
+   NotebookLM source.` The eval `no-subagent` checks the behaviour, not the variable.
+4. **No `/compact`.** Compacting loses most of the technical details. With a full
+   context: write the handover, clear the context, start again. That is how
+   `protocols/LOOP.md` section 7 puts it.
+5. **No "check your answer again" instructions** in prompts. Opus 5 verifies
+   itself; extra demands produce over-verification and cost tokens without
+   return. That is why `AGENTS.md` demands a **measurement**, not a re-checking loop.
+6. **Keep rule files lean.** Past 300 lines the result measurably worsens.
+   `AGENTS.md` deliberately stays below that, the details live in subfolders with a routing table.
 
-## 4a. Dialoge, die einen unbeaufsichtigten Start blockieren
+## 4a. Dialogs that block an unattended start
 
-Gemessen am 2026-09-14 an einer interaktiven Session in einem frischen Kit-Ordner:
+Measured on 2026-09-14 against an interactive session in a fresh kit folder:
 
-- **Vertrauensdialog beim ersten Start in einem Ordner.** Die Vorauswahl ist `❯ No, exit` — ein
-  blindes Enter beendet claude. Einmal von Hand `Yes, I trust this folder` waehlen, bevor Rollen
-  unter `role-loop.sh` laufen; sonst haengt jeder Neustart an diesem Dialog. Mit `-p` erscheint er
-  nicht.
-- **`/exit` mit laufendem `/loop`.** claude fragt `Background work is running … 1. Exit and stop
-  tasks / 2. Stay`. Wer eine Rolle von Hand beendet, bestaetigt mit `1`. `bin/restart-self.sh`
-  betrifft das nicht: es beendet den Prozess per `kill -TERM`.
-- **Start ohne Eingabe.** Mit `--settings adapters/claude-code/settings.json` weckt der Hook
-  `session-start.sh --wake` (asyncRewake) die Session nach dem Vertrauensdialog von selbst: sie las
-  `roles/_COMMON.md` und `roles/engineer.md`, fuehrte `bin/tick.sh` aus, registrierte sich und legte
-  ihren 5-Minuten-Loop per `CronCreate` an — ohne einen einzigen eingegebenen Prompt.
-- In `-p` meldet derselbe Weck-Hook `outcome: error` (exit 2, Ankertext auf stderr). Die Session
-  laeuft trotzdem normal durch; der Kontext-Hook liefert den Anker dort als `additionalContext`.
+- **The trust dialog at the first start in a folder.** The preselection is `❯ No, exit` — a
+  blind Enter ends claude. Choose `Yes, I trust this folder` by hand once before roles run
+  under `role-loop.sh`; otherwise every restart hangs on that dialog. With `-p` it does not
+  appear.
+- **`/exit` with a running `/loop`.** claude asks `Background work is running … 1. Exit and stop
+  tasks / 2. Stay`. Whoever ends a role by hand confirms with `1`. `bin/restart-self.sh`
+  is not affected: it ends the process with `kill -TERM`.
+- **A start without input.** With `--settings adapters/claude-code/settings.json` the hook
+  `session-start.sh --wake` (asyncRewake) wakes the session by itself after the trust dialog: it read
+  `roles/_COMMON.md` and `roles/engineer.md`, ran `bin/tick.sh`, registered itself and created
+  its 5-minute loop with `CronCreate` — without a single typed prompt.
+- In `-p` the same wake hook reports `outcome: error` (exit 2, the anchor text on stderr). The session
+  runs through normally regardless; there the context hook delivers the anchor as `additionalContext`.
 
-## 5. MCP-Server
+## 5. MCP servers
 
-Das Kit liefert MCP-Server in zwei Dateien aus. Jeder laeuft durch `caveman-shrink@0.1.0` (MIT), einen
-stdio-Proxy aus dem caveman-Projekt, der die Tool-Beschreibungen kuerzt. Alle Versionen sind exakt
-gepinnt; gemessen am 2026-09-14 per `initialize` + `tools/list`:
+The kit ships MCP servers in two files. Each runs through `caveman-shrink@0.1.0` (MIT), a
+stdio proxy from the caveman project that shortens the tool descriptions. Every version is pinned
+exactly; measured on 2026-09-14 with `initialize` + `tools/list`:
 
-| Server | Datei | Paket | Lizenz | Tools | Beschreibungen roh → gekuerzt |
+| Server | File | Package | Licence | Tools | Descriptions raw → shortened |
 |---|---|---|---|---|---|
-| context7 | `.mcp.json` | `@upstash/context7-mcp@4.1.0` (npx) | MIT | 2 | 2435 → 2351 Zeichen |
-| graphify | `.mcp.json` | `graphifyy[mcp]==0.9.57` (uvx) | Apache-2.0 | 10 | 1229 → 1187 Zeichen |
-| jcodemunch | `adapters/claude-code/mcp/jcodemunch.json` | `jcodemunch-mcp==1.108.318` (uvx) | Dual-Use, siehe unten | 6 | — |
+| context7 | `.mcp.json` | `@upstash/context7-mcp@4.1.0` (npx) | MIT | 2 | 2435 → 2351 characters |
+| graphify | `.mcp.json` | `graphifyy[mcp]==0.9.57` (uvx) | Apache-2.0 | 10 | 1229 → 1187 characters |
+| jcodemunch | `adapters/claude-code/mcp/jcodemunch.json` | `jcodemunch-mcp==1.108.318` (uvx) | dual-use, see below | 6 | — |
 
-Voraussetzungen: `npx` (Node) und `uvx` (uv). graphify liest `graphify-out/graph.json` relativ zum
-Kit-Ordner; ohne Graph startet der Server trotzdem (gemessen). Den Graph baut `graphify update <pfad>`.
+Prerequisites: `npx` (Node) and `uvx` (uv). graphify reads `graphify-out/graph.json` relative to the
+kit folder; without a graph the server still starts (measured). The graph is built by `graphify update <path>`.
 
-`graphifyy` braucht das Extra `[mcp]`: ohne es endet `graphify-mcp` mit
-`ModuleNotFoundError: No module named 'mcp'` (gemessen an einer `uv tool install graphifyy`).
+`graphifyy` needs the extra `[mcp]`: without it `graphify-mcp` ends with
+`ModuleNotFoundError: No module named 'mcp'` (measured against a `uv tool install graphifyy`).
 
-Start mit MCP:
+Starting with MCP:
 
 ```bash
 claude -n "$KIT_ROLE" --settings adapters/claude-code/settings.json --mcp-config .mcp.json
 ```
 
-### jcodemunch — nur auf Einschalten
+### jcodemunch — on opt-in only
 
-`jcodemunch-mcp` steht unter der **jCodeMunch-MCP Dual-Use License 1.1**, nicht unter einer
-Open-Source-Lizenz. Klausel 3: die Software darf nicht "in any product, service, or workflow that
+`jcodemunch-mcp` is published under the **jCodeMunch-MCP Dual-Use License 1.1**, not under an
+open-source licence. Clause 3: the software must not be used "in any product, service, or workflow that
 generates revenue, is offered commercially, or is used within a for-profit organization to support
-revenue-generating activities" genutzt werden. Kostenlos ist nur nicht-kommerzielle Nutzung;
-kommerziell braucht es die Erlaubnis des Autors (J. Gravelle,
-https://github.com/jgravelle/jcodemunch-mcp). Das Kit verteilt keinen Code, nur einen Startbefehl —
-ob deine Nutzung erlaubt ist, musst du selbst pruefen. Deshalb ist es nicht in `.mcp.json`.
+revenue-generating activities". Free is non-commercial use only;
+commercial use needs the author's permission (J. Gravelle,
+https://github.com/jgravelle/jcodemunch-mcp). The kit distributes no code, only a start command —
+whether your use is allowed you must check yourself. That is why it is not in `.mcp.json`.
 
-Einschalten:
+Switching it on:
 
 ```bash
 claude … --mcp-config .mcp.json adapters/claude-code/mcp/jcodemunch.json
 ```
 
-Die vom Server gemeldete Version ist unzuverlaessig (`==1.27.0` meldet sich als 1.30.0 mit 50 Tools);
-gepinnt ist 1.108.318, eine Router-Fassung mit 6 Tools und rund 2400 Zeichen Beschreibung.
+The version the server reports is unreliable (`==1.27.0` reports itself as 1.30.0 with 50 tools);
+pinned is 1.108.318, a router version with 6 tools and about 2400 characters of description.
 
-### caveman als Plugin
+### caveman as a plugin
 
-`caveman` selbst ist kein MCP-Server, sondern ein Plugin aus Hooks und Skills. Die Befehle unten
-entsprechen `claude plugin marketplace add --help` und `claude plugin install --help`; ausgefuehrt
-wurden sie auf der Messmaschine nicht, dort war das Plugin schon installiert (**ungeprueft**):
+`caveman` itself is not an MCP server but a plugin of hooks and skills. The commands below
+match `claude plugin marketplace add --help` and `claude plugin install --help`; they were not
+run on the measuring machine, where the plugin was already installed (**unchecked**):
 
 ```bash
 claude plugin marketplace add JuliusBrussee/caveman

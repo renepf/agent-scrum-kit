@@ -6,11 +6,11 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 
 C="$KIT_ROOT/AGENTS.md"
 fehler=""
-grep -q 'UNKNOWN — <wo zu klaeren>' "$C" || fehler="$fehler UNKNOWN-Regel"
-grep -q 'Ein fehlgeschlagener Werkzeugaufruf ist ein' "$C" || fehler="$fehler Fehlschlag-Regel"
-grep -q 'Zwischenzustand ist kein Ergebnis' "$C" || fehler="$fehler Zwischenzustand-Regel"
-grep -q 'Syntaxcheck ist kein Lauf' "$C" || fehler="$fehler Syntaxcheck-Regel"
-grep -q 'niemals einen Subagenten' "$C" || fehler="$fehler Subagent-Regel"
+grep -q 'UNKNOWN — <where to clear it>' "$C" || fehler="$fehler UNKNOWN-Regel"
+grep -q 'A failed tool call is a' "$C" || fehler="$fehler Fehlschlag-Regel"
+grep -q 'intermediate state is not a result' "$C" || fehler="$fehler Zwischenzustand-Regel"
+grep -q 'syntax check is not a run' "$C" || fehler="$fehler Syntaxcheck-Regel"
+grep -q 'never spawns a subagent' "$C" || fehler="$fehler Subagent-Regel"
 for rp in 'F1' 'D1' 'R1' 'Q1' 'A1'; do
   grep -q "\`$rp\`" "$C" || fehler="$fehler Referenzpunkt-$rp"
 done

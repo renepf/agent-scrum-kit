@@ -1,281 +1,283 @@
+🇬🇧 English · [🇩🇪 Deutsch](README.de.md)
+
 # agent-scrum-kit
 
-Ein Agenten-Scrum-Team als Vorlage: neun Rollen, neun parallele Sessions, ein Ticket je
-Session, **kein Subagent**. Kopierbar in jedes Projekt, lauffaehig auf mehreren LLM-Hosts.
-Die Befehle unten gelten fuer den Host `claude-code`; fuer andere Hosts siehe
+An agent scrum team as a template: nine roles, nine parallel sessions, one ticket per
+session, **no subagent**. Copyable into any project, runnable on several LLM hosts.
+The commands below apply to the host `claude-code`; for other hosts see
 `adapters/<host>/README.md`.
 
-## Kurzfassung
+## Short version
 
 ```bash
-cd <dein-projekt> && git clone https://github.com/renepf/agent-scrum-kit && cd agent-scrum-kit
-cp kit.env.example kit.env                  # 1. Repo, Pfade, Board eintragen
-bin/board-setup.sh && bin/board-check.sh --write   # 2. Board + Labels einrichten, Abbildung pruefen
-bin/preflight.sh && evals/run.sh --gh       # 3. alles muss gruen sein
-export KIT_ROLE=product-owner && claude -n product-owner --settings adapters/claude-code/settings.json --mcp-config .mcp.json   # 4. je Terminal eine Rolle
-# 5. erste Eingabe:  Lies roles/_COMMON.md und roles/product-owner.md und uebernimm die Rolle product-owner.
-# 6. zweite Eingabe: /loop 10m Fuehre bin/tick.sh aus. Liegt nichts fuer dich an, beende die Runde. Sonst arbeite
-#                    deine Rolle laut roles/product-owner.md. Kein Subagent.   (Intervall je Rolle: Tabelle 2.3)
+cd <your-project> && git clone https://github.com/renepf/agent-scrum-kit && cd agent-scrum-kit
+cp kit.env.example kit.env                  # 1. enter the repo, the paths, the board
+bin/board-setup.sh && bin/board-check.sh --write   # 2. set up board + labels, check the mapping
+bin/preflight.sh && evals/run.sh --gh       # 3. everything must be green
+export KIT_ROLE=product-owner && claude -n product-owner --settings adapters/claude-code/settings.json --mcp-config .mcp.json   # 4. one role per terminal
+# 5. first input:  Read roles/_COMMON.md and roles/product-owner.md and take over the role product-owner.
+# 6. second input: /loop 10m Run bin/tick.sh. If nothing is waiting for you, end the round. Otherwise work
+#                  your role per roles/product-owner.md. No subagent.   (interval per role: table 2.3)
 ```
 
-Die ausfuehrliche Fassung folgt.
+The long version follows.
 
 ---
 
-## 1. Einmalig einrichten
+## 1. One-time setup
 
-### 1.1 Kit ins Projekt legen und konfigurieren
+### 1.1 Put the kit into the project and configure it
 
-Das Kit bleibt ein **eigener Ordner** im Projekt. Nie seinen Inhalt ins Projekt kopieren: das
-Kit bringt eigene `README.md`, `AGENTS.md`, `CLAUDE.md`, `.gitignore` und `.git` mit und wuerde
-die des Projekts ueberschreiben.
+The kit stays a **folder of its own** inside the project. Never copy its content into the project: the
+kit brings its own `README.md`, `AGENTS.md`, `CLAUDE.md`, `.gitignore` and `.git`, and would
+overwrite the project's.
 
 ```bash
-cd <dein-projekt>
+cd <your-project>
 git clone https://github.com/renepf/agent-scrum-kit
-echo "agent-scrum-kit/" >> .gitignore      # das Kit hat seine eigene Historie
+echo "agent-scrum-kit/" >> .gitignore      # the kit has a history of its own
 cd agent-scrum-kit
 cp kit.env.example kit.env
 ```
 
-In `kit.env` mindestens ausfuellen:
+Fill in at least this much in `kit.env`:
 
-| Schluessel | Was hinein gehoert |
+| Key | What belongs in it |
 |---|---|
-| `KIT_REPO` | das Repo mit den Tickets, `<org>/<repo>` |
-| `KIT_WORKTREE_ROOT` | absoluter Pfad des Projekts, in dem die Engineers ihre Worktrees anlegen |
-| `KIT_BASE_BRANCH` | der Integrationsbranch, auf dem niemand direkt arbeitet |
-| `KIT_HOST` | `claude-code`, solange die anderen Adapter `UNKNOWN` tragen |
+| `KIT_REPO` | the repo with the tickets, `<org>/<repo>` |
+| `KIT_WORKTREE_ROOT` | absolute path of the project the engineers create their worktrees in |
+| `KIT_BASE_BRANCH` | the integration branch nobody works on directly |
+| `KIT_HOST` | `claude-code`, as long as the other adapters carry `UNKNOWN` |
 
-Alles andere hat einen Standardwert. `kit.env` ist gitignored.
+Everything else has a default. `kit.env` is gitignored.
 
-### 1.2 Board und Labels einrichten
+### 1.2 Set up the board and the labels
 
-Mit Board ist das Status-Feld des GitHub Projects die Wahrheit und das Label nur ein Spiegel;
-`bin/status.sh` schreibt beides, Board zuerst, und liest den Board-Wert zurueck. Die ausfuehrliche
-Anleitung mit allen Sonderfaellen steht in `INSTALL.md`, Schritt 3.
+With a board, the status field of the GitHub Project is the truth and the label only a mirror;
+`bin/status.sh` writes both, the board first, and reads the board value back. The long
+instructions with every special case are in `INSTALL.md`, step 3.
 
 ```bash
-gh project create --owner <login-oder-org> --title "<projekt> Scrum"   # URL enthaelt die Nummer
+gh project create --owner <login-or-org> --title "<project> Scrum"   # the URL contains the number
 # in kit.env: KIT_BOARD="github-project", KIT_PROJECT_OWNER, KIT_PROJECT_NUMBER
-bin/board-setup.sh           # 8 Status-Optionen, Verknuepfung mit KIT_REPO, alle Labels
-bin/board-check.sh --write   # 23 Pruefpunkte; nur bei allen OK entsteht board.env
+bin/board-setup.sh           # 8 status options, the link to KIT_REPO, all labels
+bin/board-check.sh --write   # 23 check points; board.env appears only when all are OK
 ```
 
-Ohne Board: `KIT_BOARD="none"` lassen und nur `bin/board-setup.sh --labels-only`.
+Without a board: leave `KIT_BOARD="none"` and run only `bin/board-setup.sh --labels-only`.
 
-### 1.3 Pruefen
+### 1.3 Check
 
 ```bash
-bin/preflight.sh      # muss "preflight ok" drucken
-evals/run.sh --gh     # muss "durchgefallen 0" drucken; --gh prueft dein echtes Board
+bin/preflight.sh      # must print "preflight ok"
+evals/run.sh --gh     # must print "failed 0"; --gh checks your real board
 ```
 
-Faellt `preflight.sh` mit `Requires authentication` durch, ist der Token tot: neu anmelden.
-Nennt es `missing required scopes`, ist der Token gueltig und nur eine Berechtigung fehlt.
+If `preflight.sh` fails with `Requires authentication`, the token is dead: re-authenticate.
+If it says `missing required scopes`, the token is valid and only a permission is missing.
 
 ---
 
-## 2. Team starten
+## 2. Starting the team
 
-### 2.1 Reihenfolge
+### 2.1 Order
 
-1. **product-owner** und **simplicity-reviewer** zuerst. Der PO braucht vor `planned` das
-   Verdict zum Loesungsweg, und erst sein `bin/sprint-new.sh` legt den Sprint an.
-2. **watchdog** direkt danach. Er misst von Anfang an und ist die einzige Rolle, die committet.
-3. Alle uebrigen in beliebiger Reihenfolge. Sie brauchen keinen Sonderfall: ihr Tick meldet
-   "kein aktiver Sprint" und endet normal. Sobald der Sprint da ist, registriert sie der
-   naechste Tick von selbst.
+1. **product-owner** and **simplicity-reviewer** first. Before `planned` the PO needs the
+   verdict on the solution path, and only their `bin/sprint-new.sh` creates the sprint.
+2. **watchdog** right after. It measures from the start and is the only role that commits.
+3. Everybody else in any order. They need no special case: their tick reports
+   "no active sprint" and ends normally. As soon as the sprint is there, the next tick
+   registers them by itself.
 
-### 2.2 Jedes Terminal gleich
+### 2.2 Every terminal the same
 
 ```bash
-cd <dein-projekt>/agent-scrum-kit
-export KIT_ROLE=<rolle>
+cd <your-project>/agent-scrum-kit
+export KIT_ROLE=<role>
 claude
 ```
 
-Die Session startet **im Kit-Ordner**. Nur dort stimmen die Pfade `bin/…`, `roles/…` und
-`sprints/…` aus den Rollenblaettern. Claude Code laedt dann die `CLAUDE.md` des Kits, also den
-Arbeitsvertrag, und die `CLAUDE.md` des Projekts eine Ebene darueber. Die Engineers arbeiten
-trotzdem im Projekt: in Worktrees unter `KIT_WORKTREE_ROOT`.
+The session starts **in the kit folder**. Only there do the paths `bin/…`, `roles/…` and
+`sprints/…` from the role sheets hold. Claude Code then loads the kit's `CLAUDE.md`, that is the
+working contract, and the project's `CLAUDE.md` one level up. The engineers still work in the
+project: in worktrees under `KIT_WORKTREE_ROOT`.
 
-`KIT_ROLE` muss **vor** dem Start von `claude` gesetzt sein. Eine laufende Session sieht eine
-spaeter gesetzte Variable nicht.
+`KIT_ROLE` must be set **before** `claude` starts. A running session does not see a
+variable set later.
 
-Dann **zwei Eingaben**, nacheinander. Die erste liest die Rolle einmal ein:
-
-```
-Lies roles/_COMMON.md und roles/<datei> und uebernimm die Rolle <rolle>.
-Fuehre dann bin/tick.sh aus und arbeite nach dem, was er dir zeigt.
-Ein Ticket zur Zeit. Spawne niemals einen Subagenten.
-```
-
-Die zweite haelt die Rolle im Dauerbetrieb. Jede Runde beginnt mit dem Tick; die
-Rollenblaetter werden **nicht** in jeder Runde neu gelesen, das wuerde Kontext verbrennen:
+Then **two inputs**, one after the other. The first reads the role once:
 
 ```
-/loop <intervall> Fuehre bin/tick.sh aus. Liegt nichts fuer dich an, beende die Runde. Sonst arbeite deine Rolle laut roles/<datei>: ein Ticket zur Zeit, aufgreifen heisst sofort den In-Status setzen, kein Subagent.
+Read roles/_COMMON.md and roles/<file> and take over the role <role>.
+Then run bin/tick.sh and work from what it shows you.
+One ticket at a time. Never spawn a subagent.
 ```
 
-Jede Rolle laeuft mit **festem Intervall** (Tabelle 2.3). Eine Runde ohne Arbeit endet nach dem
-Tick; sie kostet einen Tick, nicht mehr.
+The second holds the role in continuous operation. Every round starts with the tick; the
+role sheets are **not** read again every round, that would burn context:
 
-### 2.3 Die neun Terminals
+```
+/loop <interval> Run bin/tick.sh. If nothing is waiting for you, end the round. Otherwise work your role per roles/<file>: one ticket at a time, picking up means setting the In status immediately, no subagent.
+```
 
-| # | `KIT_ROLE` | `<datei>` | `<intervall>` | wartet auf |
+Every role runs on a **fixed interval** (table 2.3). A round without work ends after the
+tick; it costs one tick, no more.
+
+### 2.3 The nine terminals
+
+| # | `KIT_ROLE` | `<file>` | `<interval>` | waits for |
 |---|---|---|---|---|
-| 1 | `product-owner` | `product-owner.md` | `10m` | sieht alle Zustaende |
-| 2 | `simplicity-reviewer` | `simplicity-reviewer.md` | `5m` | `@simplicity-reviewer` vom PO, dann `rfr` |
-| 3 | `watchdog` | `watchdog.md` | `5m` | nichts, misst im Takt |
-| 4 | `engineer-a` | `engineer.md` | `5m` | Rueckweisungen, dann `planned` |
-| 5 | `engineer-b` | `engineer.md` | `5m` | Rueckweisungen, dann `planned` |
+| 1 | `product-owner` | `product-owner.md` | `10m` | sees every state |
+| 2 | `simplicity-reviewer` | `simplicity-reviewer.md` | `5m` | `@simplicity-reviewer` from the PO, then `rfr` |
+| 3 | `watchdog` | `watchdog.md` | `5m` | nothing, measures on its interval |
+| 4 | `engineer-a` | `engineer.md` | `5m` | rejections, then `planned` |
+| 5 | `engineer-b` | `engineer.md` | `5m` | rejections, then `planned` |
 | 6 | `qa-ruthless` | `qa-ruthless.md` | `5m` | `rfr`, `in-review` |
 | 7 | `security-engineer` | `security-engineer.md` | `5m` | `rfr`, `in-review` |
 | 8 | `acceptance-tester` | `acceptance-tester.md` | `10m` | `rft` |
-| 9 | `merge-gate` | `merge-gate.md` | `10m` | `in-testing` und `@merge-gate` |
+| 9 | `merge-gate` | `merge-gate.md` | `10m` | `in-testing` and `@merge-gate` |
 
-Warum diese Takte: `protocols/LOOP.md` Abschnitt 4. `engineer-a` und `engineer-b` lesen dasselbe
-Blatt; der Rollenname in der ersten Eingabe unterscheidet sie.
+Why these cadences: `protocols/LOOP.md` section 4. `engineer-a` and `engineer-b` read the same
+sheet; the role name in the first input tells them apart.
 
-Der **watchdog** liest in seiner ersten Eingabe zusaetzlich die Budgetregeln:
-
-```
-Lies roles/_COMMON.md, roles/watchdog.md und protocols/LOOP.md Abschnitt 8 und 10
-und uebernimm die Rolle watchdog. Du liest keinen Produktionscode und kommentierst keine
-Issues. Fuehre bin/tick.sh aus, dann eine erste Runde bin/budget.sh.
-Spawne niemals einen Subagenten.
-```
+The **watchdog** additionally reads the budget rules in its first input:
 
 ```
-/loop 5m Fuehre bin/tick.sh aus, dann eine watchdog-Runde laut roles/watchdog.md: budget.sh, vier Blicke, commit.sh.
+Read roles/_COMMON.md, roles/watchdog.md and protocols/LOOP.md sections 8 and 10
+and take over the role watchdog. You read no production code and comment on no
+issues. Run bin/tick.sh, then a first round of bin/budget.sh.
+Never spawn a subagent.
 ```
 
-Der **kit-maintainer** laeuft nicht mit. Du startest ihn nur, wenn in `evals/findings/` ein
-Fall liegt oder `evals/run.sh` einen Fall als `FAIL` meldet — siehe `evals/README.md`.
+```
+/loop 5m Run bin/tick.sh, then a watchdog round per roles/watchdog.md: budget.sh, four looks, commit.sh.
+```
 
-### 2.4 Den ersten Sprint schneiden
+The **kit-maintainer** does not run along. You start it only when a case lies in `evals/findings/`
+or `evals/run.sh` reports a case as `FAIL` — see `evals/README.md`.
 
-Das macht der product-owner selbst, nach seinem Rollenblatt:
+### 2.4 Cutting the first sprint
 
-1. Stories in die Tickets schreiben — loesungsfrei, ELI5, eine Story je Ergebnis, je Kriterium
-   eine Zeile `AC-<n>: <beobachtbares ergebnis>`.
-2. Je Ticket das Ledger `tickets/<nr>/GATES.md`: je AC ein Gate (`protocols/LOOP.md`, Gate-Ledger).
-3. `bin/sprint-new.sh <slug> <ticketnummern…>` — die Tickets bleiben dabei auf `backlog`.
-   Erst dieser Schritt legt den Chat an; vorher scheitert jedes `say.sh` mit
-   `kein aktiver Sprint`.
-4. Den Loesungsweg per `@simplicity-reviewer` als Frage in den Chat stellen, Verdict abwarten.
-5. Je Ticket `bin/status.sh <nr> planned "Verdict: <kurz>"`. Ohne Gate fuer jede AC lehnt es ab.
+The product-owner does that themselves, per their role sheet:
 
-Am Ende jedes Tickets hat der product-owner das letzte Wort: `bin/merge.sh <nr>` merged erst,
-wenn `MERGE-GATE OK` fuer den aktuellen HEAD im PR steht und die CI frisch gemessen gruen ist.
+1. Write the stories into the tickets — solution-free, plain language, one story per result, one line
+   per criterion `AC-<n>: <observable result>`.
+2. Per ticket the ledger `tickets/<nr>/GATES.md`: one gate per AC (`protocols/LOOP.md`, gate ledger).
+3. `bin/sprint-new.sh <slug> <ticket numbers…>` — the tickets stay on `backlog` while you do this.
+   Only this step creates the chat; before it, every `say.sh` fails with
+   `no active sprint`.
+4. Put the solution path into the chat as a question to `@simplicity-reviewer`, wait for the verdict.
+5. Per ticket `bin/status.sh <nr> planned "verdict: <short>"`. Without a gate for every AC it refuses.
 
-Ab hier brauchst du nichts mehr weiterzureichen. Ein Statuswechsel legt das Ticket in die
-Warteschlange der naechsten Rolle; `@<rolle>` im Chat erreicht sie beim naechsten Tick.
+At the end of every ticket the product-owner has the last word: `bin/merge.sh <nr>` merges only
+once `MERGE-GATE OK` for the current HEAD stands in the PR and CI is green, measured fresh.
+
+From here you need to hand nothing on. A status change puts the ticket into the
+queue of the next role; `@<role>` in the chat reaches them at their next tick.
 
 ---
 
-## 3. Im Betrieb
+## 3. In operation
 
-### 3.1 Woran du siehst, dass es laeuft
+### 3.1 How you see that it runs
 
 ```bash
 S=sprints/$(cat sprints/CURRENT)
-cat $S/roster.md          # wer ist registriert, mit welcher Session-ID
-tail -20 $S/INDEX.md      # was zuletzt im Chat stand, mit datei:zeile
-cat $S/budget.md          # Kontextstand je Rolle, etwaige STOP-Zeilen
-KIT_ROLE=product-owner bin/tick.sh   # das Lagebild des PO, ohne eine Session zu stoeren
+cat $S/roster.md          # who is registered, with which session id
+tail -20 $S/INDEX.md      # what was last in the chat, with file:line
+cat $S/budget.md          # context state per role, any STOP lines
+KIT_ROLE=product-owner bin/tick.sh   # the PO's situation, without disturbing a session
 ```
 
-Fehlt eine Rolle in `roster.md`, tickt sie nicht. Meldet der watchdog eine Rolle als still
-seit 45 Minuten, haengt ihre Session.
+If a role is missing from `roster.md`, it is not ticking. If the watchdog reports a role as silent
+for 45 minutes, its session is hanging.
 
-### 3.2 Wenn eine Session an ihrem Limit ist
+### 3.2 When a session is at its limit
 
-`budget.md` traegt `STOP <rolle>`, und der Tick dieser Rolle zeigt es ihr. An der naechsten
-Ticketgrenze schreibt sie ihre Uebergabe per `bin/brain.sh handover` und eine Zeile per `bin/say.sh`.
-Danach gibt es zwei Wege; beide sind gemessen (2026-09-14, saubere Umgebung):
+`budget.md` records `STOP <role>`, and that role's tick shows it. At the next
+ticket boundary it writes its handover with `bin/brain.sh handover` and one line with `bin/say.sh`.
+After that there are two paths; both are measured (2026-09-14, a clean environment):
 
-**`/clear` in der laufenden Session.** Der Prozess bleibt, die Session-ID wechselt. Der
-SessionStart-Hook weckt die Session ohne Eingabe; sie liest ihr Rollenblatt, `bin/tick.sh`
-registriert die neue ID und zeigt die Uebergabe, und der `/loop` laeuft weiter (die Session fand ihn
-per `CronList` und legte keinen zweiten an). Die Rolle kommt aus dem Anker `.pid-roles/<pid>`, die
-neue Session-ID aus `~/.claude/sessions/<pid>.json`. **Nicht `/compact`** — Verdichten verliert die
-technischen Details, an denen die naechste Runde haengt.
+**`/clear` in the running session.** The process stays, the session id changes. The
+SessionStart hook wakes the session without any input; it reads its role sheet, `bin/tick.sh`
+registers the new id and shows the handover, and the `/loop` runs on (the session found it
+through `CronList` and created no second one). The role comes from the anchor `.pid-roles/<pid>`, the
+new session id from `~/.claude/sessions/<pid>.json`. **Not `/compact`** — compacting loses the
+technical details the next round hangs on.
 
-**Ohne Menschen, per `bin/restart-self.sh stop`.** Die Rolle schreibt ihre Uebergabe (juenger als 10 min);
-haelt sie noch Tickets, nennt die Uebergabe jedes `#<nr>` mit Stand, SHA und naechstem Schritt — ein
-Neustart mitten im Ticket ist erlaubt (Fall 67). Laeuft sie unter `adapters/claude-code/role-loop.sh`,
-beendet sie sich und die Schleife startet `claude` frisch. Laeuft sie ohne Schleife in zellij, oeffnet
-das Skript einen Tab `<rolle> (loop)` mit `role-loop.sh <rolle> --after <pid>` und beendet sich erst,
-wenn die Schleife laeuft; die wartet auf das Ende der alten Session (Fall 59, mit vorgetaeuschtem zellij
-gemessen, nicht in einem echten zellij). Gemessen mit echtem `claude` (Fall 77, 2026-09-14): die Rolle schrieb ihre Uebergabe
-und rief `restart-self.sh stop`, der alte Prozess endete nach 62 s (`rc=143`), die Schleife startete
-`claude` neu, und 18 s spaeter stand die Rolle mit neuer PID und neuer Session-ID im Roster — ohne
-Eingabe. Der Vertrauensdialog erscheint nur beim allerersten Start im Ordner, nicht beim Neustart.
+**Without a human, through `bin/restart-self.sh stop`.** The role writes its handover (younger than 10 min);
+if it still holds tickets, the handover names every `#<nr>` with state, SHA and next step — a
+restart in the middle of a ticket is allowed (case 67). If it runs under `adapters/claude-code/role-loop.sh`,
+it ends itself and the loop starts `claude` fresh. If it runs without a loop in zellij, the script
+opens a tab `<role> (loop)` with `role-loop.sh <role> --after <pid>` and ends itself only once
+the loop runs; the loop waits for the end of the old session (case 59, measured with a faked zellij,
+not in a real one). Measured with a real `claude` (case 77, 2026-09-14): the role wrote its handover
+and called `restart-self.sh stop`, the old process ended after 62 s (`rc=143`), the loop started
+`claude` again, and 18 s later the role stood in the roster with a new PID and a new session id — without
+any input. The trust dialog appears only at the very first start in the folder, not at a restart.
 
-Unabhaengig vom watchdog geht jede Rolle nach `KIT_MAX_TICKETS` Tickets ohnehin so in den Ruhestand.
+Independently of the watchdog, every role retires this way after `KIT_MAX_TICKETS` tickets anyway.
 
-### 3.3 Wenn der Tick "zweite Instanz" meldet
+### 3.3 When the tick reports "second instance"
 
-Dieselbe Rolle laeuft schon in einem anderen Prozess — typisch nach einem zweiten `--resume`
-derselben Session. Die **neue** Session beenden, nicht die alte. Die Sperre gibt die Rolle frei,
-sobald der alte Prozess beendet ist oder `KIT_LEASE_MINUTES` lang nicht getickt hat.
+The same role already runs in another process — typically after a second `--resume`
+of the same session. End the **new** session, not the old one. The lock releases the role
+as soon as the old process has ended or has not ticked for `KIT_LEASE_MINUTES`.
 
-### 3.4 Wenn sich ein Rollenblatt oder ein Skript aendert
+### 3.4 When a role sheet or a script changes
 
-Skripte unter `bin/` wirken sofort beim naechsten Aufruf — alle Sessions teilen ein
-Dateisystem. Ein **Rollenblatt** dagegen hat jede laufende Session noch in der alten Fassung
-im Kontext. Schick der betroffenen Session eine Zeile, bevor sie weiterarbeitet:
+Scripts under `bin/` take effect at the next call — all sessions share one
+file system. A **role sheet**, by contrast, every running session still holds in its old version
+in context. Send the affected session one line before it works on:
 
 ```
-roles/<datei> hat sich geaendert. Lies <abschnitt> neu, bevor du dein naechstes Ticket
-aufnimmst. Danach weiter wie bisher: bin/tick.sh in jeder Runde.
+roles/<file> has changed. Read <section> again before you pick up your next
+ticket. Then carry on as before: bin/tick.sh every round.
 ```
 
-Aendert sich `roles/_COMMON.md`, betrifft das alle neun Sessions.
+If `roles/_COMMON.md` changes, that concerns all nine sessions.
 
 ---
 
-## Was wo liegt
+## What lies where
 
-| Ort | Inhalt |
+| Place | Content |
 |---|---|
-| `AGENTS.md` | der Arbeitsvertrag. `CLAUDE.md` und `.cursorrules` verweisen darauf |
-| `roles/` | neun Jobbeschreibungen plus `kit-maintainer`, reines Markdown, ohne Host-Vokabular |
-| `INSTALL.md` | Einrichtung Schritt fuer Schritt, mit gemessenen Ausgaben und Fehlertabelle |
-| `protocols/LOOP.md` | Statusmodell, Kanten, Gates, Loop-Reihenfolge, Tick, Chat, Zwillingssperre, Budget |
-| `adapters/<host>/` | wie eine Session startet, eine Rolle laedt, ihre Kennung meldet |
+| `AGENTS.md` | the working contract. `CLAUDE.md` and `.cursorrules` point at it |
+| `roles/` | nine job descriptions plus `kit-maintainer`, plain Markdown, without host vocabulary |
+| `INSTALL.md` | setup step by step, with measured outputs and an error table |
+| `protocols/LOOP.md` | status model, edges, gates, loop order, tick, chat, twin lock, budget |
+| `adapters/<host>/` | how a session starts, loads a role, reports its id |
 | `bin/` | `tick.sh`, `status.sh`, `claim.sh`, `merge.sh`, `say.sh`, `reindex.sh`, `brain.sh`, `budget.sh`, `register.sh`, `restart-self.sh`, `sprint-new.sh`, `commit.sh`, `board-setup.sh`, `board-check.sh`, `preflight.sh`, `tickets.sh`, `gates.py`, `gates.sh`, `revise.sh` |
-| `tickets/<nr>/` | `GATES.md`: Gate-Ledger je Ticket, je AC ein Gate, `OWNS:` als Umfang, Format und Regeln aus unlazy (MIT); die Freigabe des Umfangs steht als Kommentar am Issue |
-| `evals/` | die Suite, die prueft, ob das alles haelt |
-| `memory/` | Gedaechtnis je Rolle plus geteilt, eine Datei je Fakt, generierter Index |
-| `.mcp.json` | MCP-Server context7 und graphify, beide durch `caveman-shrink`; jcodemunch auf Einschalten unter `adapters/claude-code/mcp/` |
-| `kit.env` | **alles Projektwissen.** Kein Skript kennt dein Projekt, nur diese Datei |
+| `tickets/<nr>/` | `GATES.md`: the gate ledger per ticket, one gate per AC, `OWNS:` as the scope, format and rules from unlazy (MIT); the approval of the scope stands as a comment on the issue |
+| `evals/` | the suite that checks whether all of this holds |
+| `memory/` | memory per role plus a shared one, one file per fact, a generated index |
+| `.mcp.json` | the MCP servers context7 and graphify, both through `caveman-shrink`; jcodemunch on opt-in under `adapters/claude-code/mcp/` |
+| `kit.env` | **all project knowledge.** No script knows your project, only this file |
 
-## Die drei Regeln, die alles tragen
+## The three rules that carry everything
 
-1. **Kein Subagent.** Eine Rolle ist eine Session im Haupt-Thread. Nebenlaeufigkeit entsteht
-   durch parallele Sessions, nie innerhalb einer.
-2. **Der Index ist generiert.** Chatdateien sind append-only, damit Zeilenverweise dauerhaft
-   gelten. `INDEX.md` wird immer neu gebaut und atomar ersetzt.
-3. **Nur eine Rolle committet.** Alle Sessions teilen ein Dateisystem und sehen einander
-   sofort; Git ist nur Historie. Neun parallele Rebases waeren die einzige echte
-   Konfliktquelle.
+1. **No subagent.** A role is one session in the main thread. Concurrency comes
+   from parallel sessions, never from inside one.
+2. **The index is generated.** Chat files are append-only so that line references stay
+   valid. `INDEX.md` is always rebuilt and replaced atomically.
+3. **Only one role commits.** All sessions share one file system and see each other
+   at once; git is only history. Nine parallel rebases would be the only real
+   source of conflict.
 
-## Host-Unterstuetzung
+## Host support
 
-| Host | Zustand |
+| Host | State |
 |---|---|
-| `claude-code` | vollstaendig, Live-Evals laufen dagegen |
-| `cursor` | Start belegt, Sessionkennung und Transkripte `UNKNOWN` |
-| `codex` | Startbefehl `UNKNOWN` — nicht geprueft |
-| `pi` (PI Code, QWEN-Harness) | `UNKNOWN — beim Owner erfragen` |
-| `hermes` | `UNKNOWN — beim Owner erfragen` |
+| `claude-code` | complete, the live evals run against it |
+| `cursor` | start attested, session id and transcripts `UNKNOWN` |
+| `codex` | start command `UNKNOWN` — not checked |
+| `qwen-code`, `pi` | start, session file, processes and transcripts measured against a local model; tool-call paths not measured |
+| `hermes` | `UNKNOWN — ask the owner` |
 
-Fehlt einem Adapter eine Angabe, steht dort `UNKNOWN`. Ein erfundener Startbefehl waere der
-schlimmste Fehler, den dieses Repo machen kann.
+If an adapter lacks a detail, it says `UNKNOWN`. An invented start command would be the
+worst mistake this repo can make.
 
-## Lizenz
+## Licence
 
-MIT, siehe `LICENSE`.
+MIT, see `LICENSE`.

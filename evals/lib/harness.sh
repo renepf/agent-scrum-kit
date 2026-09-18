@@ -101,7 +101,7 @@ gates.write_results(path, text, doc, {
               "v1 head=%s def=%s exit=0 expect=matched out=eval at=eval by=eval" % (head, gates.definition_digest(g)))
     for g in doc["gates"]})
 if sys.argv[5] != "gatesonly":
-    lines = ["%s: Mutation eval → rot" % g["id"] for g in doc["gates"] if g["check"] is not None]
+    lines = ["%s: mutation eval → red" % g["id"] for g in doc["gates"] if g["check"] is not None]
     db[sys.argv[4]]["pr"].setdefault("comments", []).append("QA PASS — HEAD `%s`, eval\n%s" % (head, "\n".join(lines)))
     json.dump(db, open(sys.argv[2], "w"), indent=2, sort_keys=True)
 PY2
@@ -136,7 +136,7 @@ sandbox_sprint() {
   local name="${1:-S-001-eval}"
   mkdir -p "$SANDBOX/sprints/$name/chat"
   echo "$name" > "$SANDBOX/sprints/CURRENT"
-  printf '# roster\n\n| Zeit | Rolle | Session-ID | Host |\n|---|---|---|---|\n' > "$SANDBOX/sprints/$name/roster.md"
+  printf '# roster\n\n| Time | Role | Session-ID | Host |\n|---|---|---|---|\n' > "$SANDBOX/sprints/$name/roster.md"
   echo "$SANDBOX/sprints/$name"
 }
 

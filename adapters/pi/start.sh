@@ -28,7 +28,7 @@ try:
 except (OSError, ValueError, KeyError, TypeError, AttributeError) as e:
     ok, why = False, "no provider kit-local (%s: %s)" % (type(e).__name__, e)
 if not ok:
-    sys.exit("FEHLER: %s: %s. Add, merged into any existing providers:\n%s" % (path, why, json.dumps(entry, indent=2)))
+    sys.exit("ERROR: %s: %s. Add, merged into any existing providers:\n%s" % (path, why, json.dumps(entry, indent=2)))
 PY
 
 export KIT_ROLE="$1" KIT_HOST="pi" KIT_HOST_PID="$$"
@@ -37,4 +37,4 @@ export KIT_SESSION_ID
 cd "$KIT_WORKTREE_ROOT"
 # The round prompt is the host-neutral one from roles/START-HERE.md.
 exec pi --provider kit-local --model "$KIT_LOCAL_MODEL" --session-id "$KIT_SESSION_ID" \
-  "Fuehre bin/tick.sh aus. Liegt nichts fuer dich an, beende die Runde. Sonst arbeite deine Rolle laut $ROLE_FILE: ein Ticket zur Zeit, aufgreifen heisst sofort den In-Status setzen, kein Subagent."
+  "Run bin/tick.sh. If nothing is waiting for you, end the round. Otherwise work your role per $ROLE_FILE: one ticket at a time, picking up means setting the In status immediately, no subagent."

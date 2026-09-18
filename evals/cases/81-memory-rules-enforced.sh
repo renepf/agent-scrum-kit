@@ -9,11 +9,11 @@ b() { "$BIN/brain.sh" "$@" 2>&1; }
 fehler=""
 b note api-limit "GitHub-API liefert kurz nach Schreiben veraltete Zaehlwerte" <<<'Gemessen 2026-09-10.' > /dev/null || fehler="$fehler erster-Fakt"
 o1="$(b note api-limit-zwei "GitHub-API liefert kurz nach Schreiben veraltete  zaehlwerte" <<<'x')"
-case "$o1" in *Dublette*api-limit.md*) ;; *) fehler="$fehler Dublette-durch" ;; esac
+case "$o1" in *duplicate*api-limit.md*) ;; *) fehler="$fehler Dublette-durch" ;; esac
 o2="$(b note wetter "Board war langsam" <<<'Das war gestern so.')"
-case "$o2" in *"relative Datumsangabe 'gestern'"*) ;; *) fehler="$fehler relatives-Datum-durch" ;; esac
+case "$o2" in *"relative date 'gestern'"*) ;; *) fehler="$fehler relatives-Datum-durch" ;; esac
 o3="$(TYPE=vermutung b note typ-test "Typ-Test" <<<'x')"
-case "$o3" in *"Typ 'vermutung' ungueltig"*) ;; *) fehler="$fehler falscher-Typ-durch" ;; esac
+case "$o3" in *"type 'vermutung' invalid"*) ;; *) fehler="$fehler falscher-Typ-durch" ;; esac
 o4="$(b note api-limit "GitHub-API liefert kurz nach Schreiben veraltete Zaehlwerte" <<<'Korrigiert 2026-09-11: auch Feldwerte betroffen.')" || fehler="$fehler gleicher-Slug-abgelehnt"
 anzahl="$(ls "$SANDBOX/memory/engineer-a/facts" | wc -l | tr -d ' ')"
 grep -q 'Korrigiert 2026-09-11' "$SANDBOX/memory/engineer-a/facts/api-limit.md" || fehler="$fehler Aenderung-nicht-geschrieben"

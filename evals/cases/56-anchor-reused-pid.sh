@@ -16,7 +16,7 @@ printf '%s|%s|%s\n' "alt" "$FREMD" "$(date +%s)" > "$SPRINT/.lease-engineer-a"
 fehler=""
 out="$(KIT_ROLE=engineer-a KIT_SESSION_ID=neu KIT_HOST_PID=$$ "$BIN/tick.sh" 2>&1)"; rc=$?
 [ "$rc" = 0 ] || fehler="$fehler tick-exit-$rc"
-case "$out" in *"zweite Instanz"*) fehler="$fehler fremder-Prozess-als-Zwilling" ;; esac
+case "$out" in *"second instance"*) fehler="$fehler fremder-Prozess-als-Zwilling" ;; esac
 [ ! -f "$KIT_ROOT/.pid-roles/$FREMD" ] || fehler="$fehler anker-neu-vergeben-bleibt"
 [ ! -f "$KIT_ROOT/.pid-roles/999999" ] || fehler="$fehler anker-tot-bleibt"
 grep -q '| engineer-a | neu |' "$SPRINT/roster.md" || fehler="$fehler nicht-registriert"

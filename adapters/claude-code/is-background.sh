@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Exit 0, wenn diese Session eine Hintergrund-Session ist, die KIT_ROLE nur geerbt hat.
-# claude startet unter einer Rolle z.B. "claude daemon run --origin transient" mit
-# CLAUDE_CODE_SESSION_KIND=bg (Referenz-Loop 2026-09-14 15:32); der Hook weckte sie als Rolle.
-# NICHT CLAUDE_CODE_CHILD_SESSION pruefen: das steht in der Werkzeug-Umgebung JEDER Session.
+# Exit 0 when this session is a background session that only inherited KIT_ROLE.
+# Under a role, claude starts for example "claude daemon run --origin transient" with
+# CLAUDE_CODE_SESSION_KIND=bg (reference loop 2026-09-14 15:32); the hook woke it as a role.
+# Do NOT check CLAUDE_CODE_CHILD_SESSION: that stands in the tool environment of EVERY session.
 [ "${CLAUDE_CODE_SESSION_KIND:-}" = "bg" ]

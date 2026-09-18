@@ -1,73 +1,73 @@
 #!/usr/bin/env bash
-# Waechter-Schleife fuer eine Rolle: startet claude und startet es neu, sobald es endet.
-# Zusammen mit bin/restart-self.sh der autonome Ersatz fuer /clear: die Rolle beendet sich an einer
-# Ticketgrenze selbst, die Schleife startet sie frisch, der SessionStart-Hook weckt sie.
+# Watchdog loop for one role: starts claude and starts it again as soon as it ends.
+# Together with bin/restart-self.sh the autonomous replacement for /clear: the role ends itself at a
+# ticket boundary, the loop starts it fresh, the SessionStart hook wakes it.
 #
-#   adapters/claude-code/role-loop.sh <rolle> [--after <host-pid>]
+#   adapters/claude-code/role-loop.sh <role> [--after <host-pid>]
 #
-# --after <pid>: bin/restart-self.sh oeffnet die Schleife in einem zellij-Tab, BEVOR sich die alte Session
-#                beendet. Die Schleife wartet bis 120 s, bis unter der PID kein Host mehr lebt — sonst
-#                griffe die Zwillingssperre unten und beide stuenden.
+# --after <pid>: bin/restart-self.sh opens the loop in a zellij tab BEFORE the old session
+#                ends. The loop waits up to 120 s until no host lives under that PID — otherwise
+#                the twin lock below would bite and both would stand still.
 #
-# Stoppen:        touch .role-loop/<rolle>.stop   (dann claude normal beenden)
-# Log:            .role-loop/<rolle>.log
-# Absturzschutz:  endet claude 3x in Folge nach weniger als 60 s, gibt die Schleife auf.
-# Tests:          KIT_LOOP_CLAUDE (Befehl statt claude), KIT_LOOP_SLEEP (Pause zwischen Starts)
+# Stopping:       touch .role-loop/<role>.stop   (then end claude normally)
+# Log:            .role-loop/<role>.log
+# Crash guard:    if claude ends 3 times in a row after less than 60 s, the loop gives up.
+# Tests:          KIT_LOOP_CLAUDE (a command instead of claude), KIT_LOOP_SLEEP (pause between starts)
 KIT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 source "$KIT_ROOT/bin/common.sh"
 set +e
 
-R="${1:-}"; [ -n "$R" ] || die "Aufruf: role-loop.sh <rolle>"
-case " $KIT_ROLES " in *" $R "*) ;; *) die "unbekannte Rolle '$R'. Erlaubt: $KIT_ROLES" ;; esac
+R="${1:-}"; [ -n "$R" ] || die "usage: role-loop.sh <role>"
+case " $KIT_ROLES " in *" $R "*) ;; *) die "unknown role '$R'. Allowed: $KIT_ROLES" ;; esac
 
 STATE="$KIT_ROOT/.role-loop"; mkdir -p "$STATE"
 LOG="$STATE/$R.log"; STOP="$STATE/$R.stop"
 
 if [ "${2:-}" = "--after" ] && [ -n "${3:-}" ]; then
-  echo "$(now) · warte auf Ende von Host-PID $3" >> "$LOG"
+  echo "$(now) · waiting for host PID $3 to end" >> "$LOG"
   for _ in $(seq 1 "${KIT_LOOP_AFTER_SECONDS:-120}"); do host_alive "$3" || break; sleep 1; done
-  host_alive "$3" && die "Host-PID $3 lebt nach ${KIT_LOOP_AFTER_SECONDS:-120} s noch — nicht doppelt starten"
+  host_alive "$3" && die "host PID $3 still alive after ${KIT_LOOP_AFTER_SECONDS:-120} s — do not start twice"
 fi
 
-# Keine zweite Instanz derselben Rolle.
+# No second instance of the same role.
 for f in "$PID_ROLES"/*; do
   [ -f "$f" ] || continue
   p="$(basename "$f")"
   if [ "$(cat "$f")" = "$R" ] && host_alive "$p"; then
-    die "Rolle $R laeuft schon (Host-PID $p). Nicht doppelt starten."
+    die "role $R is already running (host PID $p). Do not start twice."
   fi
 done
 
 rm -f "$STOP"
 export KIT_ROLE="$R" KIT_ROLE_LOOP=1
 fast=0
-echo "$(now) · Schleife gestartet fuer $R in $KIT_ROOT" >> "$LOG"
+echo "$(now) · loop started for $R in $KIT_ROOT" >> "$LOG"
 WAKE="$STATE/$R.wake"
 while :; do
-  [ -f "$STOP" ] && { echo "$(now) · Stopp-Datei gefunden, Schleife endet" >> "$LOG"; break; }
-  # Kein Modell ohne Arbeit: der Tick ist Bash und kostet keine Tokens, eine leere Modellrunde
-  # kostet ein ganzes Kontextfenster. Exit 4 heisst "nichts fuer dich".
+  [ -f "$STOP" ] && { echo "$(now) · stop file found, the loop ends" >> "$LOG"; break; }
+  # No model without work: the tick is bash and costs no tokens, an empty model round
+  # costs a whole context window. Exit 4 means "nothing for you".
   rm -f "$WAKE"
   KIT_ROLE="$R" "$KIT_ROOT/bin/tick.sh" --signal >> "$LOG" 2>&1; trc=$?
   if [ "$trc" = 4 ]; then
-    wartete=0
-    while [ "$wartete" -lt "${KIT_TICK_INTERVAL:-300}" ]; do
+    waited=0
+    while [ "$waited" -lt "${KIT_TICK_INTERVAL:-300}" ]; do
       [ -f "$STOP" ] && break
-      [ -f "$WAKE" ] && { echo "$(now) · Weckruf, starte sofort" >> "$LOG"; break; }
-      sleep "${KIT_TICK_POLL:-10}"; wartete=$((wartete + ${KIT_TICK_POLL:-10}))
+      [ -f "$WAKE" ] && { echo "$(now) · wake mark, starting at once" >> "$LOG"; break; }
+      sleep "${KIT_TICK_POLL:-10}"; waited=$((waited + ${KIT_TICK_POLL:-10}))
     done
     continue
   fi
   start=$(date +%s)
-  echo "$(now) · starte claude (Tick-Code $trc)" >> "$LOG"
+  echo "$(now) · starting claude (tick code $trc)" >> "$LOG"
   ( cd "$KIT_ROOT" && eval "${KIT_LOOP_CLAUDE:-claude -n \"$R\" --settings adapters/claude-code/settings.json --mcp-config .mcp.json}" )
   rc=$?; dur=$(( $(date +%s) - start ))
-  echo "$(now) · claude beendet rc=$rc nach ${dur}s" >> "$LOG"
-  [ -f "$STOP" ] && { echo "$(now) · Stopp-Datei gefunden, Schleife endet" >> "$LOG"; break; }
+  echo "$(now) · claude ended rc=$rc after ${dur}s" >> "$LOG"
+  [ -f "$STOP" ] && { echo "$(now) · stop file found, the loop ends" >> "$LOG"; break; }
   if [ "$dur" -lt 60 ]; then fast=$((fast + 1)); else fast=0; fi
   if [ "$fast" -ge 3 ]; then
-    echo "$(now) · 3 schnelle Abbrueche in Folge — Schleife gibt auf" >> "$LOG"
-    echo "role-loop $R: 3 schnelle Abbrueche in Folge, siehe $LOG" >&2
+    echo "$(now) · 3 fast aborts in a row — the loop gives up" >> "$LOG"
+    echo "role-loop $R: 3 fast aborts in a row, see $LOG" >&2
     exit 1
   fi
   sleep "${KIT_LOOP_SLEEP:-3}"

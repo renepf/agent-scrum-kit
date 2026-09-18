@@ -13,7 +13,7 @@ b="$(env -u KIT_SESSION_ID KIT_HOST_PID=5353 KIT_CLAUDE_SESSIONS_DIR="$D" CLAUDE
 [ "$b" = "nur-env" ] || fehler="$fehler rueckfall-env:'$b'"
 c="$(env -u KIT_SESSION_ID -u CLAUDE_CODE_SESSION_ID KIT_HOST_PID=5353 KIT_CLAUDE_SESSIONS_DIR="$D" "$A" 2>&1)"; rc=$?
 [ "$rc" != 0 ] || fehler="$fehler ohne-quelle-exit0:'$c'"
-case "$c" in *"nicht raten"*) ;; *) fehler="$fehler meldung" ;; esac
+case "$c" in *"do not guess"*) ;; *) fehler="$fehler meldung" ;; esac
 observe "Registry 'nach-clear-neu' schlaegt Env 'vor-clear-alt' · ohne Registry → Env · ohne beides → Exit $rc${fehler:+ · FEHLER:$fehler}"
 echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

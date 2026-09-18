@@ -49,9 +49,9 @@ sandbox_issue 98 '{"body":"AC-1: result measured"}'
 mkdir -p "$SANDBOX/tickets/98" && cp "$B" "$SANDBOX/tickets/98/GATES.md"
 s1="$(sandbox_snap 98)"
 out="$(KIT_ROLE=product-owner "$BIN/status.sh" 98 planned x 2>&1)"; rc=$?
-one_line c-planned-invalid-utf8 "$out" "$rc" "*planned abgelehnt*UTF-8*"
+one_line c-planned-invalid-utf8 "$out" "$rc" "*planned rejected*UTF-8*"
 n=$((n + 1)); [ "$s1" = "$(sandbox_snap 98)" ] || fail c:state-changed
 
-observe "$((n - failed))/$n checks passed · unwritable ledger: run, attest, ledger unchanged · invalid UTF-8: planned, lint, unmet, abandoned, qa-lines · status.sh planned rejects and writes nothing${errors:+ · FEHLER:$errors}"
+observe "$((n - failed))/$n checks passed · unwritable ledger: run, attest, ledger unchanged · invalid UTF-8: planned, lint, unmet, abandoned, qa-lines · status.sh planned rejects and writes nothing${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
 [ -z "$errors" ]

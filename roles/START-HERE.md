@@ -1,12 +1,12 @@
-# Team starten
+# Starting the team
 
-Jede Rolle ist eine eigene Session in einem eigenen Terminalfenster. Wie eine Session auf deinem
-Host startet und wie der Dauerbetrieb dort heisst, steht in `adapters/<host>/README.md`.
-Die Einrichtung davor steht in `INSTALL.md`.
+Every role is its own session in its own terminal window. How a session starts on your
+host, and what continuous operation is called there, is in `adapters/<host>/README.md`.
+The setup before that is in `INSTALL.md`.
 
-## Reihenfolge
+## Order
 
-| Schritt | Terminal | `export KIT_ROLE=` | Rollendatei | Intervall |
+| Step | Terminal | `export KIT_ROLE=` | Role file | Interval |
 |---|---|---|---|---|
 | 1 | 1 | `product-owner` | `roles/product-owner.md` | 10 min |
 | 1 | 2 | `simplicity-reviewer` | `roles/simplicity-reviewer.md` | 5 min |
@@ -19,36 +19,36 @@ Die Einrichtung davor steht in `INSTALL.md`.
 | 3 | 8 | `acceptance-tester` | `roles/acceptance-tester.md` | 10 min |
 | 3 | 9 | `merge-gate` | `roles/merge-gate.md` | 10 min |
 
-Warum so: der product-owner braucht vor `planned` das Verdict des simplicity-reviewer, und erst
-sein `sprint-new.sh` legt den Sprint an. Der watchdog misst ab dem ersten Ticket. Alle anderen
-duerfen sofort starten — ihr Tick meldet "kein aktiver Sprint" und endet normal.
+Why this order: before `planned` the product-owner needs the verdict of the simplicity-reviewer,
+and only their `sprint-new.sh` creates the sprint. The watchdog measures from the first ticket on.
+Everybody else may start at once — their tick reports "no active sprint" and ends normally.
 
-Der `kit-maintainer` laeuft nicht mit. Er startet nur, wenn in `evals/findings/` etwas liegt oder
-ein Eval-Fall durchfaellt.
+The `kit-maintainer` does not run along. It starts only when something lies in `evals/findings/` or
+an eval case fails.
 
-## Prompt je Runde, host-neutral
+## Prompt per round, host-neutral
 
 ```
-Fuehre bin/tick.sh aus. Liegt nichts fuer dich an, beende die Runde. Sonst arbeite deine Rolle
-laut <rollendatei>: ein Ticket zur Zeit, aufgreifen heisst sofort den In-Status setzen, kein Subagent.
+Run bin/tick.sh. If nothing is waiting for you, end the round. Otherwise work your role
+per <role file>: one ticket at a time, picking up means setting the In status immediately, no subagent.
 ```
 
-watchdog zusaetzlich: `… danach bin/budget.sh, vier Blicke, bin/commit.sh.`
+watchdog additionally: `… afterwards bin/budget.sh, four looks, bin/commit.sh.`
 
-## Ohne Menschen neu starten
+## Restarting without a human
 
-Bei `STOP` setzt sich eine Rolle selbst mit `bin/restart-self.sh stop` zurueck. Laeuft sie unter der
-Waechter-Schleife ihres Hosts (`adapters/<host>/role-loop.sh`), startet die Schleife sie frisch; laeuft sie
-in einem Terminal-Multiplexer ohne Schleife, oeffnet das Skript die Schleife in einem neuen Tab. Mitten im
-Ticket ist das erlaubt, wenn die Uebergabe jedes gehaltene Ticket nennt. Fehlt die Uebergabe, ein
-genanntes Ticket oder ein Neustartweg, beendet das Skript nichts.
+On `STOP` a role resets itself with `bin/restart-self.sh stop`. If it runs under the
+watchdog loop of its host (`adapters/<host>/role-loop.sh`), the loop starts it fresh; if it runs
+in a terminal multiplexer without a loop, the script opens the loop in a new tab. In the middle of a
+ticket this is allowed when the handover names every held ticket. If the handover, a named ticket or
+a restart path is missing, the script ends nothing.
 
-## Wenn eine Session an ihrem Limit ist
+## When a session is at its limit
 
-`bin/brain.sh handover` schreiben, Kontext leeren (**neue Session, nicht verdichten**), denselben
-Prompt erneut. Der naechste Tick registriert die neue Session-ID und zeigt die Uebergabe.
+Write `bin/brain.sh handover`, clear the context (**a new session, do not compact**), the same
+prompt again. The next tick registers the new session id and shows the handover.
 
-## Wenn der Tick "zweite Instanz" meldet
+## When the tick reports "second instance"
 
-Diese Rolle laeuft schon in einem anderen Prozess. Die neue Session beenden, nicht die alte.
-Erst wenn die alte wirklich beendet ist, uebernimmt die neue beim naechsten Tick.
+This role already runs in another process. End the new session, not the old one.
+Only when the old one has really ended does the new one take over at the next tick.

@@ -23,8 +23,8 @@ import sys, pathlib
 z = pathlib.Path(sys.argv[1])
 p = z / "kit.env"
 t = p.read_text()
-t = t.replace('KIT_REPO="UNKNOWN — beim Owner erfragen, z.B. meine-org/mein-repo"', 'KIT_REPO="fremd/projekt"')
-t = t.replace('KIT_WORKTREE_ROOT="$HOME/Developer/mein-projekt"', f'KIT_WORKTREE_ROOT="{z}"')
+t = t.replace('KIT_REPO="UNKNOWN — ask the owner, e.g. my-org/my-repo"', 'KIT_REPO="fremd/projekt"')
+t = t.replace('KIT_WORKTREE_ROOT="$HOME/Developer/my-project"', f'KIT_WORKTREE_ROOT="{z}"')
 t = t.replace('KIT_ISSUE_BACKEND="gh"', 'KIT_ISSUE_BACKEND="file"')
 t += f'\nKIT_SPRINTS_DIR="{z}/sprints"\nKIT_MEMORY_DIR="{z}/memory"\n'
 p.write_text(t)

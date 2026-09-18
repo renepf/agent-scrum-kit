@@ -38,7 +38,7 @@ sandbox_plannable 71 "src/api/**"; im_sprint 71
 st product-owner 71 planned > /dev/null || fail b:71-planned
 sandbox_plannable 72 "src/api/util.kt"; im_sprint 72
 s1="$(sandbox_snap 72)"; ob="$(st product-owner 72 planned)"; s2="$(sandbox_snap 72)"
-expect b-ueberlappt "$ob" '*abgelehnt*#72 und #71*src/api/util.kt ~ src/api/*'
+expect b-ueberlappt "$ob" '*rejected*#72 and #71*src/api/util.kt ~ src/api/*'
 n=$((n + 1)); [ "$s1" = "$s2" ] || fail b:Zustand-veraendert
 
 # c) ein freigegebenes Ticket ausserhalb des Sprints zaehlt nicht
@@ -54,18 +54,18 @@ expect d-ohne-Freigabe "$(st product-owner 72 planned)" '*backlog → planned*'
 # e) revise.sh: #73 will src/api/client.kt dazu → ueberlappt mit #71, kein Kommentar; getrennt geht durch
 k0="$(kommentare 73)"
 sandbox_plannable 73 "src/web/**, src/api/client.kt"
-expect e-revise-ueberlappt "$(KIT_ROLE=product-owner "$BIN/revise.sh" 73 "src/web/**, src/api/client.kt" "Client gehoert dazu" 2>&1)" '*abgelehnt*#73 und #71*src/api/client.kt*'
+expect e-revise-ueberlappt "$(KIT_ROLE=product-owner "$BIN/revise.sh" 73 "src/web/**, src/api/client.kt" "Client gehoert dazu" 2>&1)" '*rejected*#73 and #71*src/api/client.kt*'
 n=$((n + 1)); [ "$(kommentare 73)" = "$k0" ] || fail "e:Kommentar-trotz-Ablehnung"
 sandbox_plannable 73 "src/web/**, assets/**"
-expect e-revise-getrennt "$(KIT_ROLE=product-owner "$BIN/revise.sh" 73 "src/web/**, assets/**" "Assets gehoeren dazu" 2>&1)" '*Revision 1 → 2*'
+expect e-revise-getrennt "$(KIT_ROLE=product-owner "$BIN/revise.sh" 73 "src/web/**, assets/**" "Assets gehoeren dazu" 2>&1)" '*revision 1 → 2*'
 
 # f) sprint-new.sh: #81 lib/**, #82 lib/x.py → abgelehnt, kein Sprint angelegt; getrennt geht durch
 sandbox_plannable 81 "lib/**"; sandbox_plannable 82 "lib/x.py"
 dirs0="$(ls "$SANDBOX/sprints" | tr '\n' ' ')"; cur0="$(cat "$SANDBOX/sprints/CURRENT")"
-expect f-sprint-ueberlappt "$(KIT_ROLE=product-owner "$BIN/sprint-new.sh" zwei 81 82 2>&1)" '*abgelehnt*#81 und #82*lib/x.py*'
+expect f-sprint-ueberlappt "$(KIT_ROLE=product-owner "$BIN/sprint-new.sh" zwei 81 82 2>&1)" '*rejected*#81 and #82*lib/x.py*'
 n=$((n + 1)); [ "$(ls "$SANDBOX/sprints" | tr '\n' ' ')" = "$dirs0" ] && [ "$(cat "$SANDBOX/sprints/CURRENT")" = "$cur0" ] || fail f:Sprint-trotzdem-angelegt
 sandbox_plannable 82 "tools/**"
-expect f-sprint-getrennt "$(KIT_ROLE=product-owner "$BIN/sprint-new.sh" zwei 81 82 2>&1)" '*S-002-zwei angelegt*'
+expect f-sprint-getrennt "$(KIT_ROLE=product-owner "$BIN/sprint-new.sh" zwei 81 82 2>&1)" '*S-002-zwei created*'
 
 # g) gh-Pfad: Ueberschneidung mit #91; sind die Kommentare von #91 nicht lesbar, ist das ein Fehlschlag
 fake_gh "$(python3 - <<'PY'
@@ -88,8 +88,8 @@ OWNS: pkg/core/io.go
   EXPECT: result checked
   EVIDENCE: pending
 LEDGER
-expect g-gh-ueberlappt "$(st product-owner 92 planned)" '*abgelehnt*#92 und #91*pkg/core/io.go*'
-expect g-gh-Kommentare-Fehler "$(FAKE_GH_FAIL=comments st product-owner 92 planned)" '*#91: Kommentare nicht lesbar*'
+expect g-gh-ueberlappt "$(st product-owner 92 planned)" '*rejected*#92 and #91*pkg/core/io.go*'
+expect g-gh-Kommentare-Fehler "$(FAKE_GH_FAIL=comments st product-owner 92 planned)" '*#91: comments not readable*'
 
 observe "$((n - falsch))/$n Pruefungen bestanden · 11 Glob-Paare · planned mit Byte-Vergleich, anderer Sprint, ohne Freigabe · revise ueberlappt/getrennt · sprint-new ueberlappt ohne Anlegen/getrennt · gh: Ueberschneidung, Kommentare-Fehler${fehler:+ · FEHLER:$fehler}"
 echo "OBSERVED: $OBSERVED"

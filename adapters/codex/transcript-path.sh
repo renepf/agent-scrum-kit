@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-echo "UNKNOWN — keine Transkripte fuer codex bekannt." >&2
+echo "UNKNOWN — no transcripts known for codex." >&2
 exit 1

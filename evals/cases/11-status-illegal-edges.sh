@@ -31,7 +31,7 @@ for von in $STATES; do
     nachher="$(sandbox_labels "$nr")"
     # Zwei Achsen: die Meldung UND der unveraenderte Zustand. Nur eine davon zu pruefen liess eine
     # abgeschaltete Kantensperre gruen durch (Mutationsprobe 2026-09-10).
-    if case "$out" in *"unerlaubter Uebergang"*) true ;; *) false ;; esac && [ "$vorher" = "$nachher" ]; then
+    if case "$out" in *"forbidden transition"*) true ;; *) false ;; esac && [ "$vorher" = "$nachher" ]; then
       abgelehnt=$((abgelehnt + 1))
     else
       durch="$durch $von>$nach"

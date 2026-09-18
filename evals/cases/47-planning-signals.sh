@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-CASE_DESC="sprint-new.sh lehnt ein Ticket ohne vollstaendige Artefaktkette ab und legt nichts an; der Tick zeigt dem requirements-engineer die Luecken im backlog und dem product-owner die Kanban-Zahlen mit Planungsstopp, anderen Rollen nicht"
+CASE_DESC="sprint-new.sh lehnt ein Ticket ohne vollstaendige Artefaktkette ab und legt nichts an; der Tick zeigt dem requirements-engineer die Luecken im backlog und dem product-owner die Kanban-Zahlen mit planning stop, anderen Rollen nicht"
 CASE_KIND="static"
 CASE_HOST=""
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
@@ -36,20 +36,20 @@ pruef e-RE-ohne-Luecke-nicht-gelistet "$re" '!(*#11 fehlt*)'
 # --- Tick: der product-owner sieht die Kanban-Zahlen, der Engineer nicht
 sandbox_issue 11 '{"labels":["status:in-progress","sprint:current"]}'
 po="$(KIT_ROLE=product-owner "$BIN/tick.sh" 2>&1)"
-pruef f-PO-Kanban "$po" '*Kanban*'
-pruef g-PO-geplant "$po" '*geplant*'
-pruef h-PO-in-Arbeit "$po" '*in Arbeit*'
+pruef f-PO-Kanban "$po" '*kanban*'
+pruef g-PO-geplant "$po" '*target at least*'
+pruef h-PO-in-Arbeit "$po" '*· in progress *'
 eng="$(KIT_ROLE=engineer-a "$BIN/tick.sh" 2>&1)"
-pruef i-Engineer-ohne-Kanban "$eng" '!(*Kanban*)'
+pruef i-Engineer-ohne-Kanban "$eng" '!(*kanban*)'
 
-# --- Planungsstopp: drei Tickets in der Pruefschlange
+# --- planning stop: drei Tickets in der Pruefschlange
 # Nur Tickets mit Sprint-Label zaehlen in der Kanban-Sicht.
 for i in 21 22 23; do sandbox_plannable "$i" "src/m$i/**" > /dev/null; sandbox_issue "$i" '{"labels":["status:rfr","sprint:current"]}'; done
 po2="$(KIT_ROLE=product-owner "$BIN/tick.sh" 2>&1)"
-pruef j-Stau-erkannt "$po2" '*Planungsstopp*'
+pruef j-Stau-erkannt "$po2" '*planning stop*'
 sandbox_issue 23 '{"labels":["status:done","sprint:current"]}'
 po3="$(KIT_ROLE=product-owner "$BIN/tick.sh" 2>&1)"
-pruef k-Stau-aufgeloest "$po3" '!(*Planungsstopp*)'
+pruef k-Stau-aufgeloest "$po3" '!(*planning stop*)'
 
 observe "$n Pruefungen, $falsch falsch${fehler:+ · FEHLER:$fehler}"
 echo "OBSERVED: $OBSERVED"
