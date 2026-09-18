@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-CASE_DESC="mit Board: status.sh setzt Board zuerst und liest es zurueck, Label danach; ohne Board kein Board-Aufruf"
+CASE_DESC="with a board: status.sh sets the board first and reads it back, the label after; without a board no board call"
 CASE_KIND="static"
 CASE_HOST=""
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
@@ -12,40 +12,40 @@ fake_gh '{
  "8": {"labels": ["status:in-testing"], "assignees": [], "state": "OPEN", "comments": [], "board": "o-intesting"},
  "9": {"labels": ["status:planned"], "assignees": [], "state": "OPEN", "comments": [], "board": null}
 }'
-fehler=""
+errors=""
 
-# A) planned -> in-progress mit Board
-"$BIN/status.sh" 7 in-progress "eval" > /dev/null 2>&1 || fehler="$fehler A:exit"
+# A) planned -> in-progress with a board
+"$BIN/status.sh" 7 in-progress "eval" > /dev/null 2>&1 || errors="$errors A:exit"
 board_a="$(fake_gh_get 7 board)"; label_a="$(fake_gh_get 7 labels)"
 z_board="$(grep -n "item-edit PVTI_7 o-inprogress" "$FAKE_GH_LOG" | head -1 | cut -d: -f1)"
 z_label="$(grep -n "issue edit 7 --add-label status:in-progress" "$FAKE_GH_LOG" | head -1 | cut -d: -f1)"
-[ "$board_a" = "o-inprogress" ] || fehler="$fehler A:board=$board_a"
-# Besitz haengt seit dem owner:-Modell als eigenes Label am Ticket (protocols/LOOP.md 1).
-[ "$label_a" = "status:in-progress owner:engineer-a" ] || fehler="$fehler A:label=$label_a"
+[ "$board_a" = "o-inprogress" ] || errors="$errors A:board=$board_a"
+# Since the owner: model, ownership hangs on the ticket as a label of its own (protocols/LOOP.md 1).
+[ "$label_a" = "status:in-progress owner:engineer-a" ] || errors="$errors A:label=$label_a"
 z_read="$(grep -n "api graphql readback PVTI_7" "$FAKE_GH_LOG" | head -1 | cut -d: -f1)"
 [ -n "$z_board" ] && [ -n "$z_read" ] && [ -n "$z_label" ] && [ "$z_board" -lt "$z_read" ] && [ "$z_read" -lt "$z_label" ] \
-  || fehler="$fehler A:reihenfolge(board=${z_board:-nie},zuruecklesen=${z_read:-nie},label=${z_label:-nie})"
+  || errors="$errors A:order(board=${z_board:-never},readback=${z_read:-never},label=${z_label:-never})"
 
-# B) in-testing -> done: Board auf done, kein Status-Label, Issue geschlossen.
-#    product-owner statt merge-gate: done ohne 'PO OK' ist seit "PO hat das letzte Wort" gesperrt.
+# B) in-testing -> done: the board on done, no status label, the issue closed.
+#    product-owner instead of merge-gate: done without 'PO OK' is locked since "the PO has the last word".
 : > "$FAKE_GH_LOG"
-KIT_ROLE=product-owner "$BIN/status.sh" 8 done "eval" > /dev/null 2>&1 || fehler="$fehler B:exit"
+KIT_ROLE=product-owner "$BIN/status.sh" 8 done "eval" > /dev/null 2>&1 || errors="$errors B:exit"
 board_b="$(fake_gh_get 8 board)"; label_b="$(fake_gh_get 8 labels)"; state_b="$(fake_gh_get 8 state)"
 z_board="$(grep -n "item-edit PVTI_8 o-done" "$FAKE_GH_LOG" | head -1 | cut -d: -f1)"
 z_close="$(grep -n "issue close 8" "$FAKE_GH_LOG" | head -1 | cut -d: -f1)"
-[ "$board_b" = "o-done" ] || fehler="$fehler B:board=$board_b"
-[ -z "$label_b" ] || fehler="$fehler B:label=$label_b"
-[ "$state_b" = "CLOSED" ] || fehler="$fehler B:state=$state_b"
-[ -n "$z_board" ] && [ -n "$z_close" ] && [ "$z_board" -lt "$z_close" ] || fehler="$fehler B:reihenfolge(board=${z_board:-nie},close=${z_close:-nie})"
+[ "$board_b" = "o-done" ] || errors="$errors B:board=$board_b"
+[ -z "$label_b" ] || errors="$errors B:label=$label_b"
+[ "$state_b" = "CLOSED" ] || errors="$errors B:state=$state_b"
+[ -n "$z_board" ] && [ -n "$z_close" ] && [ "$z_board" -lt "$z_close" ] || errors="$errors B:order(board=${z_board:-never},close=${z_close:-never})"
 
-# C) ohne Board (KIT_BOARD=none): Labels sind die Wahrheit, kein einziger Board-Aufruf
+# C) without a board (KIT_BOARD=none): the labels are the truth, not a single board call
 : > "$FAKE_GH_LOG"
 cp "$SANDBOX/kit.env" "$SANDBOX/noboard.env"; echo 'KIT_BOARD="none"' >> "$SANDBOX/noboard.env"
-KIT_ENV_FILE="$SANDBOX/noboard.env" "$BIN/status.sh" 9 in-progress "eval" > /dev/null 2>&1 || fehler="$fehler C:exit"
-board_aufrufe="$(grep -cE 'graphql|item-edit' "$FAKE_GH_LOG" || true)"
-[ "$board_aufrufe" = 0 ] || fehler="$fehler C:board-aufrufe=$board_aufrufe"
-[ "$(fake_gh_get 9 labels)" = "status:in-progress owner:engineer-a" ] || fehler="$fehler C:label=$(fake_gh_get 9 labels)"
+KIT_ENV_FILE="$SANDBOX/noboard.env" "$BIN/status.sh" 9 in-progress "eval" > /dev/null 2>&1 || errors="$errors C:exit"
+board_calls="$(grep -cE 'graphql|item-edit' "$FAKE_GH_LOG" || true)"
+[ "$board_calls" = 0 ] || errors="$errors C:board-aufrufe=$board_calls"
+[ "$(fake_gh_get 9 labels)" = "status:in-progress owner:engineer-a" ] || errors="$errors C:label=$(fake_gh_get 9 labels)"
 
-observe "A: Board o-inprogress vor Label · B: Board o-done vor close, 0 Labels · C: ohne Board $board_aufrufe Board-Aufrufe${fehler:+ · FEHLER:$fehler}"
+observe "A: board o-inprogress before the label · B: board o-done before close, 0 labels · C: without a board $board_calls board calls${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
-[ -z "$fehler" ]
+[ -z "$errors" ]

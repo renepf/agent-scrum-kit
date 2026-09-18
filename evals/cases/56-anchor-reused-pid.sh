@@ -1,34 +1,34 @@
 #!/usr/bin/env bash
-CASE_DESC="eine neu vergebene PID (anderer Prozess) gilt nicht als laufende Rolle: Tick raeumt den Anker weg, Zwillingssperre und Schleife blockieren nicht"
+CASE_DESC="a reassigned PID (another process) does not count as a running role: the tick clears the anchor away, the twin lock and the loop do not block"
 CASE_KIND="static"
 CASE_HOST=""
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
-sandbox; trap 'kill "$FREMD" 2>/dev/null; rm -rf "$KIT_ROOT/.pid-roles/$FREMD" "$KIT_ROOT/.pid-roles/999999" "$KIT_ROOT/.role-loop"; sandbox_cleanup' EXIT
+sandbox; trap 'kill "$FOREIGN" 2>/dev/null; rm -rf "$KIT_ROOT/.pid-roles/$FOREIGN" "$KIT_ROOT/.pid-roles/999999" "$KIT_ROOT/.role-loop"; sandbox_cleanup' EXIT
 SPRINT="$(sandbox_sprint)"
-# "sleep" ist der fremde Prozess, der eine alte Anker-PID uebernommen hat. Host ist nur "bash"-los: wir
-# erklaeren per KIT_HOST_ALIVE_NAME einen Namen zum Host, den sleep nicht traegt.
-sleep 300 & FREMD=$!
-export KIT_HOST_ALIVE_NAME="nicht-sleep"
+# "sleep" is the foreign process that took over an old anchor PID. We declare a name to be the host
+# through KIT_HOST_ALIVE_NAME that sleep does not carry.
+sleep 300 & FOREIGN=$!
+export KIT_HOST_ALIVE_NAME="not-sleep"
 mkdir -p "$KIT_ROOT/.pid-roles"
-echo engineer-a > "$KIT_ROOT/.pid-roles/$FREMD"     # neu vergeben: lebt, ist aber kein Host
+echo engineer-a > "$KIT_ROOT/.pid-roles/$FOREIGN"     # reassigned: alive, but not a host
 echo engineer-a > "$KIT_ROOT/.pid-roles/999999"     # tot
-printf '%s|%s|%s\n' "alt" "$FREMD" "$(date +%s)" > "$SPRINT/.lease-engineer-a"
-fehler=""
+printf '%s|%s|%s\n' "alt" "$FOREIGN" "$(date +%s)" > "$SPRINT/.lease-engineer-a"
+errors=""
 out="$(KIT_ROLE=engineer-a KIT_SESSION_ID=neu KIT_HOST_PID=$$ "$BIN/tick.sh" 2>&1)"; rc=$?
-[ "$rc" = 0 ] || fehler="$fehler tick-exit-$rc"
-case "$out" in *"second instance"*) fehler="$fehler fremder-Prozess-als-Zwilling" ;; esac
-[ ! -f "$KIT_ROOT/.pid-roles/$FREMD" ] || fehler="$fehler anker-neu-vergeben-bleibt"
-[ ! -f "$KIT_ROOT/.pid-roles/999999" ] || fehler="$fehler anker-tot-bleibt"
-grep -q '| engineer-a | neu |' "$SPRINT/roster.md" || fehler="$fehler nicht-registriert"
-# Schleife: fremder Prozess mit Anker darf den Start nicht verhindern.
-# Seit die Schleife erst tickt und ein Modell nur bei Arbeit startet (Fall 35), braucht engineer-b ein
-# freies Ticket — sonst wartet die Schleife bis KIT_TICK_INTERVAL und der falsche Host legt die
-# Stopp-Datei nie an. Geprueft wird hier die Zwillingssperre, nicht der Modellstart.
-echo engineer-b > "$KIT_ROOT/.pid-roles/$FREMD"
+[ "$rc" = 0 ] || errors="$errors tick-exit-$rc"
+case "$out" in *"second instance"*) errors="$errors foreign-process-as-a-twin" ;; esac
+[ ! -f "$KIT_ROOT/.pid-roles/$FOREIGN" ] || errors="$errors reassigned-anchor-stays"
+[ ! -f "$KIT_ROOT/.pid-roles/999999" ] || errors="$errors dead-anchor-stays"
+grep -q '| engineer-a | neu |' "$SPRINT/roster.md" || errors="$errors not-registered"
+# The loop: a foreign process with an anchor must not prevent the start.
+# Since the loop ticks first and starts a model only when there is work (case 35), engineer-b needs a
+# free ticket — otherwise the loop waits for KIT_TICK_INTERVAL and the fake host never creates the
+# stop file. What is checked here is the twin lock, not the model start.
+echo engineer-b > "$KIT_ROOT/.pid-roles/$FOREIGN"
 sandbox_plannable 77 "src/m77/**" > /dev/null
 sandbox_issue 77 '{"labels":["status:planned","sprint:current"]}'
 lo="$(KIT_LOOP_CLAUDE='touch "$KIT_ROOT/.role-loop/engineer-b.stop"' KIT_LOOP_SLEEP=0 "$KIT_ROOT/adapters/claude-code/role-loop.sh" engineer-b 2>&1)"; lr=$?
-case "$lo" in *"laeuft schon"*) fehler="$fehler schleife-blockiert" ;; esac
-observe "neu vergebene PID + tote PID: Tick Exit $rc, beide Anker weg, registriert · Schleife startet trotz fremdem Anker (Exit $lr)${fehler:+ · FEHLER:$fehler}"
+case "$lo" in *"is already running"*) errors="$errors loop-blocked" ;; esac
+observe "a reassigned PID + a dead PID: tick exit $rc, both anchors gone, registered · the loop starts despite a foreign anchor (exit $lr)${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
-[ -z "$fehler" ]
+[ -z "$errors" ]

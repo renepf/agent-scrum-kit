@@ -28,7 +28,7 @@ start() { rm -f "$SANDBOX/called-$2"; OUT="$(PATH="$FAKE:$PATH" "$KIT_ROOT/adapt
 val() { grep "^$2 " "$SANDBOX/called-$1" 2>/dev/null | head -1 | cut -d' ' -f2-; }
 args() { grep '^ARG ' "$SANDBOX/called-$1" 2>/dev/null | cut -d' ' -f2- | tr '\n' ' '; }
 UUID='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-fehler=""
+errors=""
 
 # --- refuse a model without tool calls, for both hosts. pi gets a valid provider entry first, so only the model
 # check can refuse (without it the provider check would refuse too and hide a missing model check).
@@ -37,7 +37,7 @@ mkdir -p "$PI_CODING_AGENT_DIR"
 printf '{"providers":{"kit-local":{"baseUrl":"%s","api":"openai-completions","apiKey":"local","models":[{"id":"text-only"}]}}}' "$URL" > "$PI_CODING_AGENT_DIR/models.json"
 for pair in qwen-code:qwen pi:pi; do
   start "${pair%%:*}" "${pair##*:}"
-  [ "$RC" != 0 ] && [ ! -e "$SANDBOX/called-${pair##*:}" ] || fehler="$fehler ${pair%%:*}:text-only-started(exit $RC)"
+  [ "$RC" != 0 ] && [ ! -e "$SANDBOX/called-${pair##*:}" ] || errors="$errors ${pair%%:*}:text-only-started(exit $RC)"
 done
 rm -f "$PI_CODING_AGENT_DIR/models.json"
 
@@ -45,38 +45,38 @@ rm -f "$PI_CODING_AGENT_DIR/models.json"
 model tool-ok
 start qwen-code qwen
 sid="$(val qwen SID)"
-[ "$RC" = 0 ] && [ -e "$SANDBOX/called-qwen" ] || fehler="$fehler qwen:not-started(exit $RC: $(printf '%s' "$OUT" | tail -1))"
-[ -n "$(val qwen PID)" ] && [ "$(val qwen PID)" = "$(val qwen HOST_PID)" ] || fehler="$fehler qwen:no-exec(pid $(val qwen PID) host_pid $(val qwen HOST_PID))"
-printf '%s' "$sid" | grep -Eq "$UUID" && [ "$sid" != "eval-session" ] || fehler="$fehler qwen:session-id='$sid'"
+[ "$RC" = 0 ] && [ -e "$SANDBOX/called-qwen" ] || errors="$errors qwen:not-started(exit $RC: $(printf '%s' "$OUT" | tail -1))"
+[ -n "$(val qwen PID)" ] && [ "$(val qwen PID)" = "$(val qwen HOST_PID)" ] || errors="$errors qwen:no-exec(pid $(val qwen PID) host_pid $(val qwen HOST_PID))"
+printf '%s' "$sid" | grep -Eq "$UUID" && [ "$sid" != "eval-session" ] || errors="$errors qwen:session-id='$sid'"
 case "$(args qwen)" in *"--auth-type openai --model tool-ok --openai-api-key local --openai-base-url $URL --session-id $sid -i "*"roles/engineer.md"*) ;;
-  *) fehler="$fehler qwen:args='$(args qwen | cut -c1-160)'" ;; esac
-[ "$(val qwen ROLE)" = engineer-a ] && [ "$(val qwen HOST)" = qwen-code ] && [ "$(val qwen PWD)" = "$(cd "$SANDBOX" && pwd)" ] || fehler="$fehler qwen:env"
+  *) errors="$errors qwen:args='$(args qwen | cut -c1-160)'" ;; esac
+[ "$(val qwen ROLE)" = engineer-a ] && [ "$(val qwen HOST)" = qwen-code ] && [ "$(val qwen PWD)" = "$(cd "$SANDBOX" && pwd)" ] || errors="$errors qwen:env"
 q_ok="$(printf '%s' "$(args qwen)" | cut -c1-60)"
 
 # --- pi: provider entry missing, then pointing elsewhere, then right
 start pi pi
-[ "$RC" != 0 ] && [ ! -e "$SANDBOX/called-pi" ] || fehler="$fehler pi:started-without-provider"
-case "$OUT" in *'"kit-local"'*"$URL"*) ;; *) fehler="$fehler pi:no-provider-snippet" ;; esac
+[ "$RC" != 0 ] && [ ! -e "$SANDBOX/called-pi" ] || errors="$errors pi:started-without-provider"
+case "$OUT" in *'"kit-local"'*"$URL"*) ;; *) errors="$errors pi:no-provider-snippet" ;; esac
 mkdir -p "$PI_CODING_AGENT_DIR"
 printf '{"providers":{"kit-local":{"baseUrl":"http://127.0.0.1:1/v1","api":"openai-completions","apiKey":"local","models":[{"id":"tool-ok"}]}}}' > "$PI_CODING_AGENT_DIR/models.json"
 start pi pi
-[ "$RC" != 0 ] && [ ! -e "$SANDBOX/called-pi" ] || fehler="$fehler pi:started-with-wrong-baseUrl"
+[ "$RC" != 0 ] && [ ! -e "$SANDBOX/called-pi" ] || errors="$errors pi:started-with-wrong-baseUrl"
 printf '{"providers":{"kit-local":{"baseUrl":"%s","api":"openai-completions","apiKey":"local","models":[{"id":"tool-ok"}]}}}' "$URL" > "$PI_CODING_AGENT_DIR/models.json"
 start pi pi
 psid="$(val pi SID)"
-[ "$RC" = 0 ] && [ -e "$SANDBOX/called-pi" ] || fehler="$fehler pi:not-started(exit $RC: $(printf '%s' "$OUT" | tail -1))"
-[ -n "$(val pi PID)" ] && [ "$(val pi PID)" = "$(val pi HOST_PID)" ] || fehler="$fehler pi:no-exec"
-printf '%s' "$psid" | grep -Eq "$UUID" && [ "$psid" != "$sid" ] || fehler="$fehler pi:session-id='$psid'"
+[ "$RC" = 0 ] && [ -e "$SANDBOX/called-pi" ] || errors="$errors pi:not-started(exit $RC: $(printf '%s' "$OUT" | tail -1))"
+[ -n "$(val pi PID)" ] && [ "$(val pi PID)" = "$(val pi HOST_PID)" ] || errors="$errors pi:no-exec"
+printf '%s' "$psid" | grep -Eq "$UUID" && [ "$psid" != "$sid" ] || errors="$errors pi:session-id='$psid'"
 case "$(args pi)" in "--provider kit-local --model tool-ok --session-id $psid "*"roles/engineer.md"*) ;;
-  *) fehler="$fehler pi:args='$(args pi | cut -c1-160)'" ;; esac
-[ "$(val pi ROLE)" = engineer-a ] && [ "$(val pi HOST)" = pi ] || fehler="$fehler pi:env"
+  *) errors="$errors pi:args='$(args pi | cut -c1-160)'" ;; esac
+[ "$(val pi ROLE)" = engineer-a ] && [ "$(val pi HOST)" = pi ] || errors="$errors pi:env"
 
 # --- session-id.sh and host-pid.sh print the start values or fail
 for h in qwen-code pi; do
-  env -i PATH=/usr/bin:/bin "$KIT_ROOT/adapters/$h/session-id.sh" > /dev/null 2>&1 && fehler="$fehler $h:session-id-without-variable"
-  [ "$(env -i PATH=/usr/bin:/bin KIT_SESSION_ID=s-1 "$KIT_ROOT/adapters/$h/session-id.sh" 2>/dev/null)" = s-1 ] || fehler="$fehler $h:session-id-ignores-variable"
-  env -i PATH=/usr/bin:/bin "$KIT_ROOT/adapters/$h/host-pid.sh" > /dev/null 2>&1 && fehler="$fehler $h:host-pid-without-variable"
-  [ "$(env -i PATH=/usr/bin:/bin KIT_HOST_PID=4242 "$KIT_ROOT/adapters/$h/host-pid.sh" 2>/dev/null)" = 4242 ] || fehler="$fehler $h:host-pid-ignores-variable"
+  env -i PATH=/usr/bin:/bin "$KIT_ROOT/adapters/$h/session-id.sh" > /dev/null 2>&1 && errors="$errors $h:session-id-without-variable"
+  [ "$(env -i PATH=/usr/bin:/bin KIT_SESSION_ID=s-1 "$KIT_ROOT/adapters/$h/session-id.sh" 2>/dev/null)" = s-1 ] || errors="$errors $h:session-id-ignores-variable"
+  env -i PATH=/usr/bin:/bin "$KIT_ROOT/adapters/$h/host-pid.sh" > /dev/null 2>&1 && errors="$errors $h:host-pid-without-variable"
+  [ "$(env -i PATH=/usr/bin:/bin KIT_HOST_PID=4242 "$KIT_ROOT/adapters/$h/host-pid.sh" 2>/dev/null)" = 4242 ] || errors="$errors $h:host-pid-ignores-variable"
 done
 
 # --- host-alive: the host process counts, a reused PID of something else does not
@@ -90,13 +90,13 @@ ln -s /bin/sleep "$SANDBOX/alive/pi"   # a copy of a system binary is killed by 
 sleep 30 > /dev/null 2>&1 & OP=$!
 SLEEPERS="$QP $PP $OP"
 sleep 0.3
-"$KIT_ROOT/adapters/qwen-code/host-alive.sh" "$QP" || fehler="$fehler qwen:alive-host-not-seen"
-"$KIT_ROOT/adapters/qwen-code/host-alive.sh" "$OP" && fehler="$fehler qwen:other-process-counts"
-"$KIT_ROOT/adapters/pi/host-alive.sh" "$PP" || fehler="$fehler pi:alive-host-not-seen"
-"$KIT_ROOT/adapters/pi/host-alive.sh" "$OP" && fehler="$fehler pi:other-process-counts"
+"$KIT_ROOT/adapters/qwen-code/host-alive.sh" "$QP" || errors="$errors qwen:alive-host-not-seen"
+"$KIT_ROOT/adapters/qwen-code/host-alive.sh" "$OP" && errors="$errors qwen:other-process-counts"
+"$KIT_ROOT/adapters/pi/host-alive.sh" "$PP" || errors="$errors pi:alive-host-not-seen"
+"$KIT_ROOT/adapters/pi/host-alive.sh" "$OP" && errors="$errors pi:other-process-counts"
 kill $SLEEPERS 2>/dev/null; wait $SLEEPERS 2>/dev/null
-"$KIT_ROOT/adapters/pi/host-alive.sh" "$PP" && fehler="$fehler pi:dead-pid-counts"
+"$KIT_ROOT/adapters/pi/host-alive.sh" "$PP" && errors="$errors pi:dead-pid-counts"
 
-observe "text-only refused by both · qwen exec pid=host_pid, args '${q_ok}…' · pi without/wrong provider refused, then started · session-id/host-pid from start values · host-alive host yes, other no${fehler:+ · FEHLER:$fehler}"
+observe "text-only refused by both · qwen exec pid=host_pid, args '${q_ok}…' · pi without/wrong provider refused, then started · session-id/host-pid from start values · host-alive host yes, other no${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
-[ -z "$fehler" ]
+[ -z "$errors" ]

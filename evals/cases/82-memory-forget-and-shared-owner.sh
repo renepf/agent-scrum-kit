@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-CASE_DESC="falsche Fakten werden geloescht, nicht ergaenzt; geteilte Fakten aendert und loescht nur der Autor"
+CASE_DESC="wrong facts are deleted, not amended; a shared fact is changed and deleted only by its author"
 CASE_KIND="static"
 CASE_HOST=""
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 sandbox; trap sandbox_cleanup EXIT
-fehler=""
-KIT_ROLE=security-engineer "$BIN/brain.sh" share token-im-log "Tokens landen im Debug-Log" <<<'Gemessen 2026-09-10.' > /dev/null || fehler="$fehler share"
-o1="$(KIT_ROLE=engineer-b "$BIN/brain.sh" share token-im-log "Tokens landen nicht mehr im Log" <<<'x' 2>&1)"
-case "$o1" in *"belongs to security-engineer"*) ;; *) fehler="$fehler fremdes-Ueberschreiben-durch" ;; esac
-o2="$(KIT_ROLE=engineer-b "$BIN/brain.sh" forget token-im-log --shared 2>&1)"
-case "$o2" in *"only the author"*) ;; *) fehler="$fehler fremdes-Loeschen-durch" ;; esac
-KIT_ROLE=security-engineer "$BIN/brain.sh" forget token-im-log --shared > /dev/null 2>&1 || fehler="$fehler Autor-darf-nicht-loeschen"
-[ ! -f "$SANDBOX/memory/_shared/facts/token-im-log.md" ] || fehler="$fehler Datei-noch-da"
-grep -q 'token-im-log' "$SANDBOX/memory/_shared/INDEX.md" && fehler="$fehler Index-zeigt-geloeschten-Fakt"
-o3="$(KIT_ROLE=security-engineer "$BIN/brain.sh" forget token-im-log --shared 2>&1)"
-case "$o3" in *"does not exist"*) ;; *) fehler="$fehler zweites-Loeschen-meldet-Erfolg" ;; esac
-observe "fremd ueberschreiben → abgelehnt · fremd loeschen → abgelehnt · Autor loescht → Datei und Indexzeile weg · erneut loeschen → 'gibt es nicht'${fehler:+ · FEHLER:$fehler}"
+errors=""
+KIT_ROLE=security-engineer "$BIN/brain.sh" share token-in-the-log "tokens land in the debug log" <<<'Measured 2026-09-10.' > /dev/null || errors="$errors share"
+o1="$(KIT_ROLE=engineer-b "$BIN/brain.sh" share token-in-the-log "tokens no longer land in the log" <<<'x' 2>&1)"
+case "$o1" in *"belongs to security-engineer"*) ;; *) errors="$errors foreign-overwrite-let-through" ;; esac
+o2="$(KIT_ROLE=engineer-b "$BIN/brain.sh" forget token-in-the-log --shared 2>&1)"
+case "$o2" in *"only the author"*) ;; *) errors="$errors foreign-delete-let-through" ;; esac
+KIT_ROLE=security-engineer "$BIN/brain.sh" forget token-in-the-log --shared > /dev/null 2>&1 || errors="$errors author-may-not-delete"
+[ ! -f "$SANDBOX/memory/_shared/facts/token-in-the-log.md" ] || errors="$errors file-still-there"
+grep -q 'token-in-the-log' "$SANDBOX/memory/_shared/INDEX.md" && errors="$errors index-shows-the-deleted-fact"
+o3="$(KIT_ROLE=security-engineer "$BIN/brain.sh" forget token-in-the-log --shared 2>&1)"
+case "$o3" in *"does not exist"*) ;; *) errors="$errors second-delete-reports-success" ;; esac
+observe "a foreign overwrite → refused · a foreign delete → refused · the author deletes → the file and the index line are gone · deleting again → 'does not exist'${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
-[ -z "$fehler" ]
+[ -z "$errors" ]

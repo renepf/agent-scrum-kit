@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-CASE_DESC="N Sessions schreiben gleichzeitig, kein Chat-Eintrag geht verloren"
+CASE_DESC="N sessions write at the same time, no chat entry is lost"
 CASE_KIND="static"
 CASE_HOST=""
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
@@ -12,7 +12,7 @@ PRO_ROLLE=5
 for r in $ROLES; do
   (
     for i in $(seq 1 $PRO_ROLLE); do
-      KIT_ROLE="$r" "$BIN/say.sh" "#$i · eintrag $i von $r" <<EOF > /dev/null 2>&1
+      KIT_ROLE="$r" "$BIN/say.sh" "#$i · entry $i from $r" <<EOF > /dev/null 2>&1
 rumpf $r $i
 EOF
     done

@@ -16,19 +16,19 @@ touch "$P/sessions/--work-a--/2026-09-15T14-54-01-070Z_own-pi.jsonl"
 sleep 1; touch "$P/sessions/--work-a--/2026-09-15T15-00-00-000Z_other-pi.jsonl"
 
 run() { env -i PATH=/usr/bin:/bin HOME="$FAKE/home" "$@"; }
-fehler=""
-for h in qwen-code pi; do [ -x "$KIT_ROOT/adapters/$h/transcript-path.sh" ] || fehler="$fehler $h:transcript-path.sh-not-executable"; done
+errors=""
+for h in qwen-code pi; do [ -x "$KIT_ROOT/adapters/$h/transcript-path.sh" ] || errors="$errors $h:transcript-path.sh-not-executable"; done
 
 qo="$(run QWEN_HOME="$Q" "$KIT_ROOT/adapters/qwen-code/transcript-path.sh" own-qwen 2>/dev/null)"; qrc=$?
 qu="$(run QWEN_HOME="$Q" "$KIT_ROOT/adapters/qwen-code/transcript-path.sh" nobody 2>/dev/null)"; qurc=$?
 po="$(run PI_CODING_AGENT_DIR="$P" "$KIT_ROOT/adapters/pi/transcript-path.sh" own-pi 2>/dev/null)"; prc=$?
 pu="$(run PI_CODING_AGENT_DIR="$P" "$KIT_ROOT/adapters/pi/transcript-path.sh" nobody 2>/dev/null)"; purc=$?
 
-[ "$qrc" = 0 ] && [ "$qo" = "$Q/projects/-work-a/chats/own-qwen.jsonl" ] || fehler="$fehler qwen-own='$qo'(exit $qrc)"
-[ "$qurc" != 0 ] && [ -z "$qu" ] || fehler="$fehler qwen-unknown='$qu'(exit $qurc)"
-[ "$prc" = 0 ] && [ "$po" = "$P/sessions/--work-a--/2026-09-15T14-54-01-070Z_own-pi.jsonl" ] || fehler="$fehler pi-own='$po'(exit $prc)"
-[ "$purc" != 0 ] && [ -z "$pu" ] || fehler="$fehler pi-unknown='$pu'(exit $purc)"
+[ "$qrc" = 0 ] && [ "$qo" = "$Q/projects/-work-a/chats/own-qwen.jsonl" ] || errors="$errors qwen-own='$qo'(exit $qrc)"
+[ "$qurc" != 0 ] && [ -z "$qu" ] || errors="$errors qwen-unknown='$qu'(exit $qurc)"
+[ "$prc" = 0 ] && [ "$po" = "$P/sessions/--work-a--/2026-09-15T14-54-01-070Z_own-pi.jsonl" ] || errors="$errors pi-own='$po'(exit $prc)"
+[ "$purc" != 0 ] && [ -z "$pu" ] || errors="$errors pi-unknown='$pu'(exit $purc)"
 
-observe "qwen own: exit $qrc '${qo#$FAKE/}' · unknown: exit $qurc · pi own: exit $prc '${po#$FAKE/}' · unknown: exit $purc${fehler:+ · FEHLER:$fehler}"
+observe "qwen own: exit $qrc '${qo#$FAKE/}' · unknown: exit $qurc · pi own: exit $prc '${po#$FAKE/}' · unknown: exit $purc${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
-[ -z "$fehler" ]
+[ -z "$errors" ]

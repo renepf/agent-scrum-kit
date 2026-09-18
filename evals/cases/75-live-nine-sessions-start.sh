@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-CASE_DESC="neun echte Sessions starten parallel: jede liest ihre Rolle, tickt, registriert sich mit eigener Session-ID und PID, MCP verbunden, kein Subagent"
+CASE_DESC="nine real sessions start in parallel: each reads its role, ticks, registers with its own session id and PID, MCP connected, no subagent"
 CASE_KIND="live"
 CASE_HOST="claude-code"
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
-# Kosten: neun Modellaufrufe mit je zwei Rollenblaettern und einem Tick (am 2026-09-14 ~90 s).
+# Cost: nine model calls with two role sheets and one tick each (on 2026-09-14 ~90 s).
 W="$(mktemp -d "${TMPDIR:-/tmp}/kit-start9.XXXXXX")"; trap 'rm -rf "$W"' EXIT
 K="$W/kit"; mkdir -p "$K" "$W/out"
 ( cd "$KIT_ROOT" && tar --exclude .git --exclude kit.env --exclude board.env --exclude sprints --exclude .pid-roles --exclude .role-loop --exclude 'memory/*/*' -cf - . ) | ( cd "$K" && tar -xf - )
@@ -21,7 +21,7 @@ JOBS=""
 for r in $ROLES; do
   case "$r" in engineer-*) f=engineer.md ;; *) f="$r.md" ;; esac
   ( cd "$K" && env -i HOME="$HOME" PATH="$PATH" TERM=xterm-256color USER="$USER" LANG="${LANG:-de_DE.UTF-8}" KIT_ROLE="$r" \
-      claude -p "Lies roles/_COMMON.md und roles/$f und uebernimm die Rolle $r. Fuehre dann bin/tick.sh aus. Starte keinen Loop und keinen Subagenten. Antworte in genau einer Zeile: ROLLE=$r TICK=<ok|fehler>." \
+      claude -p "Read roles/_COMMON.md and roles/$f and take over the role $r. Then run bin/tick.sh. Start no loop and no subagent. Answer in exactly one line: ROLE=$r TICK=<ok|error>." \
       -n "$r" --model claude-opus-5 --settings adapters/claude-code/settings.json --mcp-config .mcp.json --strict-mcp-config \
       --allowed-tools Read "Bash(bin/tick.sh)" "Bash(bin/tick.sh:*)" --max-turns 10 --output-format stream-json --verbose \
       < /dev/null > "$W/out/$r.jsonl" 2> "$W/out/$r.err" ) &
@@ -41,7 +41,7 @@ for f in sorted(glob.glob(W + "/out/*.jsonl")):
         try: r = json.loads(line)
         except ValueError: continue
         if r.get("type") == "system" and r.get("subtype") == "init": init = r
-        if r.get("type") == "system" and r.get("subtype") == "hook_response" and "ROLLENANKER" in json.dumps(r): hook = True
+        if r.get("type") == "system" and r.get("subtype") == "hook_response" and "ROLE ANCHOR" in json.dumps(r): hook = True
         if r.get("type") == "result": res = r
     txt = (res or {}).get("result") or ""
     if not res or any(s in txt for s in ("session limit", "usage limit", "rate limit", "API Error")):
@@ -50,7 +50,7 @@ for f in sorted(glob.glob(W + "/out/*.jsonl")):
     anchor = open(f"{K}/.pid-roles/{rpid}").read().strip() if os.path.exists(f"{K}/.pid-roles/{rpid}") else None
     mcp = [m["status"] for m in (init or {}).get("mcp_servers", [])]
     checks = {"sid": sid == rsid, "anker": anchor == role, "hook": hook, "mcp": mcp == ["connected", "connected"],
-              "spawned0": (res.get("subagent_stats") or {}).get("spawned") == 0, "tick": f"ROLLE={role} TICK=ok" in txt}
+              "spawned0": (res.get("subagent_stats") or {}).get("spawned") == 0, "tick": f"ROLE={role} TICK=ok" in txt}
     if not all(checks.values()): bad.append(role + ":" + ",".join(k for k, v in checks.items() if not v))
 print(f"ROWS {len(rows)}")
 print(f"PIDS {len(pids)}")
@@ -60,7 +60,7 @@ PY
 )"
 rows="$(printf '%s' "$out" | sed -n 's/^ROWS //p')"; pids="$(printf '%s' "$out" | sed -n 's/^PIDS //p')"
 blocked="$(printf '%s' "$out" | sed -n 's/^BLOCKED //p')"; bad="$(printf '%s' "$out" | sed -n 's/^BAD //p')"
-[ -z "$blocked" ] || { echo "OBSERVED: BLOCKED — Host antwortete nicht fuer:$blocked"; exit 3; }
-observe "roster $rows/9 · $pids verschiedene Host-PIDs · je Rolle Session-ID=Roster, Anker, Hook-Anker, MCP 2x connected, 0 Subagenten, TICK=ok${bad:+ · FEHLER: $bad}"
+[ -z "$blocked" ] || { echo "OBSERVED: BLOCKED — the host did not answer for:$blocked"; exit 3; }
+observe "roster $rows/9 · $pids distinct host PIDs · per role session-id=roster, anchor, hook anchor, MCP 2x connected, 0 subagents, TICK=ok${bad:+ · ERRORS: $bad}"
 echo "OBSERVED: $OBSERVED"
 [ "$rows" = 9 ] && [ "$pids" = 9 ] && [ -z "$bad" ]

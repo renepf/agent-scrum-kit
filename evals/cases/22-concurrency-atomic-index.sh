@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-CASE_DESC="der Index wird atomar ersetzt, ein halb geschriebener Stand ist nie lesbar"
+CASE_DESC="the index is replaced atomically, a half-written state is never readable"
 CASE_KIND="static"
 CASE_HOST=""
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
@@ -14,8 +14,8 @@ done
 "$BIN/reindex.sh" > /dev/null
 voll="$(grep -c '^| [0-9]' "$SPRINT/INDEX.md")"
 
-# Waehrend 20 Neubauten parallel laufen, wird der Index dauernd gelesen.
-# Jeder Lesevorgang muss einen vollstaendigen Index sehen — nie weniger Zeilen.
+# While 20 rebuilds run in parallel, the index is read continuously.
+# Every read must see a complete index — never fewer lines.
 for _ in $(seq 1 20); do "$BIN/reindex.sh" > /dev/null 2>&1 & done
 kaputt=0; gelesen=0
 for _ in $(seq 1 200); do

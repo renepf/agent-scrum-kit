@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-CASE_DESC="Zwischenueberschriften im Rumpf eines Eintrags landen nicht im Index"
+CASE_DESC="sub-headings inside the body of an entry do not enter the index"
 CASE_KIND="static"
 CASE_HOST=""
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
@@ -7,17 +7,17 @@ sandbox; trap sandbox_cleanup EXIT
 SPRINT="$(sandbox_sprint)"
 
 KIT_ROLE=product-owner "$BIN/say.sh" "#1 · Planung" <<'EOF' > /dev/null 2>&1
-## Die drei Fragen, zu denen ich euer Urteil brauche
+## The three questions I need your verdict on
 1. erste
 ## Offene Punkte
 - zweiter
 EOF
-KIT_ROLE=engineer-a "$BIN/say.sh" "#1 · Antwort" <<'EOF' > /dev/null 2>&1
+KIT_ROLE=engineer-a "$BIN/say.sh" "#1 · answer" <<'EOF' > /dev/null 2>&1
 ok
 EOF
 
 n="$(grep -c '^| [0-9]' "$SPRINT/INDEX.md")"
-geister="$(grep -c 'Die drei Fragen\|Offene Punkte' "$SPRINT/INDEX.md" || true)"
-observe "Index-Eintraege $n (erwartet 2) · Geistereintraege aus Zwischenueberschriften $geister"
+ghosts="$(grep -c 'The three questions\|Open points' "$SPRINT/INDEX.md" || true)"
+observe "index entries $n (expected 2) · ghost entries from sub-headings $ghosts"
 echo "OBSERVED: $OBSERVED"
-[ "$n" = 2 ] && [ "$geister" = 0 ]
+[ "$n" = 2 ] && [ "$ghosts" = 0 ]

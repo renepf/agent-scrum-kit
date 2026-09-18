@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-CASE_DESC="bekannte Transkripte ergeben exakt den erwarteten Kontextwert"
+CASE_DESC="known transcripts give exactly the expected context value"
 CASE_KIND="static"
 CASE_HOST=""
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"

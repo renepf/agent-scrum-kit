@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Vorgetaeuschtes gh fuer die Eval-Suite. Kein Netz, eigener Zustand.
+"""A faked gh for the eval suite. No network, a state of its own.
 
-Zustand:  $FAKE_GH_STATE  (JSON: {"<nr>": {"labels": [], "assignees": [], "state": "OPEN",
+State:    $FAKE_GH_STATE  (JSON: {"<nr>": {"labels": [], "assignees": [], "state": "OPEN",
                                          "comments": [], "board": null, "body": "", "prs": ["<pr>"]},
                                   "pulls": {"<pr>": {"head": "<sha>", "files": [{"filename": "...",
                                                      "previous_filename": "..."}]}}})
-Protokoll: $FAKE_GH_LOG   (eine Zeile je Aufruf, in Aufrufreihenfolge)
-Fehler:   $FAKE_GH_FAIL   "graphql" | "item-edit" | "readback" | "pr-files" | "comments" | "" — laesst genau diesen Aufruf scheitern
-Optionen: $FAKE_GH_OPTIONS "o-backlog=Backlog;o-planned=Planned;..." — Namen fuer das Zuruecklesen
+Log:      $FAKE_GH_LOG    (one line per call, in call order)
+Error:    $FAKE_GH_FAIL   "graphql" | "item-edit" | "readback" | "pr-files" | "comments" | "" — makes exactly that call fail
+Options:  $FAKE_GH_OPTIONS "o-backlog=Backlog;o-planned=Planned;..." — names for the read-back
 
-Nur die Aufrufe, die bin/preflight.sh und bin/tickets.sh wirklich machen. Alles andere
-scheitert laut, damit ein neuer Aufruf im Kit nicht still durchrutscht.
+Only the calls bin/preflight.sh and bin/tickets.sh really make. Everything else
+fails loudly, so that a new call in the kit does not slip through silently.
 """
 import json, os, sys
 
@@ -49,11 +49,11 @@ if args[:2] == ["api", "user"]:
     log("api user"); print("eval-bot"); sys.exit(0)
 
 if args[:2] == ["api", "graphql"] and any("fieldValueByName" in a for a in args):
-    # Zuruecklesen des Status-Feldes nach item-edit (bin/tickets.sh board-set).
+    # Reading the status field back after item-edit (bin/tickets.sh board-set).
     item = [a for a in args if a.startswith("id=")][0][3:]
     log(f"api graphql readback {item}")
     if fail == "readback":
-        print("")          # Board zeigt nichts: tickets.sh muss nach 4 Versuchen abbrechen
+        print("")          # the board shows nothing: tickets.sh must abort after 4 attempts
         sys.exit(0)
     names = dict(kv.split("=", 1) for kv in os.environ.get("FAKE_GH_OPTIONS", "").split(";") if "=" in kv)
     print(names.get(db[item.removeprefix("PVTI_")].get("board") or "", ""))
@@ -68,12 +68,12 @@ if args[:2] == ["api", "graphql"]:
     sys.exit(0)
 
 if args[:1] == ["api"] and len(args) > 1 and args[1].startswith("repos/") and args[1].endswith("/files"):
-    # bin/tickets.sh pr-files: Dateien des PR samt altem Pfad bei Umbenennung.
+    # bin/tickets.sh pr-files: the files of the PR including the old path on a rename.
     nr = args[1].split("/")[-2]
     log(f"api pulls {nr} files")
     if fail == "pr-files":
         die("HTTP 502: Bad Gateway (https://api.github.com/" + args[1] + ")")
-    # Der alte Pfad kommt nur, wenn die Abfrage in tickets.sh ihn verlangt — sonst bliebe ihr Wegfall unbemerkt.
+    # The old path appears only when the query in tickets.sh asks for it — otherwise its loss would go unnoticed.
     for f in db["pulls"][nr]["files"]:
         print(f["filename"])
         if f.get("previous_filename") and "previous_filename" in (opt("-q") or ""):
@@ -93,7 +93,7 @@ if args[:2] == ["project", "item-edit"]:
     save(); sys.exit(0)
 
 if args[:2] == ["issue", "list"]:
-    # bin/tickets.sh list (-q: nur Nummern) und sprint (JSON mit number, title, labels)
+    # bin/tickets.sh list (-q: numbers only) and sprint (JSON with number, title, labels)
     label = opt("--label")
     log(f"issue list {label}")
     hits = [(nr, i) for nr, i in sorted(db.items()) if nr.isdigit() and label in i.get("labels", [])
@@ -122,7 +122,7 @@ if args[:1] == ["issue"] and len(args) >= 3:
             print(json.dumps(i["comments"]))
         elif field == "body":      print(i.get("body", ""))
         elif field == "closedByPullRequestsReferences": print(" ".join(i.get("prs", [])))
-        else: die(f"fake-gh: --json {field} nicht nachgebildet")
+        else: die(f"fake-gh: --json {field} not emulated")
         sys.exit(0)
     if sub == "edit":
         for flag, key, add in (("--add-label", "labels", True), ("--remove-label", "labels", False),
@@ -141,4 +141,4 @@ if args[:1] == ["issue"] and len(args) >= 3:
     if sub == "close":
         log(f"issue close {nr}"); i["state"] = "CLOSED"; save(); sys.exit(0)
 
-die("fake-gh: Aufruf nicht nachgebildet: gh " + " ".join(args))
+die("fake-gh: call not emulated: gh " + " ".join(args))

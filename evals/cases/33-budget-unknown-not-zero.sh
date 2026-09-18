@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-CASE_DESC="fehlendes Transkript ergibt UNKNOWN, nie eine 0 — und nennt die richtige Ursache"
+CASE_DESC="a missing transcript gives UNKNOWN, never a 0 — and names the right cause"
 CASE_KIND="static"
 CASE_HOST=""
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
@@ -8,24 +8,24 @@ SPRINT="$(sandbox_sprint)"
 
 {
   printf '# roster\n\n| Time | Role | Session-ID | Host |\n|---|---|---|---|\n'
-  printf '| 2026-01-01 00:00 | engineer-a | gibt-es-nicht | test-fixture |\n'
+  printf '| 2026-01-01 00:00 | engineer-a | does-not-exist | test-fixture |\n'
 } > "$SPRINT/roster.md"
 
-# Fall A: Adapter laeuft, findet diese eine Kennung nicht.
+# Case A: the adapter runs but does not find this one id.
 KIT_ROLE=watchdog "$BIN/budget.sh" > /dev/null 2>&1
 a="$(grep '| engineer-a |' "$SPRINT/budget.md")"
 
-# Fall B: Host kennt gar keine Transkripte (Adapter nicht ausfuehrbar).
+# Case B: the host knows no transcripts at all (the adapter is not executable).
 chmod -x "$KIT_ROOT/adapters/test-fixture/transcript-path.sh"
 KIT_ROLE=watchdog "$BIN/budget.sh" > /dev/null 2>&1
 b="$(grep '| engineer-a |' "$SPRINT/budget.md")"
 chmod +x "$KIT_ROOT/adapters/test-fixture/transcript-path.sh"
 
-fehler=""
-case "$a" in *UNKNOWN*"not found"*) ;; *) fehler="$fehler A='$a'" ;; esac
-case "$b" in *UNKNOWN*"no transcripts"*"emergency brake"*) ;; *) fehler="$fehler B='$b'" ;; esac
-case "$a$b" in *"| 0 |"*) fehler="$fehler Null-statt-UNKNOWN" ;; esac
+errors=""
+case "$a" in *UNKNOWN*"not found"*) ;; *) errors="$errors A='$a'" ;; esac
+case "$b" in *UNKNOWN*"no transcripts"*"emergency brake"*) ;; *) errors="$errors B='$b'" ;; esac
+case "$a$b" in *"| 0 |"*) errors="$errors zero-instead-of-UNKNOWN" ;; esac
 
-observe "A: Session unbekannt → '$(echo "$a" | awk -F'|' '{gsub(/^ +| +$/,"",$6); print $6}')' · B: Host ohne Transkripte → '$(echo "$b" | awk -F'|' '{gsub(/^ +| +$/,"",$6); print $6}')'${fehler:+ · FEHLER:$fehler}"
+observe "A: session unknown → '$(echo "$a" | awk -F'|' '{gsub(/^ +| +$/,"",$6); print $6}')' · B: host without transcripts → '$(echo "$b" | awk -F'|' '{gsub(/^ +| +$/,"",$6); print $6}')'${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
-[ -z "$fehler" ]
+[ -z "$errors" ]

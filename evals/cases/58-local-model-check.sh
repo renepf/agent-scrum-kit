@@ -20,30 +20,30 @@ check() { # $1 = KIT_LOCAL_MODEL line for kit.env ('' = none)
 }
 row() { printf '%s\n' "$OUT" | grep -E "^  $1 " | head -1; }
 
-fehler=""
+errors=""
 check tool-ok
-case "$(row tool-ok)" in *"tool calls: yes"*) ;; *) fehler="$fehler tool-ok-row='$(row tool-ok)'" ;; esac
-case "$(row text-only)" in *"tool calls: no"*) ;; *) fehler="$fehler text-only-row='$(row text-only)'" ;; esac
-case "$(row broken)" in *"tool calls: UNKNOWN"*500*) ;; *) fehler="$fehler broken-row='$(row broken)'" ;; esac
-[ "$RC" = 0 ] || fehler="$fehler configured-pass-exit=$RC"
+case "$(row tool-ok)" in *"tool calls: yes"*) ;; *) errors="$errors tool-ok-row='$(row tool-ok)'" ;; esac
+case "$(row text-only)" in *"tool calls: no"*) ;; *) errors="$errors text-only-row='$(row text-only)'" ;; esac
+case "$(row broken)" in *"tool calls: UNKNOWN"*500*) ;; *) errors="$errors broken-row='$(row broken)'" ;; esac
+[ "$RC" = 0 ] || errors="$errors configured-pass-exit=$RC"
 rc_ok=$RC
 
 check text-only; rc_text=$RC
-[ "$rc_text" != 0 ] || fehler="$fehler configured-text-only-exit-0"
-case "$OUT" in *"text-only"*"refused"*) ;; *) fehler="$fehler text-only-not-refused" ;; esac
+[ "$rc_text" != 0 ] || errors="$errors configured-text-only-exit-0"
+case "$OUT" in *"text-only"*"refused"*) ;; *) errors="$errors text-only-not-refused" ;; esac
 
 check broken; rc_broken=$RC
-[ "$rc_broken" != 0 ] || fehler="$fehler configured-broken-exit-0"
+[ "$rc_broken" != 0 ] || errors="$errors configured-broken-exit-0"
 
 check ""; rc_none=$RC
-[ "$rc_none" != 0 ] || fehler="$fehler no-model-exit-0"
-case "$OUT" in *"KIT_LOCAL_MODEL is not set"*) ;; *) fehler="$fehler no-model-message-missing" ;; esac
+[ "$rc_none" != 0 ] || errors="$errors no-model-exit-0"
+case "$OUT" in *"KIT_LOCAL_MODEL is not set"*) ;; *) errors="$errors no-model-message-missing" ;; esac
 
 kill "$STUB" 2>/dev/null; wait "$STUB" 2>/dev/null
 check tool-ok; rc_down=$RC
-[ "$rc_down" != 0 ] || fehler="$fehler endpoint-down-exit-0"
-case "$OUT" in *UNKNOWN*) ;; *) fehler="$fehler endpoint-down-not-UNKNOWN" ;; esac
+[ "$rc_down" != 0 ] || errors="$errors endpoint-down-exit-0"
+case "$OUT" in *UNKNOWN*) ;; *) errors="$errors endpoint-down-not-UNKNOWN" ;; esac
 
-observe "exit: tool-ok $rc_ok · text-only $rc_text · broken $rc_broken · none $rc_none · endpoint down $rc_down${fehler:+ · FEHLER:$fehler}"
+observe "exit: tool-ok $rc_ok · text-only $rc_text · broken $rc_broken · none $rc_none · endpoint down $rc_down${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
-[ -z "$fehler" ]
+[ -z "$errors" ]

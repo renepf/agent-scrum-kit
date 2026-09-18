@@ -26,14 +26,14 @@ q="$(col engineer-a 4)"; qo="$(col engineer-a 5)"
 p="$(col engineer-b 4)"; po="$(col engineer-b 5)"
 n="$(col qa-ruthless 4)"; nl="$(col qa-ruthless 6)"
 
-fehler=""
-[ "$q" = "30 000" ] || fehler="$fehler qwen-context='$q'"
-[ "$qo" = "43" ] || fehler="$fehler qwen-output='$qo'"
-[ "$p" = "3 010" ] || fehler="$fehler pi-context='$p'"
-[ "$po" = "23" ] || fehler="$fehler pi-output='$po'"
-[ "$n" = "UNKNOWN" ] || fehler="$fehler no-usage-context='$n'"
-case "$nl" in *"no usage record"*) ;; *) fehler="$fehler no-usage-reason='$nl'" ;; esac
+errors=""
+[ "$q" = "30 000" ] || errors="$errors qwen-context='$q'"
+[ "$qo" = "43" ] || errors="$errors qwen-output='$qo'"
+[ "$p" = "3 010" ] || errors="$errors pi-context='$p'"
+[ "$po" = "23" ] || errors="$errors pi-output='$po'"
+[ "$n" = "UNKNOWN" ] || errors="$errors no-usage-context='$n'"
+case "$nl" in *"no usage record"*) ;; *) errors="$errors no-usage-reason='$nl'" ;; esac
 
-observe "qwen $q / out $qo (expected 30 000 / 43) · pi $p / out $po (expected 3 010 / 23) · no usage: $n, '$nl'${fehler:+ · FEHLER:$fehler}"
+observe "qwen $q / out $qo (expected 30 000 / 43) · pi $p / out $po (expected 3 010 / 23) · no usage: $n, '$nl'${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
-[ -z "$fehler" ]
+[ -z "$errors" ]

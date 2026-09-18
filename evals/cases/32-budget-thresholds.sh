@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-CASE_DESC="die Schwellen loesen an der richtigen Stelle aus, Grenzwert eingeschlossen"
+CASE_DESC="the thresholds fire at the right place, the boundary value included"
 CASE_KIND="static"
 CASE_HOST=""
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
@@ -14,17 +14,17 @@ SPRINT="$(sandbox_sprint)"
 } > "$SPRINT/roster.md"
 
 KIT_ROLE=watchdog "$BIN/budget.sh" > /dev/null 2>&1
-lage() { grep "| $1 |" "$SPRINT/budget.md" | awk -F'|' '{gsub(/^ +| +$/,"",$6); print $6}'; }
+state_of() { grep "| $1 |" "$SPRINT/budget.md" | awk -F'|' '{gsub(/^ +| +$/,"",$6); print $6}'; }
 
-lq="$(lage engineer-a)"; lw="$(lage engineer-b)"; ls_="$(lage qa-ruthless)"
-stop_zeile="$(grep '^STOP ' "$SPRINT/budget.md" | tr '\n' ' ')"
+lq="$(state_of engineer-a)"; lw="$(state_of engineer-b)"; ls_="$(state_of qa-ruthless)"
+stop_line="$(grep '^STOP ' "$SPRINT/budget.md" | tr '\n' ' ')"
 
-fehler=""
-[ "$lq" = "ok" ] || fehler="$fehler engineer-a=$lq"
-case "$lw" in warning*) ;; *) fehler="$fehler engineer-b=$lw" ;; esac
-case "$ls_" in *STOP*) ;; *) fehler="$fehler qa-ruthless=$ls_" ;; esac
-[ "$stop_zeile" = "STOP qa-ruthless " ] || fehler="$fehler flag='$stop_zeile'"
+errors=""
+[ "$lq" = "ok" ] || errors="$errors engineer-a=$lq"
+case "$lw" in warning*) ;; *) errors="$errors engineer-b=$lw" ;; esac
+case "$ls_" in *STOP*) ;; *) errors="$errors qa-ruthless=$ls_" ;; esac
+[ "$stop_line" = "STOP qa-ruthless " ] || errors="$errors flag='$stop_line'"
 
-observe "1150→ok · 260000→warning · 300010→STOP · Flagzeile '$(echo "$stop_zeile" | sed 's/ $//')'${fehler:+ · FEHLER:$fehler}"
+observe "1150→ok · 260000→warning · 300010→STOP · flag line '$(echo "$stop_line" | sed 's/ $//')'${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
-[ -z "$fehler" ]
+[ -z "$errors" ]

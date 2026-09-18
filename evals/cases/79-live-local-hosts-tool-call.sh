@@ -24,7 +24,7 @@ printf '{"providers":{"kit-local":{"baseUrl":"%s","api":"openai-completions","ap
 NODEBIN="$(dirname "$(command -v qwen || command -v pi || echo /usr/bin/false)")"
 new_id() { python3 -c 'import uuid; print(uuid.uuid4())'; }
 ask() { echo "Run this shell command exactly once, then answer done: sh -c 'printf %s \"\$KIT_SESSION_ID\" > $SANDBOX/proj/seen-$1'"; }
-fehler=""
+errors=""
 
 qid="$(new_id)"
 ( cd "$SANDBOX/proj" && env -i HOME="$HOME" PATH="$NODEBIN:/usr/bin:/bin" TERM=dumb QWEN_HOME="$SANDBOX/qwen-home" \
@@ -41,11 +41,11 @@ wait "$PI_RUN"
 prc=$?
 kill "$WATCH" 2>/dev/null
 
-[ "$(cat "$SANDBOX/proj/seen-qwen" 2>/dev/null)" = "$qid" ] || fehler="$fehler qwen:tool-shell-saw='$(cat "$SANDBOX/proj/seen-qwen" 2>/dev/null)'(exit $qrc)"
-[ "$(cat "$SANDBOX/proj/seen-pi" 2>/dev/null)" = "$pid_" ] || fehler="$fehler pi:tool-shell-saw='$(cat "$SANDBOX/proj/seen-pi" 2>/dev/null)'(exit $prc)"
-QWEN_HOME="$SANDBOX/qwen-home" "$KIT_ROOT/adapters/qwen-code/transcript-path.sh" "$qid" > /dev/null 2>&1 || fehler="$fehler qwen:no-transcript"
-PI_CODING_AGENT_DIR="$SANDBOX/pi-agent" "$KIT_ROOT/adapters/pi/transcript-path.sh" "$pid_" > /dev/null 2>&1 || fehler="$fehler pi:no-transcript"
+[ "$(cat "$SANDBOX/proj/seen-qwen" 2>/dev/null)" = "$qid" ] || errors="$errors qwen:tool-shell-saw='$(cat "$SANDBOX/proj/seen-qwen" 2>/dev/null)'(exit $qrc)"
+[ "$(cat "$SANDBOX/proj/seen-pi" 2>/dev/null)" = "$pid_" ] || errors="$errors pi:tool-shell-saw='$(cat "$SANDBOX/proj/seen-pi" 2>/dev/null)'(exit $prc)"
+QWEN_HOME="$SANDBOX/qwen-home" "$KIT_ROOT/adapters/qwen-code/transcript-path.sh" "$qid" > /dev/null 2>&1 || errors="$errors qwen:no-transcript"
+PI_CODING_AGENT_DIR="$SANDBOX/pi-agent" "$KIT_ROOT/adapters/pi/transcript-path.sh" "$pid_" > /dev/null 2>&1 || errors="$errors pi:no-transcript"
 
-observe "model $mdl · qwen exit $qrc, tool shell saw its id: $([ -e "$SANDBOX/proj/seen-qwen" ] && echo yes || echo no) · pi exit $prc, tool shell saw its id: $([ -e "$SANDBOX/proj/seen-pi" ] && echo yes || echo no)${fehler:+ · FEHLER:$fehler}"
+observe "model $mdl · qwen exit $qrc, tool shell saw its id: $([ -e "$SANDBOX/proj/seen-qwen" ] && echo yes || echo no) · pi exit $prc, tool shell saw its id: $([ -e "$SANDBOX/proj/seen-pi" ] && echo yes || echo no)${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
-[ -z "$fehler" ]
+[ -z "$errors" ]

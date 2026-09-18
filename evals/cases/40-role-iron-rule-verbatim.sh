@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-CASE_DESC="jede Jobbeschreibung traegt die eiserne Regel woertlich und byte-identisch"
+CASE_DESC="every job description carries the iron rule verbatim and byte-identical"
 CASE_KIND="static"
 CASE_HOST=""
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 
-n=0; ohne=""; hashes=""
+n=0; without=""; hashes=""
 for f in "$KIT_ROOT"/roles/*.md; do
   case "$(basename "$f")" in START-HERE.md) continue ;; esac
   n=$((n + 1))
@@ -12,11 +12,11 @@ for f in "$KIT_ROOT"/roles/*.md; do
   case "$block" in
     *"never spawns a subagent"*) hashes="$hashes$(printf '%s' "$block" | shasum | cut -d' ' -f1)
 " ;;
-    *) ohne="$ohne $(basename "$f")" ;;
+    *) without="$without $(basename "$f")" ;;
   esac
 done
-verschieden="$(printf '%s' "$hashes" | sort -u | grep -c . )"
+distinct="$(printf '%s' "$hashes" | sort -u | grep -c . )"
 
-observe "$n Rollendateien · ohne Regel:${ohne:- keine} · verschiedene Fassungen des Blocks: $verschieden"
+observe "$n role files · without the rule:${without:- none} · distinct versions of the block: $distinct"
 echo "OBSERVED: $OBSERVED"
-[ -z "$ohne" ] && [ "$verschieden" = 1 ]
+[ -z "$without" ] && [ "$distinct" = 1 ]

@@ -1,21 +1,21 @@
-"""Treibt eine interaktive claude-Session ueber ein Pseudo-Terminal durch Start und /clear.
+"""Drives an interactive claude session through a start and a /clear over a pseudo terminal.
 
-    python3 clear-pty.py <kit-kopie> <bildschirm-log>
+    python3 clear-pty.py <kit-copy> <screen-log>
 
-Saubere Umgebung wie in einem frischen Terminal: nur HOME, PATH, USER, LANG, TERM, KIT_ROLE.
-Eine aus einer laufenden claude-Session vererbte Umgebung (CLAUDE_CODE_CHILD_SESSION, CLAUDE_PID,
-Messaging-Socket) macht die gestartete Session zur Kind-Session — sie schrieb dann weder Registry
-noch Transkript am ueblichen Ort (gemessen 2026-09-14).
+A clean environment as in a fresh terminal: only HOME, PATH, USER, LANG, TERM, KIT_ROLE.
+An environment inherited from a running claude session (CLAUDE_CODE_CHILD_SESSION, CLAUDE_PID,
+the messaging socket) makes the started session a child session — it then wrote neither the registry
+nor a transcript in the usual place (measured 2026-09-14).
 
-Letzte Zeile: ERGEBNIS <json>.
+Last line: RESULT <json>.
 """
 import fcntl, glob, json, os, pty, re, select, signal, struct, sys, termios, time
 K, LOG = sys.argv[1], sys.argv[2]
 ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07]*\x07|\x1b[()][A-Za-z0-9]|\x1b[=>]|\r")
-# Saubere Umgebung wie in einem frischen Terminal: keine CLAUDE*-Variablen der aufrufenden Session.
+# A clean environment as in a fresh terminal: no CLAUDE* variables of the calling session.
 env = {k: os.environ[k] for k in ("HOME", "PATH", "USER", "LANG") if k in os.environ}
 env.update(KIT_ROLE="engineer-a", TERM="xterm-256color")
-print("Umgebung:", sorted(env))
+print("environment:", sorted(env))
 cmd = ["claude", "-n", "clear-probe", "--model", "claude-opus-5", "--settings", "adapters/claude-code/settings.json",
        "--mcp-config", ".mcp.json", "--strict-mcp-config", "--allowed-tools", "Read", "Bash(bin/tick.sh)", "Bash(bin/tick.sh:*)"]
 pid, fd = pty.fork()
@@ -43,7 +43,7 @@ def screen(n=3000): return ANSI.sub("", "".join(buf))[-n:]
 def send(s):
     if alive(): os.write(fd, s.encode())
 def reg():
-    # Erst die Datei der eigenen PID; sonst jede Registry-Datei, deren pid-Feld oder cwd passt.
+    # First the file of its own PID; otherwise any registry file whose pid field or cwd matches.
     try: return json.load(open(os.path.expanduser(f"~/.claude/sessions/{pid}.json"))).get("sessionId")
     except Exception: pass
     for f in glob.glob(os.path.expanduser("~/.claude/sessions/*.json")):
@@ -69,27 +69,27 @@ def wait_for(pred, sec, label):
         low = re.sub(r"\s+", " ", screen(2500).lower())
         flat = re.sub(r"\s+", "", screen(2500).lower())
         if "yes,itrustthisfolder" in flat and "trust" not in seen_dialogs:
-            seen_dialogs.add("trust"); print("  Vertrauensdialog: Pfeil runter auf 'Yes, I trust', Enter"); send("\x1b[B"); pump(0.8); send("\r"); continue
+            seen_dialogs.add("trust"); print("  trust dialog: arrow down to 'Yes, I trust', Enter"); send("\x1b[B"); pump(0.8); send("\r"); continue
         for key, trig in (("mcp", "newmcpserver"), ("hooks", "hooksconfig")):
             if trig in flat and key not in seen_dialogs and "entertoconfirm" in flat:
-                seen_dialogs.add(key); print(f"  Dialog '{key}' → Enter"); send("\r"); break
+                seen_dialogs.add(key); print(f"  dialog '{key}' → Enter"); send("\r"); break
         if pred(): return True
-    if not alive(): print(f"  PROZESS BEENDET waehrend: {label} · status={exited[0]}")
-    else: print(f"  ZEITUEBERSCHREITUNG: {label}")
+    if not alive(): print(f"  PROCESS ENDED during: {label} · status={exited[0]}")
+    else: print(f"  TIMED OUT: {label}")
     return False
 t0 = time.time(); print(f"claude-PID {pid}")
-ok1 = wait_for(lambda: any("| engineer-a |" in r for r in roster()), 180, "Start → Registrierung ohne Eingabe")
+ok1 = wait_for(lambda: any("| engineer-a |" in r for r in roster()), 180, "start → registration without input")
 pump(6)
-print("  Registry-Dateien (neueste 6):", reg_dump())
+print("  registry files (newest 6):", reg_dump())
 sid_roster1 = (roster() or ["|||"])[0].split("|")[3].strip()
-sid1 = reg() or sid_roster1; print(f"[{int(time.time()-t0)}s] Start: Registry={sid1} · roster={roster()} · Anker={open(os.path.join(K,'.pid-roles',str(pid))).read().strip() if os.path.exists(os.path.join(K,'.pid-roles',str(pid))) else None}")
+sid1 = reg() or sid_roster1; print(f"[{int(time.time()-t0)}s] start: registry={sid1} · roster={roster()} · anchor={open(os.path.join(K,'.pid-roles',str(pid))).read().strip() if os.path.exists(os.path.join(K,'.pid-roles',str(pid))) else None}")
 res = {"start_ok": ok1, "sid1": sid1}
 if ok1:
     pump(20)
     send("/clear"); pump(1.5); send("\r")
-    ok2 = wait_for(lambda: reg() not in (None, sid1), 60, "/clear → neue Registry-ID")
-    sid2 = reg(); print(f"[{int(time.time()-t0)}s] /clear: Registry={sid2} · Registry-Dateien: {reg_dump()}")
-    ok3 = wait_for(lambda: any(("| engineer-a |" in r) and (sid1 not in r) for r in roster()), 180, "/clear → Neuregistrierung ohne Eingabe")
+    ok2 = wait_for(lambda: reg() not in (None, sid1), 60, "/clear → a new registry id")
+    sid2 = reg(); print(f"[{int(time.time()-t0)}s] /clear: registry={sid2} · registry files: {reg_dump()}")
+    ok3 = wait_for(lambda: any(("| engineer-a |" in r) and (sid1 not in r) for r in roster()), 180, "/clear → registration again without input")
     if not sid2 or sid2 == sid1:
         sid2 = (roster() or ["|||"])[0].split("|")[3].strip()
     print(f"[{int(time.time()-t0)}s] roster={roster()}")
@@ -97,16 +97,16 @@ if ok1:
     for f in glob.glob(os.path.expanduser(f"~/.claude/projects/*/{sid2}.jsonl")):
         for line in open(f):
             if "bin/tick.sh" in line and '"tool_use"' in line: tick += 1
-            if "ROLLENANKER" in line: anchor += 1
-    res.update(clear_neue_id=ok2, clear_neu_registriert=ok3, sid2=sid2, tick_aufrufe_nach_clear=tick, rollenanker_zeilen=anchor)
+            if "ROLE ANCHOR" in line: anchor += 1
+    res.update(clear_new_id=ok2, clear_registered_again=ok3, sid2=sid2, tick_calls_after_clear=tick, role_anchor_lines=anchor)
 open(LOG, "w").write(screen(30000))
 send("/exit"); pump(1); send("\r"); pump(3)
 if "exitandstoptasks" in re.sub(r"\s+", "", screen(1500).lower()):
-    print("  Exit-Dialog 'Background work is running' → 1. Exit and stop tasks"); send("1"); pump(0.5); send("\r"); pump(3)
+    print("  exit dialog 'Background work is running' → 1. Exit and stop tasks"); send("1"); pump(0.5); send("\r"); pump(3)
 if alive():
     os.kill(pid, signal.SIGTERM); pump(2)
 for k in ("sid1", "sid2"):
     s = res.get(k)
     fs = glob.glob(os.path.expanduser(f"~/.claude/projects/*/{s}.jsonl")) if s else []
     res[k + "_transkript"] = bool(fs)
-print("ERGEBNIS", json.dumps(res))
+print("RESULT", json.dumps(res))

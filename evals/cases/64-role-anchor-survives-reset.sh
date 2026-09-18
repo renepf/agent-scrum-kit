@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-CASE_DESC="die Rolle ueberlebt einen Kontext-Reset ueber den Anker am Host-Prozess, ohne KIT_ROLE"
+CASE_DESC="the role survives a context reset through the anchor on the host process, without KIT_ROLE"
 CASE_KIND="static"
 CASE_HOST=""
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 sandbox; trap 'rm -rf "$KIT_ROOT/.pid-roles/$KIT_HOST_PID"; sandbox_cleanup' EXIT
 sandbox_sprint > /dev/null
-fehler=""
-# Ein Tick mit Rolle setzt den Anker.
-KIT_ROLE=qa-ruthless "$BIN/tick.sh" > /dev/null 2>&1 || fehler="$fehler erster-tick"
-anker="$(cat "$KIT_ROOT/.pid-roles/$KIT_HOST_PID" 2>/dev/null)"
-[ "$anker" = "qa-ruthless" ] || fehler="$fehler anker='$anker'"
-# "Reset": neue Session-ID, KIT_ROLE nicht mehr gesetzt, derselbe Host-Prozess.
+errors=""
+# A tick with a role sets the anchor.
+KIT_ROLE=qa-ruthless "$BIN/tick.sh" > /dev/null 2>&1 || errors="$errors first-tick"
+anchor="$(cat "$KIT_ROOT/.pid-roles/$KIT_HOST_PID" 2>/dev/null)"
+[ "$anchor" = "qa-ruthless" ] || errors="$errors anchor='$anchor'"
+# "Reset": a new session id, KIT_ROLE no longer set, the same host process.
 out="$(env -u KIT_ROLE KIT_SESSION_ID=nach-reset "$BIN/tick.sh" 2>&1)"; rc=$?
-[ "$rc" = 0 ] || fehler="$fehler tick-ohne-KIT_ROLE-exit-$rc"
-grep -q '| qa-ruthless | nach-reset |' "$SANDBOX/sprints/S-001-eval/roster.md" || fehler="$fehler neue-Session-nicht-als-qa-ruthless-registriert"
-# Fremder Host-Prozess ohne Anker: keine geratene Rolle.
+[ "$rc" = 0 ] || errors="$errors tick-without-KIT_ROLE-exit-$rc"
+grep -q '| qa-ruthless | nach-reset |' "$SANDBOX/sprints/S-001-eval/roster.md" || errors="$errors new-session-not-registered-as-qa-ruthless"
+# A foreign host process without an anchor: no guessed role.
 out2="$(env -u KIT_ROLE KIT_HOST_PID=999999 "$BIN/tick.sh" 2>&1)"; rc2=$?
-[ "$rc2" != 0 ] || fehler="$fehler fremder-Prozess-bekam-Rolle"
-case "$out2" in *"role unknown"*) ;; *) fehler="$fehler keine-klare-Meldung" ;; esac
-observe "Anker nach Tick: $anker · ohne KIT_ROLE neu registriert als qa-ruthless: $(grep -c '| qa-ruthless | nach-reset |' "$SANDBOX/sprints/S-001-eval/roster.md") · fremder Prozess: Exit $rc2, 'role unknown'${fehler:+ · FEHLER:$fehler}"
+[ "$rc2" != 0 ] || errors="$errors foreign-process-got-a-role"
+case "$out2" in *"role unknown"*) ;; *) errors="$errors no-clear-message" ;; esac
+observe "the anchor after the tick: $anchor · without KIT_ROLE registered again as qa-ruthless: $(grep -c '| qa-ruthless | nach-reset |' "$SANDBOX/sprints/S-001-eval/roster.md") · a foreign process: exit $rc2, 'role unknown'${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
-[ -z "$fehler" ]
+[ -z "$errors" ]

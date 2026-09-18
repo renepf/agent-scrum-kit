@@ -1,28 +1,28 @@
 #!/usr/bin/env bash
-CASE_DESC="der Arbeitsvertrag traegt die Anti-Erfindungs-Regeln und bleibt schlank"
+CASE_DESC="the working contract carries the anti-invention rules and stays lean"
 CASE_KIND="static"
 CASE_HOST=""
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 
 C="$KIT_ROOT/AGENTS.md"
-fehler=""
-grep -q 'UNKNOWN — <where to clear it>' "$C" || fehler="$fehler UNKNOWN-Regel"
-grep -q 'A failed tool call is a' "$C" || fehler="$fehler Fehlschlag-Regel"
-grep -q 'intermediate state is not a result' "$C" || fehler="$fehler Zwischenzustand-Regel"
-grep -q 'syntax check is not a run' "$C" || fehler="$fehler Syntaxcheck-Regel"
-grep -q 'never spawns a subagent' "$C" || fehler="$fehler Subagent-Regel"
+errors=""
+grep -q 'UNKNOWN — <where to clear it>' "$C" || errors="$errors UNKNOWN-rule"
+grep -q 'A failed tool call is a' "$C" || errors="$errors failure-rule"
+grep -q 'intermediate state is not a result' "$C" || errors="$errors intermediate-state-rule"
+grep -q 'syntax check is not a run' "$C" || errors="$errors syntax-check-rule"
+grep -q 'never spawns a subagent' "$C" || errors="$errors subagent-rule"
 for rp in 'F1' 'D1' 'R1' 'Q1' 'A1'; do
-  grep -q "\`$rp\`" "$C" || fehler="$fehler Referenzpunkt-$rp"
+  grep -q "\`$rp\`" "$C" || errors="$errors reference-point-$rp"
 done
-# Ueber 300 Zeilen verschlechtern das Ergebnis messbar.
-zeilen="$(wc -l < "$C" | tr -d ' ')"
-[ "$zeilen" -le 300 ] || fehler="$fehler zu-lang($zeilen)"
+# Past 300 lines the result measurably worsens.
+lines="$(wc -l < "$C" | tr -d ' ')"
+[ "$lines" -le 300 ] || errors="$errors too-long($lines)"
 
-# Eine Quelle, mehrere Namen: CLAUDE.md und .cursorrules duerfen nicht duplizieren.
-grep -q 'AGENTS.md' "$KIT_ROOT/CLAUDE.md" || fehler="$fehler CLAUDE.md-zeigt-nicht-auf-AGENTS.md"
-grep -q 'AGENTS.md' "$KIT_ROOT/.cursorrules" || fehler="$fehler cursorrules-zeigt-nicht-auf-AGENTS.md"
-[ "$(wc -l < "$KIT_ROOT/CLAUDE.md" | tr -d ' ')" -le 10 ] || fehler="$fehler CLAUDE.md-dupliziert"
+# One source, several names: CLAUDE.md and .cursorrules must not duplicate.
+grep -q 'AGENTS.md' "$KIT_ROOT/CLAUDE.md" || errors="$errors CLAUDE.md-does-not-point-at-AGENTS.md"
+grep -q 'AGENTS.md' "$KIT_ROOT/.cursorrules" || errors="$errors cursorrules-does-not-point-at-AGENTS.md"
+[ "$(wc -l < "$KIT_ROOT/CLAUDE.md" | tr -d ' ')" -le 10 ] || errors="$errors CLAUDE.md-duplicates"
 
-observe "AGENTS.md $zeilen Zeilen, alle Regeln und Referenzpunkte vorhanden, CLAUDE.md und .cursorrules verweisen${fehler:+ · FEHLER:$fehler}"
+observe "AGENTS.md $lines lines, every rule and reference point present, CLAUDE.md and .cursorrules point at it${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
-[ -z "$fehler" ]
+[ -z "$errors" ]
