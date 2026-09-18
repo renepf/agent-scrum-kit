@@ -64,5 +64,5 @@ sleep 2
 kill -0 "$ALT2" 2>/dev/null || fehler="$fehler zellij-fehler-beendete-trotzdem"
 [ "$rc2" != 0 ] || fehler="$fehler zellij-fehler-exit0"
 observe "Trockenlauf: Tab mit role-loop.sh engineer-a --after $ALT, zellij nicht gerufen · echt: Tab geoeffnet, alter Host beendet, Schleife wartete und startete ($(( $(date +%s) - t0 )) s) · zellij scheitert: Exit $rc2, Host lebt${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

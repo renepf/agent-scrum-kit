@@ -24,5 +24,5 @@ grep -q 'AGENTS.md' "$KIT_ROOT/.cursorrules" || fehler="$fehler cursorrules-zeig
 [ "$(wc -l < "$KIT_ROOT/CLAUDE.md" | tr -d ' ')" -le 10 ] || fehler="$fehler CLAUDE.md-dupliziert"
 
 observe "AGENTS.md $zeilen Zeilen, alle Regeln und Referenzpunkte vorhanden, CLAUDE.md und .cursorrules verweisen${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

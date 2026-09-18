@@ -14,5 +14,5 @@ for w in $BEGRIFFE; do
 done
 
 observe "${treffer:-kein Projektwissen im Template}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$treffer" ]

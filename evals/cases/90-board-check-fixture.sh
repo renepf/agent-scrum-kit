@@ -29,5 +29,5 @@ o3="$(KIT_BOARD_FIXTURE="$F/github-standard.json" "$BIN/board-check.sh" 2>&1)"; 
 n3="$(printf '%s' "$o3" | grep -c '^FAIL' || true)"
 
 observe "passend → Exit $r1, board.env $ids IDs · falsch → Exit $r2, $(printf '%s' "$o2" | grep -c '^FAIL') FAIL, board.env unveraendert · GitHub-Standard (Todo/In Progress/Done) → Exit $r3, $n3 FAIL${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ] && [ "$r3" = 1 ]

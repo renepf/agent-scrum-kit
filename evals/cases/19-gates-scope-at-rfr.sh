@@ -138,5 +138,5 @@ expect k-Dateiliste-Fehler "$(FAKE_GH_FAIL=pr-files st engineer-a 62 rfr)" '*Dat
 expect k-Gegenprobe "$(st engineer-a 63 rfr)" '*in-progress → rfr*'
 
 observe "$((n - falsch))/$n Pruefungen bestanden · Datei-Backend: OWNS-Pflicht, Revision 1 am Issue, ausserhalb, Selbst-Erweiterung, fremde Freigabezeile, 7 abgelehnte Revisionen, Revision 2, rfr, ohne PR · 14 Globs + leere Liste · 7 unzulaessige OWNS · gh: Umbenennung, zwei PRs, Dateiliste-Fehler, Gegenprobe${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

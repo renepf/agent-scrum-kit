@@ -15,5 +15,5 @@ c="$(env -u KIT_SESSION_ID -u CLAUDE_CODE_SESSION_ID KIT_HOST_PID=5353 KIT_CLAUD
 [ "$rc" != 0 ] || fehler="$fehler ohne-quelle-exit0:'$c'"
 case "$c" in *"nicht raten"*) ;; *) fehler="$fehler meldung" ;; esac
 observe "Registry 'nach-clear-neu' schlaegt Env 'vor-clear-alt' · ohne Registry → Env · ohne beides → Exit $rc${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

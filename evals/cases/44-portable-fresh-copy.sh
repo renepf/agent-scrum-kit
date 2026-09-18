@@ -54,5 +54,5 @@ eintraege="$(grep -c '^| [0-9]' "$ZIEL/sprints/$(cat "$ZIEL/sprints/CURRENT" 2>/
 [ "$eintraege" -ge 2 ] || fehler="$fehler Index-hat-nur-$eintraege-Eintraege"
 
 observe "ohne kit.env: Exit $rc mit Hinweis · nach Ausfuellen: preflight, Sprint, Statuswechsel, Chat, tick, Gedaechtnis, Index mit $eintraege Eintraegen${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

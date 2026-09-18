@@ -22,5 +22,5 @@ zeilen="$(grep -c '^| 2' "$SPRINT/roster.md" 2>/dev/null || echo 0)"
 falsch=""
 for r in $ROLES; do grep -q "| $r | sid-$r |" "$SPRINT/roster.md" || falsch="$falsch $r"; done
 observe "roster.md: $zeilen/9 Zeilen${falsch:+ · fehlend:$falsch}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$zeilen" = 9 ] && [ -z "$falsch" ]

@@ -16,7 +16,7 @@ for f in .mcp.json adapters/claude-code/mcp/jcodemunch.json; do
 for n,s in json.load(open(sys.argv[1]))["mcpServers"].items():
     print(n + "\t" + " ".join(shlex.quote(x) for x in [s["command"]] + s["args"]))' "$f")
 done
-case "$fehler" in *"No module"*|*"ENOTFOUND"*|*"Could not"*) echo "BEOBACHTET: BLOCKIERT —$fehler"; exit 3 ;; esac
+case "$fehler" in *"No module"*|*"ENOTFOUND"*|*"Could not"*) echo "OBSERVED: BLOCKED —$fehler"; exit 3 ;; esac
 observe "${befund% ·}${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

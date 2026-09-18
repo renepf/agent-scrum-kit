@@ -28,5 +28,5 @@ for s in startup clear resume compact fork; do
   esac
 done
 observe "ohne Rolle: Exit $r0, 0 Bytes · Anker engineer-b + clear: additionalContext mit roles/engineer.md und /loop 5m · --wake Exitcodes:$wake${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

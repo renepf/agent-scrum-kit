@@ -11,11 +11,11 @@ REAL="$KIT_ROOT/kit.env"
 url="$(grep -m1 '^KIT_LOCAL_BASE_URL=' "$REAL" 2>/dev/null | cut -d= -f2- | tr -d '"')"
 mdl="$(grep -m1 '^KIT_LOCAL_MODEL=' "$REAL" 2>/dev/null | cut -d= -f2- | tr -d '"')"
 if [ -z "$url" ] || [ -z "$mdl" ]; then
-  echo "BEOBACHTET: BLOCKIERT — KIT_LOCAL_BASE_URL or KIT_LOCAL_MODEL not set in kit.env"; exit 3
+  echo "OBSERVED: BLOCKED — KIT_LOCAL_BASE_URL or KIT_LOCAL_MODEL not set in kit.env"; exit 3
 fi
 printf 'KIT_LOCAL_BASE_URL="%s"\nKIT_LOCAL_MODEL="%s"\n' "$url" "$mdl" >> "$SANDBOX/kit.env"
 if ! chk="$("$BIN/local-model-check.sh" 2>&1)"; then
-  echo "BEOBACHTET: BLOCKIERT — $(printf '%s' "$chk" | tail -1)"; exit 3
+  echo "OBSERVED: BLOCKED — $(printf '%s' "$chk" | tail -1)"; exit 3
 fi
 
 mkdir -p "$SANDBOX/proj" "$SANDBOX/qwen-home" "$SANDBOX/pi-agent"
@@ -47,5 +47,5 @@ QWEN_HOME="$SANDBOX/qwen-home" "$KIT_ROOT/adapters/qwen-code/transcript-path.sh"
 PI_CODING_AGENT_DIR="$SANDBOX/pi-agent" "$KIT_ROOT/adapters/pi/transcript-path.sh" "$pid_" > /dev/null 2>&1 || fehler="$fehler pi:no-transcript"
 
 observe "model $mdl · qwen exit $qrc, tool shell saw its id: $([ -e "$SANDBOX/proj/seen-qwen" ] && echo yes || echo no) · pi exit $prc, tool shell saw its id: $([ -e "$SANDBOX/proj/seen-pi" ] && echo yes || echo no)${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

@@ -26,5 +26,5 @@ done
 wait
 
 observe "$gelesen Lesevorgaenge waehrend 20 parallelen Neubauten · unvollstaendig gelesen: $kaputt"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$kaputt" = 0 ]

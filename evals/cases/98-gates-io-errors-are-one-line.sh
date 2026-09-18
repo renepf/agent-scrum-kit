@@ -26,7 +26,7 @@ before="$(cat "$L")"
 chmod a-w "$SANDBOX/ro"
 if [ -w "$SANDBOX/ro" ]; then
   chmod u+w "$SANDBOX/ro"
-  echo "BEOBACHTET: BLOCKED — cannot make a directory read-only here (running as root?)"
+  echo "OBSERVED: BLOCKED — cannot make a directory read-only here (running as root?)"
   exit 3
 fi
 out="$(python3 "$BIN/gates.py" run "$L" 98989898 "$SANDBOX/ro" engineer-a 30 2>&1)"; rc=$?
@@ -53,5 +53,5 @@ one_line c-planned-invalid-utf8 "$out" "$rc" "*planned abgelehnt*UTF-8*"
 n=$((n + 1)); [ "$s1" = "$(sandbox_snap 98)" ] || fail c:state-changed
 
 observe "$((n - failed))/$n checks passed · unwritable ledger: run, attest, ledger unchanged · invalid UTF-8: planned, lint, unmet, abandoned, qa-lines · status.sh planned rejects and writes nothing${errors:+ · FEHLER:$errors}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$errors" ]

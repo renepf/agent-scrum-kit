@@ -47,5 +47,5 @@ board_aufrufe="$(grep -cE 'graphql|item-edit' "$FAKE_GH_LOG" || true)"
 [ "$(fake_gh_get 9 labels)" = "status:in-progress owner:engineer-a" ] || fehler="$fehler C:label=$(fake_gh_get 9 labels)"
 
 observe "A: Board o-inprogress vor Label · B: Board o-done vor close, 0 Labels · C: ohne Board $board_aufrufe Board-Aufrufe${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

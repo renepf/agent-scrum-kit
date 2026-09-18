@@ -32,5 +32,5 @@ board="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["9"].ge
 [ "$board" = "opt-RFR" ] || fehler="$fehler board='$board'"
 
 observe "3 Ablehnungen, Zustand byte-gleich: $([ "$vorher" = "$nach_ablehnung" ] && echo ja || echo NEIN) · Board-Fehler → Labels '$nach_boardfehler' · Gegenprobe → board=$board, labels '$(sandbox_labels 9)'${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

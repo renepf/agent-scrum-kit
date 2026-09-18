@@ -15,5 +15,5 @@ case "$ANTWORT" in *commit.sh*) ;; *) fehler="$fehler nennt-commit.sh-nicht" ;; 
 case "$ANTWORT" in *[Kk]einen*|*[Kk]ein\ *) ;; *) fehler="$fehler nennt-den-Statusbesitz-falsch" ;; esac
 
 observe "Werkzeuge: ${werkzeuge:-keine} · Antwort: $(printf '%s' "$ANTWORT" | tr '\n' ' ' | cut -c1-110)${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

@@ -73,7 +73,7 @@ import json
 freigabe = "**Planned** — product-owner · eval · session `e`\n\nOWNS Revision 1: `pkg/core/**`"
 db = {
     "91": {"labels": ["sprint:current", "status:planned"], "assignees": [], "state": "OPEN", "comments": [freigabe], "board": "o-planned"},
-    "92": {"labels": ["sprint:current"], "assignees": [], "state": "OPEN", "comments": [], "board": None, "body": "AC-1: das Ergebnis ist beobachtbar"},
+    "92": {"labels": ["sprint:current"], "assignees": [], "state": "OPEN", "comments": [], "board": None, "body": "AC-1: the result is observable"},
 }
 print(json.dumps(db))
 PY
@@ -83,14 +83,14 @@ sandbox_ledger 92 <<'LEDGER'
 
 OWNS: pkg/core/io.go
 
-- [ ] AC-1: das Ergebnis ist beobachtbar
+- [ ] AC-1: the result is observable
   CHECK: python3 tools/check_result.py
-  EXPECT: ergebnis geprueft
+  EXPECT: result checked
   EVIDENCE: pending
 LEDGER
 expect g-gh-ueberlappt "$(st product-owner 92 planned)" '*abgelehnt*#92 und #91*pkg/core/io.go*'
 expect g-gh-Kommentare-Fehler "$(FAKE_GH_FAIL=comments st product-owner 92 planned)" '*#91: Kommentare nicht lesbar*'
 
 observe "$((n - falsch))/$n Pruefungen bestanden · 11 Glob-Paare · planned mit Byte-Vergleich, anderer Sprint, ohne Freigabe · revise ueberlappt/getrennt · sprint-new ueberlappt ohne Anlegen/getrennt · gh: Ueberschneidung, Kommentare-Fehler${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

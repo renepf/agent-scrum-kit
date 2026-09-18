@@ -32,5 +32,5 @@ for fall in "in-review:qa-ruthless" "in-testing:acceptance-tester"; do
   befund="$befund ${pz} → in-progress (owner:engineer-b) → rfr → in-review;"
 done
 observe "${befund}${fehler:+ FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

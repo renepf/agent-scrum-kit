@@ -52,5 +52,5 @@ po3="$(KIT_ROLE=product-owner "$BIN/tick.sh" 2>&1)"
 pruef k-Stau-aufgeloest "$po3" '!(*Planungsstopp*)'
 
 observe "$n Pruefungen, $falsch falsch${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$falsch" = 0 ]

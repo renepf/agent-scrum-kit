@@ -20,5 +20,5 @@ case "$ANTWORT" in
 esac
 
 observe "Kopfwort: ${kopf:-fehlt} · Begruendung: $(printf '%s' "$ANTWORT" | tail -1 | cut -c1-110)${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

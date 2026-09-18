@@ -27,5 +27,5 @@ zustand="$(python3 -c 'import json,sys; i=json.load(open(sys.argv[1]))["1"]; pri
 [ "$zustand" = "closed MERGED keine-Labels" ] || fehler="$fehler endzustand='$zustand'"
 
 observe "Weg: backlog$weg · Ende: $zustand${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

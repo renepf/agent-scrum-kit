@@ -26,5 +26,5 @@ in_dateien="$(grep -h -c '^## ' "$SPRINT"/chat/*.md | paste -sd+ - | bc)"
 im_index="$(grep -c '^| [0-9]' "$SPRINT/INDEX.md")"
 
 observe "erwartet $erwartet · in Chatdateien $in_dateien · im Index $im_index"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$in_dateien" = "$erwartet" ] && [ "$im_index" = "$erwartet" ]

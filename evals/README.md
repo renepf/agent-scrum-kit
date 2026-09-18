@@ -92,7 +92,7 @@ CASE_HOST=""              # leer = hostunabhaengig, sonst der Hostname
 ```
 
 Danach `source ../lib/harness.sh`, `sandbox` fuer eine wegwerfbare Umgebung, am Ende
-`echo "BEOBACHTET: $OBSERVED"` und ein Exitcode: 0 bestanden, sonst durchgefallen.
+`echo "OBSERVED: $OBSERVED"` und ein Exitcode: 0 bestanden, sonst durchgefallen.
 Ein Fall prueft **nur, was in einer Jobbeschreibung oder im Protokoll steht**. Verlangt er mehr,
 ist er falsch.
 

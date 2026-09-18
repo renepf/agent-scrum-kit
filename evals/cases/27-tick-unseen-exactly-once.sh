@@ -25,5 +25,5 @@ case "$t3" in *"zweiter"*) ;; *) fehler="$fehler Tick3-zeigt-neuen-nicht" ;; esa
 case "$t3" in *"erster"*) fehler="$fehler Tick3-zeigt-alten-erneut" ;; esac
 
 observe "Tick1 zeigt 'erster' · Tick2 nichts · Tick3 nur 'zweiter' (gleiche Minute, sortiert davor)${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

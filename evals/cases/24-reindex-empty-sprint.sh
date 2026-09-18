@@ -19,5 +19,5 @@ fehler=""
 case "$out" in *"deine Warteschlange"*"#1"*) ;; *) fehler="$fehler erster-Tick-endet-vor-der-Warteschlange" ;; esac
 
 observe "reindex auf leerem Sprint: Exit $rc_idx · erster Tick: Exit $rc_tick, zeigt Warteschlange: $(case "$out" in *"#1"*) echo ja;; *) echo NEIN;; esac)${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

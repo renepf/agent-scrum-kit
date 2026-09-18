@@ -43,5 +43,5 @@ n=$((n + 1)); grep -q '^requirements-engineer|backlog' "$KIT_ROOT/kit.env.exampl
 n=$((n + 1)); grep -q 'requirements-engineer' "$KIT_ROOT/protocols/LOOP.md" || fail "i-nicht-im-Cast-des-Protokolls"
 
 observe "$n Pruefungen, $falsch falsch${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$falsch" = 0 ]

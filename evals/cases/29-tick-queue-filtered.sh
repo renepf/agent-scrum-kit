@@ -25,5 +25,5 @@ fehler=""
 [ -z "$w" ] || fehler="$fehler watchdog='$w'"
 
 observe "engineer-a [$e] · qa-ruthless [$q] · acceptance-tester [$t] · merge-gate [$m] · product-owner [$p] · watchdog [$w] · #9 ausserhalb des Sprints nirgends${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

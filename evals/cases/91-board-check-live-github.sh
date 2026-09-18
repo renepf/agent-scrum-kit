@@ -5,12 +5,12 @@ CASE_HOST="github"
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 # Liest kit.env des Kits selbst, nicht den Sandkasten: geprueft wird DEIN Board.
 unset KIT_ENV_FILE KIT_BOARD_ENV_FILE
-[ -f "$KIT_ROOT/kit.env" ] || { echo "BEOBACHTET: BLOCKIERT — kit.env fehlt"; exit 3; }
-grep -q '^KIT_BOARD="github-project"' "$KIT_ROOT/kit.env" || { echo "BEOBACHTET: BLOCKIERT — KIT_BOARD ist nicht github-project"; exit 3; }
+[ -f "$KIT_ROOT/kit.env" ] || { echo "OBSERVED: BLOCKED — kit.env fehlt"; exit 3; }
+grep -q '^KIT_BOARD="github-project"' "$KIT_ROOT/kit.env" || { echo "OBSERVED: BLOCKED — KIT_BOARD ist nicht github-project"; exit 3; }
 out="$("$BIN/board-check.sh" 2>&1)"; rc=$?
-case "$out" in *"Preflight fehlgeschlagen"*|*"nicht lesbar"*) echo "BEOBACHTET: BLOCKIERT — $(echo "$out" | tail -1)"; exit 3 ;; esac
+case "$out" in *"Preflight fehlgeschlagen"*|*"nicht lesbar"*) echo "OBSERVED: BLOCKED — $(echo "$out" | tail -1)"; exit 3 ;; esac
 ok="$(printf '%s' "$out" | grep -c '^OK' || true)"; fail="$(printf '%s' "$out" | grep -c '^FAIL' || true)"
 observe "$(printf '%s' "$out" | tail -1) · $ok OK, $fail FAIL"
 printf '%s\n' "$out" | grep '^FAIL' | sed 's/^/  /'
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$rc" = 0 ]

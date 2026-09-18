@@ -31,5 +31,5 @@ fehler=""
 case "$out" in *[Ff]ehl*) ;; *) fehler="$fehler keine-Fehlermeldung" ;; esac
 
 observe "Exitcode $rc · Label vor '$vorher' nach '$nachher' · Meldung: $(echo "$out" | tail -1 | cut -c1-60)${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

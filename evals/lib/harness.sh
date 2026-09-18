@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Gemeinsame Basis der Eval-Faelle. Wird gesourct.
+# Shared base of the eval cases. Sourced, never executed directly.
 set -uo pipefail
 
 KIT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -8,15 +8,15 @@ BIN="$KIT_ROOT/bin"
 OBSERVED=""
 observe() { OBSERVED="${OBSERVED}${OBSERVED:+ | }$*"; }
 
-# Eine wegwerfbare Umgebung: eigene kit.env, eigener Sprint-Ordner, Datei-Backend.
-# Kein Eval-Fall fasst das echte Projekt an.
+# A throwaway environment: its own kit.env, its own sprint folder, the file backend.
+# No eval case touches the real project.
 sandbox() {
   SANDBOX="$(mktemp -d "${TMPDIR:-/tmp}/kit-eval.XXXXXX")"
   mkdir -p "$SANDBOX/sprints" "$SANDBOX/memory"
   cp "$KIT_ROOT/kit.env.example" "$SANDBOX/kit.env"
   cat >> "$SANDBOX/kit.env" <<ENV
 
-# --- Sandbox-Ueberschreibungen (evals/lib/harness.sh) ---
+# --- sandbox overrides (evals/lib/harness.sh) ---
 KIT_REPO="eval/sandbox"
 KIT_WORKTREE_ROOT="$SANDBOX"
 KIT_ISSUE_BACKEND="file"
@@ -33,7 +33,7 @@ ENV
   export KIT_HOST_PID="$$"
 }
 
-# Ein Ticket-Zustand direkt ins Datei-Backend schreiben (Titel, Labels, PR, Kommentare).
+# Write a ticket state straight into the file backend (title, labels, PR, comments).
 #   sandbox_issue 7 '{"labels":["status:rfr"],"pr":{"number":70,"head":"abcdef0123","comments":[],"checks":"pass"}}'
 sandbox_issue() {
   python3 - "$SANDBOX/issues.json" "$1" "$2" <<'PY2'
@@ -46,7 +46,7 @@ json.dump(db, open(path, "w"), indent=2, sort_keys=True)
 PY2
 }
 
-# Einen PR-Kommentar anhaengen (Verdict).
+# Append a PR comment (a verdict).
 sandbox_pr_comment() {
   python3 - "$SANDBOX/issues.json" "$1" "$2" <<'PY2'
 import json, sys
@@ -56,21 +56,21 @@ json.dump(db, open(path, "w"), indent=2, sort_keys=True)
 PY2
 }
 
-# Sortiert: das Backend liefert Einfuegereihenfolge, verglichen wird der Inhalt.
+# Sorted: the backend returns insertion order, what is compared is the content.
 sandbox_labels() { KIT_ROLE=product-owner "$BIN/tickets.sh" labels "$1" | grep . | sort | tr '\n' ' ' | sed 's/ $//'; }
 
 sandbox_cleanup() { [ -n "${SANDBOX:-}" ] && rm -rf "$SANDBOX"; }
 
-# Ein Gate-Ledger fuer ein Ticket schreiben, Text auf stdin.
-# Schreibt zugleich die Artefaktkette, die planned verlangt (Fall 46). Ein Fall, der sie pruefen will,
-# loescht oder leert sie selbst.
+# Write a gate ledger for a ticket, text on stdin.
+# Writes the artefact chain that planned demands along with it (case 46). A case that wants to
+# check the chain deletes or empties it itself.
 sandbox_ledger() {
   mkdir -p "$SANDBOX/tickets/$1"
   cat > "$SANDBOX/tickets/$1/GATES.md"
   for a in intent.md spec.md plan.md; do printf 'eval\n' > "$SANDBOX/tickets/$1/$a"; done
 }
 
-# Zustand eines Tickets fuer "eine Ablehnung schreibt nichts": Issue-Eintrag plus jede Datei unter tickets/<nr>/.
+# State of a ticket for "a rejection writes nothing": the issue entry plus every file under tickets/<nr>/.
 sandbox_snap() {
   python3 - "$SANDBOX" "$1" <<'PY2'
 import hashlib, json, os, sys
@@ -84,9 +84,10 @@ for base, _, files in sorted(os.walk(os.path.join(root, "tickets", n))):
 PY2
 }
 
-# Jedes Gate eines Tickets gruen fuer den HEAD seines PR, im Belegformat von bin/gates.py (ausfuehrbar: Definition
-# gebunden, manuell: belegt), dazu ein QA-PASS mit einer Mutationszeile je ausfuehrbarem Gate. Mit $2=nurgates ohne
-# den QA-Kommentar. Ohne Ledger vorher ein planbares Ledger. Fuer Faelle, die nicht die Gates pruefen.
+# Every gate of a ticket green for the HEAD of its PR, in the evidence format of bin/gates.py (executable:
+# definition bound, manual: attested), plus a QA PASS with one mutation line per executable gate. With
+# $2=gatesonly without the QA comment. Without a ledger, a plannable ledger first. For cases that do not
+# check the gates themselves.
 sandbox_gates_green() {
   [ -f "$SANDBOX/tickets/$1/GATES.md" ] || sandbox_plannable "$1"
   python3 - "$BIN" "$SANDBOX/issues.json" "$SANDBOX/tickets/$1/GATES.md" "$1" "${2:-}" <<'PY2'
@@ -99,17 +100,17 @@ gates.write_results(path, text, doc, {
     g["id"]: (True, "manual head=%s by=eval at=eval — eval" % head if g["check"] is None else
               "v1 head=%s def=%s exit=0 expect=matched out=eval at=eval by=eval" % (head, gates.definition_digest(g)))
     for g in doc["gates"]})
-if sys.argv[5] != "nurgates":
+if sys.argv[5] != "gatesonly":
     lines = ["%s: Mutation eval → rot" % g["id"] for g in doc["gates"] if g["check"] is not None]
     db[sys.argv[4]]["pr"].setdefault("comments", []).append("QA PASS — HEAD `%s`, eval\n%s" % (head, "\n".join(lines)))
     json.dump(db, open(sys.argv[2], "w"), indent=2, sort_keys=True)
 PY2
 }
 
-# Ein Ticket planbar machen: Issue mit AC-1, Ledger mit genau einem Gate dafuer, OWNS als $2.
-# Hat das Ticket schon einen PR, bekommt er eine Datei im Umfang: eine leere Dateiliste lehnt rfr ab.
+# Make a ticket plannable: an issue with AC-1, a ledger with exactly one gate for it, OWNS as $2.
+# If the ticket already has a PR, that PR gets a file in scope: an empty file list makes rfr reject.
 sandbox_plannable() {
-  sandbox_issue "$1" '{"body":"AC-1: das Ergebnis ist beobachtbar"}'
+  sandbox_issue "$1" '{"body":"AC-1: the result is observable"}'
   python3 - "$SANDBOX/issues.json" "$1" <<'PY2'
 import json, sys
 path, n = sys.argv[1:3]
@@ -123,14 +124,14 @@ PY2
 
 OWNS: ${2:-src/**, tests/**}
 
-- [ ] AC-1: das Ergebnis ist beobachtbar
+- [ ] AC-1: the result is observable
   CHECK: python3 tools/check_result.py
-  EXPECT: ergebnis geprueft
+  EXPECT: result checked
   EVIDENCE: pending
 LEDGER
 }
 
-# Einen Sprint im Sandkasten anlegen, ohne den PO-Pfad zu durchlaufen.
+# Create a sprint in the sandbox without walking the PO path.
 sandbox_sprint() {
   local name="${1:-S-001-eval}"
   mkdir -p "$SANDBOX/sprints/$name/chat"
@@ -139,20 +140,20 @@ sandbox_sprint() {
   echo "$SANDBOX/sprints/$name"
 }
 
-# Ein Ticket im Datei-Backend erzeugen.
+# Create a ticket in the file backend.
 sandbox_ticket() {
   local nr="$1" status="$2"
   [ "$status" = "backlog" ] && { sandbox_issue "$nr" '{}'; return; }
   KIT_ROLE=product-owner "$BIN/tickets.sh" add-label "$nr" "status:$status" > /dev/null
 }
 
-# --- live: echter Modellaufruf gegen claude-code -------------------------------
-# Antwort auf stdout. Nebenbei geschrieben:
-#   LIVE_TOOLS    Datei mit den Namen der benutzten Werkzeuge, eines je Zeile
-#   LIVE_SPAWNED  Zahl der tatsaechlich gestarteten Subagenten (aus subagent_stats)
-# Nur fuer Faelle mit CASE_KIND="live". Host-gebunden: claude-code.
-# Die beiden Dateien werden beim Sourcen angelegt, nicht in der Funktion:
-# live_claude laeuft in einer Kommandosubstitution, ein export darin verpufft.
+# --- live: a real model call against claude-code --------------------------------
+# The answer on stdout. Written on the side:
+#   LIVE_TOOLS    file with the names of the tools used, one per line
+#   LIVE_SPAWNED  number of subagents actually started (from subagent_stats)
+# Only for cases with CASE_KIND="live". Host-bound: claude-code.
+# Both files are created while sourcing, not inside the function:
+# live_claude runs in a command substitution, an export in there evaporates.
 LIVE_TOOLS="$(mktemp "${TMPDIR:-/tmp}/kit-live-tools.XXXXXX")"
 LIVE_SPAWNED_FILE="$(mktemp "${TMPDIR:-/tmp}/kit-live-spawned.XXXXXX")"
 LIVE_BLOCKED_FILE="$(mktemp "${TMPDIR:-/tmp}/kit-live-blocked.XXXXXX")"
@@ -162,7 +163,7 @@ echo 0 > "$LIVE_SPAWNED_FILE"
 
 live_claude() {
   local prompt="$1"
-  command -v claude > /dev/null || { echo "claude nicht installiert" >&2; return 2; }
+  command -v claude > /dev/null || { echo "claude is not installed" >&2; return 2; }
   local raw
   raw="$(cd "$KIT_ROOT" && claude -p "$prompt" \
         --model claude-opus-5 \
@@ -197,39 +198,39 @@ sys.stdout.write("\n".join(text))
 
 live_spawned() { cat "$LIVE_SPAWNED_FILE"; }
 
-# Ein erschoepftes Kontingent, ein Netzfehler oder eine leere Antwort sind ein FEHLSCHLAG,
-# kein Ergebnis. Ein Fall, der so endet, ist BLOCKIERT — nie "durchgefallen". Sonst liest
-# sich die Kontingentgrenze wie ein Rollenfehler, und genau das ist der Fehler, den die
-# Familie Anti-Halluzination verbietet.
+# An exhausted quota, a network error or an empty answer are a FAILURE, not a result.
+# A case that ends that way is BLOCKED — never "failed". Otherwise the quota limit reads
+# like an error of the role, and that is exactly the mistake the anti-hallucination family
+# forbids.
 live_blocked() {
-  local antwort="$1"
-  case "$antwort" in
+  local answer="$1"
+  case "$answer" in
     *"hit your session limit"*|*"usage limit"*|*"rate limit"*|*"Rate limit"*|*"Credit balance"*|*"overloaded"*|*"API Error"*)
-      echo "Kontingent oder API: $(printf '%s' "$antwort" | tr '\n' ' ' | cut -c1-80)" > "$LIVE_BLOCKED_FILE"; return 0 ;;
+      echo "quota or API: $(printf '%s' "$answer" | tr '\n' ' ' | cut -c1-80)" > "$LIVE_BLOCKED_FILE"; return 0 ;;
   esac
-  if [ -z "$(printf '%s' "$antwort" | tr -d '[:space:]')" ]; then
-    echo "leere Antwort vom Host" > "$LIVE_BLOCKED_FILE"; return 0
+  if [ -z "$(printf '%s' "$answer" | tr -d '[:space:]')" ]; then
+    echo "empty answer from the host" > "$LIVE_BLOCKED_FILE"; return 0
   fi
   return 1
 }
 
-# Am Anfang jeder Auswertung aufrufen. Exitcode 3 = blockiert, von run.sh eigens behandelt.
+# Call at the start of every evaluation. Exit code 3 = blocked, handled separately by run.sh.
 live_guard() {
   if live_blocked "$1"; then
-    echo "BEOBACHTET: BLOCKIERT — $(cat "$LIVE_BLOCKED_FILE")"
+    echo "OBSERVED: BLOCKED — $(cat "$LIVE_BLOCKED_FILE")"
     exit 3
   fi
 }
 
-# --- vorgetaeuschtes gh ----------------------------------------------------------
-# Stellt ein zustandsbehaftetes gh vor den PATH, schaltet das Board ein und schreibt board.env.
+# --- faked gh -------------------------------------------------------------------
+# Puts a stateful gh in front of PATH, switches the board on and writes board.env.
 #   fake_gh '{"7": {"labels": ["status:planned"], ...}}'
-# Danach: "$FAKE_GH_LOG" (Aufrufreihenfolge), fake_gh_get <nr> <feld>.
+# Afterwards: "$FAKE_GH_LOG" (call order), fake_gh_get <nr> <field>.
 fake_gh() {
   mkdir -p "$SANDBOX/fakebin"
   cp "$KIT_ROOT/evals/lib/fake-gh" "$SANDBOX/fakebin/gh"
   export FAKE_GH_STATE="$SANDBOX/gh-state.json" FAKE_GH_LOG="$SANDBOX/gh.log" FAKE_GH_FAIL=""
-  # Board-Namen enthalten Leerzeichen, deshalb ';' als Trenner.
+  # Board names contain spaces, hence ';' as the separator.
   export FAKE_GH_OPTIONS="o-backlog=Backlog;o-planned=Planned;o-inprogress=In progress;o-rfr=RfR;o-inreview=In review;o-rft=RfT;o-intesting=In Testing;o-done=Done"
   printf '%s' "$1" > "$FAKE_GH_STATE"
   : > "$FAKE_GH_LOG"

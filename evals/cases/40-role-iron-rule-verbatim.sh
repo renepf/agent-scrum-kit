@@ -18,5 +18,5 @@ done
 verschieden="$(printf '%s' "$hashes" | sort -u | grep -c . )"
 
 observe "$n Rollendateien · ohne Regel:${ohne:- keine} · verschiedene Fassungen des Blocks: $verschieden"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$ohne" ] && [ "$verschieden" = 1 ]

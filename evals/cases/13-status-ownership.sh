@@ -31,5 +31,5 @@ d="$(sandbox_labels 7)"
 n_status="$(printf '%s\n%s\n%s\n%s\n' "$a" "$b" "$c" "$d" | tr ' ' '\n' | grep -c '^status:' || true)"
 
 observe "in-progress: $a · rfr: $b (Assignees $ass) · in-review nach claim: $c · rft: $d${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ] && [ "$n_status" = 4 ]

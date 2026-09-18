@@ -20,5 +20,5 @@ for host in hermes; do
 done
 
 observe "hermes: UNKNOWN-Satz vorhanden, kein Startbefehl, session-id.sh scheitert${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

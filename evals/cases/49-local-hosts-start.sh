@@ -98,5 +98,5 @@ kill $SLEEPERS 2>/dev/null; wait $SLEEPERS 2>/dev/null
 "$KIT_ROOT/adapters/pi/host-alive.sh" "$PP" && fehler="$fehler pi:dead-pid-counts"
 
 observe "text-only refused by both · qwen exec pid=host_pid, args '${q_ok}…' · pi without/wrong provider refused, then started · session-id/host-pid from start values · host-alive host yes, other no${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

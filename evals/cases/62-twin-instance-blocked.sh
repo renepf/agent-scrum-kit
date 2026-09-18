@@ -22,5 +22,5 @@ zeilen="$(grep -c '| engineer-a |' "$SANDBOX/sprints/S-001-eval/roster.md")"
 [ "$zeilen" = 1 ] || fehler="$fehler roster-hat-$zeilen-Zeilen-fuer-engineer-a"
 
 observe "gleiche Instanz erneut: ok · Zwilling (andere PID, gleiche Session): abgewiesen, tick Exit $rc3 · andere Rolle: ok · nach Tod der ersten Instanz: uebernommen, roster 1 Zeile${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

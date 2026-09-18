@@ -35,5 +35,5 @@ PY
 )"
 befund="$(printf '%s' "$out" | sed -n 's/^BEFUND //p')"; fehler="$(printf '%s' "$out" | sed -n 's/^FEHLER //p')"
 observe "$befund · jcodemunch nur opt-in${fehler:+ · FEHLER: $fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

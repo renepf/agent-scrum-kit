@@ -25,5 +25,5 @@ sandbox_gates_green 5
 o4="$(try)"; case "$o4" in *"in-review → rft"*) ;; *) fehler="$fehler gueltige-Verdicts-abgelehnt:'$o4'" ;; esac
 
 observe "2 von 3 → abgelehnt · alle 3 fuer alten HEAD → abgelehnt · Verdict mitten im Satz → abgelehnt · alle 3 fuer neuen HEAD → $(echo "$o4" | tail -1)${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

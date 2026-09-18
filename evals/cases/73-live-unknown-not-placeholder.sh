@@ -15,5 +15,5 @@ case "$ANTWORT" in
 esac
 
 observe "Antwort: $(printf '%s' "$ANTWORT" | tr '\n' ' ' | cut -c1-140)${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

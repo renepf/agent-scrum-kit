@@ -18,5 +18,5 @@ t1="$(CLAUDE_CODE_SESSION_KIND=bg KIT_ROLE=engineer-a KIT_HOST_PID=4711 KIT_SESS
 h2="$(printf '{"source":"startup"}' | CLAUDE_CODE_CHILD_SESSION=1 KIT_ROLE=engineer-a "$H" 2>&1)"
 case "$h2" in *"Rolle **engineer-a**"*) ;; *) fehler="$fehler kind-umgebung-gesperrt" ;; esac
 observe "bg: Hook 0 Bytes (Kontext und --wake), Tick Exit $rt, kein Anker · CLAUDE_CODE_CHILD_SESSION=1: Hook liefert Rolle${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

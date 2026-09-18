@@ -27,5 +27,5 @@ printf '%s' "$a" | grep -q 'Grenzwert 0 ungetestet' || fehler="$fehler Befund-ni
 printf '%s' "$b" | grep -q 'ZURUECKGEWIESEN' && fehler="$fehler engineer-b-sieht-fremde-Rueckweisung"
 
 observe "engineer-a: Rueckweisung Zeile $pos_rueck, neues Ticket Zeile $pos_neu · engineer-b sieht keine fremde Rueckweisung: $(printf '%s' "$b" | grep -q ZURUECK && echo NEIN || echo ja)${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

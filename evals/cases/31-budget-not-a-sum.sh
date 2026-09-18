@@ -19,5 +19,5 @@ lage="$(grep '| engineer-a |' "$SPRINT/budget.md" | awk -F'|' '{gsub(/^ +| +$/,"
 flag="$(grep -c '^STOP ' "$SPRINT/budget.md" || true)"
 
 observe "gemessen $v (Summe waere 360000) · Lage '$lage' · Stopp-Flags $flag"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$v" = "120000" ] && [ "$lage" = "ok" ] && [ "$flag" = "0" ]

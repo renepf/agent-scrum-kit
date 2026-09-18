@@ -30,5 +30,5 @@ pu="$(run PI_CODING_AGENT_DIR="$P" "$KIT_ROOT/adapters/pi/transcript-path.sh" no
 [ "$purc" != 0 ] && [ -z "$pu" ] || fehler="$fehler pi-unknown='$pu'(exit $purc)"
 
 observe "qwen own: exit $qrc '${qo#$FAKE/}' · unknown: exit $qurc · pi own: exit $prc '${po#$FAKE/}' · unknown: exit $purc${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

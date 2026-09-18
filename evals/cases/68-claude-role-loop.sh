@@ -26,5 +26,5 @@ od="$(KIT_LOOP_CLAUDE='echo GESTARTET' "$L" engineer-a 2>&1)"; rd=$?
 [ "$rd" != 0 ] && case "$od" in *"laeuft schon"*) true ;; *) false ;; esac || fehler="$fehler D:'$od'"
 case "$od" in *GESTARTET*) fehler="$fehler D:zwilling-gestartet" ;; esac
 observe "A: 3 Starts, Exit $ra · B: Stopp nach 2 Starts, Exit $rb · C: Umgebung '$(cat "$envf")' · D: Zwilling abgewiesen (Exit $rd)${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

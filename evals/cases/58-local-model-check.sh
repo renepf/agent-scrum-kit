@@ -45,5 +45,5 @@ check tool-ok; rc_down=$RC
 case "$OUT" in *UNKNOWN*) ;; *) fehler="$fehler endpoint-down-not-UNKNOWN" ;; esac
 
 observe "exit: tool-ok $rc_ok · text-only $rc_text · broken $rc_broken · none $rc_none · endpoint down $rc_down${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

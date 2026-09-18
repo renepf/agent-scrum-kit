@@ -31,5 +31,5 @@ while IFS= read -r ref; do
 done < <(grep -o 'chat/[a-z-]*\.md:[0-9]*' "$SPRINT/INDEX.md")
 
 observe "10 Neubauten identisch: $([ $gleich = 1 ] && echo ja || echo NEIN) · alle datei:zeile-Zeiger treffen eine Ueberschrift: $([ $zeiger_ok = 1 ] && echo ja || echo NEIN) · sha $h1"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$gleich" = 1 ] && [ "$zeiger_ok" = 1 ]

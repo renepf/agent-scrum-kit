@@ -7,5 +7,5 @@ sandbox; trap sandbox_cleanup EXIT
 out="$(KIT_ROLE=engineer-a "$BIN/tick.sh" 2>&1)"; rc=$?
 dateien="$(find "$SANDBOX/sprints" -type f | wc -l | tr -d ' ')"
 observe "Exit $rc · Ausgabe: $out · Dateien unter sprints/: $dateien"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$rc" = 0 ] && [ "$dateien" = 0 ] && case "$out" in *"kein aktiver Sprint"*) true ;; *) false ;; esac

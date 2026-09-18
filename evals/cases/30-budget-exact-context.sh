@@ -19,5 +19,5 @@ wert() { grep "| $1 |" "$SPRINT/budget.md" | awk -F'|' '{gsub(/ /,"",$4); print 
 q="$(wert engineer-a)"; w="$(wert engineer-b)"; s="$(wert qa-ruthless)"
 
 observe "engineer-a $q (erwartet 1150) · engineer-b $w (erwartet 260000) · qa-ruthless $s (erwartet 300010)"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$q" = "1150" ] && [ "$w" = "260000" ] && [ "$s" = "300010" ]

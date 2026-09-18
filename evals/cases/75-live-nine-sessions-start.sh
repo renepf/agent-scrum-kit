@@ -60,7 +60,7 @@ PY
 )"
 rows="$(printf '%s' "$out" | sed -n 's/^ROWS //p')"; pids="$(printf '%s' "$out" | sed -n 's/^PIDS //p')"
 blocked="$(printf '%s' "$out" | sed -n 's/^BLOCKED //p')"; bad="$(printf '%s' "$out" | sed -n 's/^BAD //p')"
-[ -z "$blocked" ] || { echo "BEOBACHTET: BLOCKIERT — Host antwortete nicht fuer:$blocked"; exit 3; }
+[ -z "$blocked" ] || { echo "OBSERVED: BLOCKED — Host antwortete nicht fuer:$blocked"; exit 3; }
 observe "roster $rows/9 · $pids verschiedene Host-PIDs · je Rolle Session-ID=Roster, Anker, Hook-Anker, MCP 2x connected, 0 Subagenten, TICK=ok${bad:+ · FEHLER: $bad}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$rows" = 9 ] && [ "$pids" = 9 ] && [ -z "$bad" ]

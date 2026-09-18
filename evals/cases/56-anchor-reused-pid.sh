@@ -30,5 +30,5 @@ sandbox_issue 77 '{"labels":["status:planned","sprint:current"]}'
 lo="$(KIT_LOOP_CLAUDE='touch "$KIT_ROOT/.role-loop/engineer-b.stop"' KIT_LOOP_SLEEP=0 "$KIT_ROOT/adapters/claude-code/role-loop.sh" engineer-b 2>&1)"; lr=$?
 case "$lo" in *"laeuft schon"*) fehler="$fehler schleife-blockiert" ;; esac
 observe "neu vergebene PID + tote PID: Tick Exit $rc, beide Anker weg, registriert · Schleife startet trotz fremdem Anker (Exit $lr)${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

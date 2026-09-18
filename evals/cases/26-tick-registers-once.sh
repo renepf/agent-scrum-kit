@@ -15,5 +15,5 @@ nach_reset="$(grep -c '| watchdog |' "$SPRINT/roster.md")"
 sid="$(grep '| watchdog |' "$SPRINT/roster.md" | awk -F'|' '{gsub(/ /,"",$4); print $4}')"
 
 observe "nach zwei Ticks $nach_zwei Zeile · nach Reset $nach_reset Zeile mit Session '$sid'"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$nach_zwei" = 1 ] && [ "$nach_reset" = 1 ] && [ "$sid" = "neu" ]

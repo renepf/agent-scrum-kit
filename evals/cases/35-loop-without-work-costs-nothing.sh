@@ -57,5 +57,5 @@ kill $LOOPS 2>/dev/null; wait $LOOPS 2>/dev/null; LOOPS=""
 rm -f "$KIT_ROOT/.role-loop"/security-engineer.* 2>/dev/null
 
 observe "$n Pruefungen, $falsch falsch${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$falsch" = 0 ]

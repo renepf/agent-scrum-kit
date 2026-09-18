@@ -16,5 +16,5 @@ grep -q 'token-im-log' "$SANDBOX/memory/_shared/INDEX.md" && fehler="$fehler Ind
 o3="$(KIT_ROLE=security-engineer "$BIN/brain.sh" forget token-im-log --shared 2>&1)"
 case "$o3" in *"gibt es nicht"*) ;; *) fehler="$fehler zweites-Loeschen-meldet-Erfolg" ;; esac
 observe "fremd ueberschreiben → abgelehnt · fremd loeschen → abgelehnt · Autor loescht → Datei und Indexzeile weg · erneut loeschen → 'gibt es nicht'${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

@@ -26,5 +26,5 @@ fehler=""
 [ "$aufgeloest" = 0 ] || fehler="$fehler aufgeloester-Verweis-als-offen-gelistet"
 [ "$kopf" = 1 ] || fehler="$fehler kein-GENERIERT-Kopf"
 observe "2 Fakten → $zeilen Indexzeilen · Neubau identisch: $([ "$h1" = "$h2" ] && echo ja || echo NEIN) · offen: [[gibt-es-noch-nicht]] ($offen), nicht offen: [[leerer-startzustand]]${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

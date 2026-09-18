@@ -25,7 +25,7 @@ ledger() { # <nr> <mit-abandon: ja|nein>
 # a) Merge und done mit offenem ABANDON: abgelehnt, nichts gemergt, nichts geschrieben
 sandbox_issue 81 '{"body":"AC-1: Druckansicht zeigt alle Zeilen\nAC-2: Druck landet auf dem Drucker","labels":["status:in-testing","owner:acceptance-tester"],"pr":{"number":810,"head":"81818181aa","comments":["MERGE-GATE OK — HEAD `81818181`, eval","PO OK — HEAD `81818181`, eval"],"checks":"pass","state":"OPEN","files":["src/print/view.py"]}}'
 ledger 81 ja
-sandbox_gates_green 81 nurgates
+sandbox_gates_green 81 gatesonly
 s1="$(sandbox_snap 81)"
 expect a-merge-po "$(KIT_ROLE=product-owner "$BIN/merge.sh" 81 2>&1)" '*HANDOFF REQUIRED*AC-2*Drucker-API fehlt*'
 expect a-merge-gate "$(KIT_ROLE=merge-gate "$BIN/merge.sh" 81 2>&1)" '*HANDOFF REQUIRED*AC-2*'
@@ -36,7 +36,7 @@ n=$((n + 1)); [ "$s1" = "$(sandbox_snap 81)" ] || fail a:Zustand-veraendert
 # b) Review blockiert es nicht: rft ohne Beleg und ohne QA-Zeile fuer das aufgegebene Gate
 sandbox_issue 82 '{"body":"AC-1: Druckansicht zeigt alle Zeilen\nAC-2: Druck landet auf dem Drucker","labels":["status:in-review","owner:qa-ruthless"],"pr":{"number":820,"head":"82828282aa","comments":["SIMPLICITY PASS — HEAD `82828282`, eval","SECURITY PASS — HEAD `82828282`, eval","QA PASS — HEAD `82828282`, eval\nAC-1: Mutation Zeilenzaehler aus → rot"],"files":["src/print/view.py"]}}'
 ledger 82 ja
-sandbox_gates_green 82 nurgates
+sandbox_gates_green 82 gatesonly
 python3 - "$SANDBOX/tickets/82/GATES.md" <<'PY'
 import re, sys
 p = sys.argv[1]; t = open(p).read()
@@ -57,9 +57,9 @@ expect c-AC-1-gruen "$oc" '*AC-1 gruen*'
 # d) Das letzte Wort hat der product-owner: AC-2 per Folgeticket aus Issue und Ledger genommen → Merge geht durch
 sandbox_issue 81 '{"body":"AC-1: Druckansicht zeigt alle Zeilen\n\nDruck auf dem Drucker: Folgeticket #99"}'
 ledger 81 nein
-sandbox_gates_green 81 nurgates
+sandbox_gates_green 81 gatesonly
 expect d-merge-nach-entscheid "$(KIT_ROLE=product-owner "$BIN/merge.sh" 81 2>&1)" '*in-testing → done*'
 
 observe "$((n - falsch))/$n Pruefungen bestanden · Merge (PO, merge-gate) und done mit ABANDON abgelehnt, PR offen, nichts geschrieben · rft ueberspringt · Lauf ueberspringt · nach Entscheid des PO gemergt${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

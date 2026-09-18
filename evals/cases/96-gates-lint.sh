@@ -64,7 +64,7 @@ for v in "SIMPLICITY PASS" "SECURITY PASS"; do sandbox_pr_comment 63 "$v — HEA
 python3 - "$SANDBOX/tickets/63/GATES.md" <<'PY'
 import sys
 p = sys.argv[1]; t = open(p).read()
-open(p, "w").write(t.replace("CHECK: python3 tools/check_result.py", "CHECK: echo ergebnis geprueft"))
+open(p, "w").write(t.replace("CHECK: python3 tools/check_result.py", "CHECK: echo result checked"))
 PY
 sandbox_gates_green 63
 expect d-rft-abgeschwaecht "$(KIT_ROLE=qa-ruthless "$BIN/status.sh" 63 rft x 2>&1)" '*abgelehnt*tautological-check*'
@@ -72,7 +72,7 @@ expect d-rft-abgeschwaecht "$(KIT_ROLE=qa-ruthless "$BIN/status.sh" 63 rft x 2>&
 # e) rft: je ausfuehrbarem Gate eine QA-Zeile "AC-<n>: Mutation … → rot" fuer den aktuellen HEAD; manuelle brauchen keine
 sandbox_issue 64 '{"body":"AC-1: Export hat 3 Zeilen\nAC-2: leere Liste ergibt leere Datei\nAC-3: Hinweis ist sichtbar","labels":["status:in-review","owner:qa-ruthless"],"pr":{"number":640,"head":"64646464aa","comments":[],"files":["src/a.py"]}}'
 printf '# Gates: #64\n\nOWNS: src/**\n\n- [ ] AC-1: Export hat 3 Zeilen\n  CHECK: python3 tools/check_export.py\n  EXPECT: export geprueft: 3 zeilen\n  EVIDENCE: pending\n\n- [ ] AC-2: leere Liste ergibt leere Datei\n  CHECK: python3 tools/check_empty.py\n  EXPECT: leere datei geprueft\n  EVIDENCE: pending\n\n- [ ] AC-3: Hinweis ist sichtbar\n  EVIDENCE: pending\n' | sandbox_ledger 64
-sandbox_gates_green 64 nurgates
+sandbox_gates_green 64 gatesonly
 for v in "SIMPLICITY PASS" "SECURITY PASS"; do sandbox_pr_comment 64 "$v — HEAD \`64646464\`, eval"; done
 rft64() { KIT_ROLE=qa-ruthless "$BIN/status.sh" 64 rft x 2>&1; }
 sandbox_pr_comment 64 'QA PASS — HEAD `64646464`, 2 Tests ergaenzt'
@@ -91,5 +91,5 @@ AC-2: Mutation Leerpruefung aus → rot'
 expect e-beide "$(rft64)" '*in-review → rft*'
 
 observe "$((n - falsch))/$n Pruefungen bestanden · 14 Lint-Regelfaelle · planned blind abgelehnt ohne Schreibzugriff · Hinweise im Kommentar · rft nach Abschwaechung abgelehnt · QA-Zeilen: ohne, alter HEAD, unvollstaendig, vollstaendig${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

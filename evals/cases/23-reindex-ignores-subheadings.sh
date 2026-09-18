@@ -19,5 +19,5 @@ EOF
 n="$(grep -c '^| [0-9]' "$SPRINT/INDEX.md")"
 geister="$(grep -c 'Die drei Fragen\|Offene Punkte' "$SPRINT/INDEX.md" || true)"
 observe "Index-Eintraege $n (erwartet 2) · Geistereintraege aus Zwischenueberschriften $geister"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$n" = 2 ] && [ "$geister" = 0 ]

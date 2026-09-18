@@ -21,5 +21,5 @@ sandbox_issue 3 '{"pr":{"number":30,"head":"0badc0de77","comments":["MERGE-GATE 
 o6="$(m merge-gate)";    case "$o6" in *"in-testing → done"*) ;; *) fehler="$fehler Gate-mit-PO-OK-abgelehnt:'$(echo "$o6" | tail -1)'" ;; esac
 
 observe "engineer → abgelehnt · PO ohne MERGE-GATE OK → abgelehnt · merge-gate ohne PO OK → abgelehnt (merge und done) · CI pending → abgelehnt · merge-gate mit PO OK + CI gruen → $(echo "$o6" | grep -o 'in-testing → done' || echo '?')${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

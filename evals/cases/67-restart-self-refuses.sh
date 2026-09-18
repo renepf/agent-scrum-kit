@@ -29,5 +29,5 @@ sleep 1; "$BIN/brain.sh" handover "Stand 2026-09-15 mitten im Ticket" <<<'#7 in-
 o7="$(KIT_RESTART_DRY_RUN=1 rs stop)"; case "$o7" in *"TROCKENLAUF"*"gehalten: 7"*"Waechter-Schleife"*) ;; *) fehler="$fehler mitten-im-ticket-abgelehnt:'$o7'" ;; esac
 kill -0 "$OPFER" 2>/dev/null || fehler="$fehler trockenlauf-hat-beendet"
 observe "Anlass, Uebergabe fehlt, alt, kein Neustartweg, #7 nicht genannt, #70 statt #7 → 6 Ablehnungen, Prozess lebt · #7 genannt → '$(echo "$o7" | head -1)'${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

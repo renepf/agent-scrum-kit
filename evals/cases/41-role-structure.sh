@@ -17,5 +17,5 @@ done
 anzahl="$(ls "$KIT_ROOT"/roles/*.md | grep -vcE '_COMMON|START-HERE')"
 
 observe "$anzahl Rollen geprueft · fehlende Abschnitte:${fehlend:- keine}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehlend" ]

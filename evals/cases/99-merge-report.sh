@@ -85,7 +85,7 @@ p = sys.argv[1]; t = open(p).read()
 open(p, "w").write(t.replace("CHECK: python3 tools/check_export.py", "CHECK: python3 tools/check_export.py --header-only"))
 PY
 sandbox_issue 99 '{"body":"AC-1: export writes every row\nAC-2: export button is visible\nAC-3: export names the file by date"}'
-sandbox_gates_green 99 nurgates
+sandbox_gates_green 99 gatesonly
 out="$(KIT_ROLE=product-owner "$BIN/merge.sh" 99 2>&1)"
 expect d-merged "$out" '*in-testing → done*'
 expect d-AC-1-changed "$out" '*
@@ -98,13 +98,13 @@ expect d-AC-3-no-gate "$out" '*
 once d-each-ac-once "$out" AC-1 AC-2 AC-3
 
 # e) a ticket planned without a GATES line: the report says so and flags nothing as changed
-sandbox_issue 98 '{"body":"AC-1: das Ergebnis ist beobachtbar","labels":["status:in-testing","owner:acceptance-tester"],"pr":{"number":980,"head":"98989898aa","comments":["MERGE-GATE OK — HEAD `98989898`, eval"],"checks":"pass","state":"OPEN","files":["src/eval.py"]}}'
-sandbox_gates_green 98 nurgates
+sandbox_issue 98 '{"body":"AC-1: the result is observable","labels":["status:in-testing","owner:acceptance-tester"],"pr":{"number":980,"head":"98989898aa","comments":["MERGE-GATE OK — HEAD `98989898`, eval"],"checks":"pass","state":"OPEN","files":["src/eval.py"]}}'
+sandbox_gates_green 98 gatesonly
 out="$(KIT_ROLE=product-owner "$BIN/merge.sh" 98 2>&1)"
 expect e-merged "$out" '*in-testing → done*'
 expect e-no-approval "$out" "*approved definitions: none on the issue*"
 refuse e-no-change-flag "$out" '*definition changed*'
 
 observe "$((n - failed))/$n checks passed · planned records GATES Revision 1 · report before rejection, each AC once, files listed · failed reads UNKNOWN · changed definition and AC without gate shown, merge not blocked · no GATES line reported${errors:+ · FEHLER:$errors}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$errors" ]

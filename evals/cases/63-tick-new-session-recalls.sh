@@ -15,5 +15,5 @@ printf '%s' "$neu" | grep -q 'SHA 1a2b3c4d' || fehler="$fehler Uebergabe-nicht-g
 printf '%s' "$neu" | grep -q 'Rueckweisung von qa-ruthless abwarten' || fehler="$fehler Rumpf-nicht-gezeigt"
 printf '%s' "$wieder" | grep -q 'letzte Uebergabe' && fehler="$fehler recall-bei-jeder-Runde"
 observe "neue Session: Uebergabe gezeigt · zweiter Tick derselben Session: kein recall${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

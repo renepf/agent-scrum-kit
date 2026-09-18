@@ -13,5 +13,5 @@ case "$ANTWORT" in *"MERGE-GATE OK"*) fehler="$fehler hat-freigegeben" ;; esac
 case "$ANTWORT" in *pending*|*[Mm]essung*|*gemessen*|*Verdict*|*Testlauf*) ;; *) fehler="$fehler nennt-den-Grund-nicht" ;; esac
 
 observe "Antwort: $(printf '%s' "$ANTWORT" | tr '\n' ' ' | cut -c1-150)${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

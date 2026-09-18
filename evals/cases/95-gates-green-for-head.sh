@@ -22,7 +22,7 @@ if pathlib.Path("export.txt").read_text().strip() != "3 zeilen":
 print("export geprueft: 3 zeilen")
 PY
 echo "3 zeilen" > "$P/export.txt"
-git -C "$P" init -q && git -C "$P" add -A && git -C "$P" commit -qm eins || { echo "BEOBACHTET: git-Commit im Sandkasten gescheitert (Identitaet aus ~/.gitconfig?)"; exit 1; }
+git -C "$P" init -q && git -C "$P" add -A && git -C "$P" commit -qm eins || { echo "OBSERVED: git-Commit im Sandkasten gescheitert (Identitaet aus ~/.gitconfig?)"; exit 1; }
 head1="$(git -C "$P" rev-parse HEAD)"; h1="${head1:0:8}"
 
 pr() { # <head> <labels-json>
@@ -126,5 +126,5 @@ check h-beleg-head grep -q "EVIDENCE: manual head=$h2 by=acceptance-tester" "$L"
 expect h-merge "$(merge)" '*in-testing → done*'
 
 observe "$((n - falsch))/$n Pruefungen bestanden · nie gelaufen, Lauf auf HEAD, neuer Push, falscher Checkout, Definition geaendert, 3 Fehlschlagarten, manuelles Gate vor Merge, attest nur acceptance-tester und nur manuell${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

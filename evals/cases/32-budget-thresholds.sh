@@ -26,5 +26,5 @@ case "$ls_" in *STOPP*) ;; *) fehler="$fehler qa-ruthless=$ls_" ;; esac
 [ "$stop_zeile" = "STOP qa-ruthless " ] || fehler="$fehler flag='$stop_zeile'"
 
 observe "1150→ok · 260000→Warnung · 300010→STOPP · Flagzeile '$(echo "$stop_zeile" | sed 's/ $//')'${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

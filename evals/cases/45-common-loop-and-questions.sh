@@ -22,5 +22,5 @@ case "$s2" in *"Loop NICHT beenden"*"restart-self"*|*"restart-self"*"Loop NICHT 
 H="$(printf '{"source":"startup"}' | KIT_ROLE=engineer-a "$KIT_ROOT/adapters/claude-code/session-start.sh")"
 case "$H" in *"Nie AskUserQuestion"*"CronDelete"*) ;; *) fehler="$fehler hook" ;; esac
 observe "Blatt: beide Regeln · Tick Warnung/STOP/STOP unter Schleife: 'Loop NICHT beenden' · Hook nennt AskUserQuestion und CronDelete${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

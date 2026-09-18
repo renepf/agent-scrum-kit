@@ -65,5 +65,5 @@ oi="$(plan 31)"
 expect i-vollstaendig "$oi" '*backlog → planned*'
 
 observe "$((n - falsch))/$n Pruefungen bestanden · 7 Ablehnungen mit Byte-Vergleich von Issue und tickets/<nr>/ · 10 AC-Schreibweisen · Gegenprobe: $(echo "$oi" | tail -1)${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

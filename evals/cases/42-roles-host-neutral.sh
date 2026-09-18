@@ -12,5 +12,5 @@ for w in claude Claude codex Codex cursor Cursor "Hermes" "PI Code" "/clear" "/c
 done
 
 observe "${treffer:-kein Host-Vokabular in roles/}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$treffer" ]

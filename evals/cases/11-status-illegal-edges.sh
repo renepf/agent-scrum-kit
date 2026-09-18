@@ -39,5 +39,5 @@ for von in $STATES; do
   done
 done
 observe "$abgelehnt/$gesamt als Kante abgelehnt, Zustand unveraendert${durch:+ · nicht korrekt abgelehnt:$durch}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$abgelehnt" = "$gesamt" ] && [ "$gesamt" = 40 ]   # 7 Ausgangszustaende x 7 Ziele − 9 erlaubte Kanten

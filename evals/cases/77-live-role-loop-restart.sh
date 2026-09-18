@@ -12,8 +12,8 @@ printf 'KIT_REPO="restartprobe/projekt"\nKIT_WORKTREE_ROOT="%s"\nKIT_ISSUE_BACKE
 ( cd "$K" && KIT_ROLE=product-owner KIT_SESSION_ID=setup KIT_HOST_PID=$$ bin/sprint-new.sh restartprobe 9 ) > /dev/null 2>&1
 rm -f "$K"/sprints/*/roster.md "$K"/sprints/*/.lease-* "$K"/sprints/*/.tick-*; rm -rf "$K/.pid-roles"
 res="$(cd /tmp && python3 "$KIT_ROOT/evals/lib/restart-pty.py" "$K" "$W/screen.log" 2>&1 | sed -n 's/^ERGEBNIS //p' | tail -1)"
-[ -n "$res" ] || { echo "BEOBACHTET: BLOCKIERT — Treiber lieferte kein Ergebnis"; exit 3; }
-grep -qiE 'session limit|usage limit|rate limit' "$W/screen.log" && { echo "BEOBACHTET: BLOCKIERT — Kontingent"; exit 3; }
+[ -n "$res" ] || { echo "OBSERVED: BLOCKED — Treiber lieferte kein Ergebnis"; exit 3; }
+grep -qiE 'session limit|usage limit|rate limit' "$W/screen.log" && { echo "OBSERVED: BLOCKED — Kontingent"; exit 3; }
 # Anzeige und Pruefung in einem Aufruf; unlesbares Ergebnis faellt durch.
 if ! bewertung="$(printf '%s' "$res" | python3 -c '
 import json, sys
@@ -30,9 +30,9 @@ print("OBS PID %s -> %s · Session %s -> %s · Starts im Log %s · Stopp beendet
     r.get("pid1"), r.get("pid2"), str(r.get("sid1"))[:8], str(r.get("sid2"))[:8], r.get("starts_im_log"), r.get("schleife_endet_mit_stopp")))
 print("FEHLER " + " ".join(f))
 ')"; then
-  echo "BEOBACHTET: Ergebnis des Treibers nicht lesbar: $(printf '%s' "$res" | cut -c1-120)"; exit 1
+  echo "OBSERVED: Ergebnis des Treibers nicht lesbar: $(printf '%s' "$res" | cut -c1-120)"; exit 1
 fi
 fehler="$(printf '%s\n' "$bewertung" | sed -n 's/^FEHLER //p')"
 observe "$(printf '%s\n' "$bewertung" | sed -n 's/^OBS //p')${fehler:+ · FEHLER: $fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

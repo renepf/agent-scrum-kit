@@ -16,8 +16,8 @@ ENV
 ( cd "$K" && KIT_ROLE=product-owner KIT_SESSION_ID=setup KIT_HOST_PID=$$ bin/sprint-new.sh clearprobe 9 ) > /dev/null 2>&1
 rm -f "$K"/sprints/*/roster.md "$K"/sprints/*/.lease-* "$K"/sprints/*/.tick-*; rm -rf "$K/.pid-roles"
 res="$(python3 "$KIT_ROOT/evals/lib/clear-pty.py" "$K" "$W/screen.txt" 2>&1 | sed -n 's/^ERGEBNIS //p' | tail -1)"
-[ -n "$res" ] || { echo "BEOBACHTET: BLOCKIERT — Treiber lieferte kein Ergebnis"; exit 3; }
-grep -qiE 'session limit|usage limit|rate limit' "$W/screen.txt" && { echo "BEOBACHTET: BLOCKIERT — Kontingent"; exit 3; }
+[ -n "$res" ] || { echo "OBSERVED: BLOCKED — Treiber lieferte kein Ergebnis"; exit 3; }
+grep -qiE 'session limit|usage limit|rate limit' "$W/screen.txt" && { echo "OBSERVED: BLOCKED — Kontingent"; exit 3; }
 # Anzeige und Pruefung in EINEM Aufruf, und dicht: kann das Ergebnis nicht gelesen werden, endet
 # python mit Exit != 0 und der Fall faellt durch. Vorher lief die Anzeige an einem Quoting-Fehler
 # still leer, und eine unlesbare Antwort haette als "keine Fehler" gegolten.
@@ -32,10 +32,10 @@ print("OBS Start ohne Eingabe: %s · /clear: %s -> %s · neu registriert: %s · 
     r.get("start_ok"), str(r.get("sid1"))[:8], str(r.get("sid2"))[:8], r.get("clear_neu_registriert"), r.get("tick_aufrufe_nach_clear")))
 print("FEHLER " + " ".join(f))
 ')"; then
-  echo "BEOBACHTET: Ergebnis des Treibers nicht lesbar: $(printf '%s' "$res" | cut -c1-120)"
+  echo "OBSERVED: Ergebnis des Treibers nicht lesbar: $(printf '%s' "$res" | cut -c1-120)"
   exit 1
 fi
 fehler="$(printf '%s\n' "$bewertung" | sed -n 's/^FEHLER //p')"
 observe "$(printf '%s\n' "$bewertung" | sed -n 's/^OBS //p')${fehler:+ · FEHLER: $fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

@@ -18,5 +18,5 @@ fehler=""
 [ "$mit" = "eigene-session" ] || fehler="$fehler mit-Variable='$mit'"
 
 observe "ohne Variable: Exit $rc_ohne, Ausgabe '${ohne}' · mit CLAUDE_CODE_SESSION_ID: '$mit' · juengste fremde Datei ignoriert${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

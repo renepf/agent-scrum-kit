@@ -43,5 +43,5 @@ n=$((n + 1)); grep -q '^KIT_REQUIREMENTS_DIR=' "$KIT_ROOT/kit.env.example" || fa
 n=$((n + 1)); grep -q 'in your own session' "$RE" || fail "h-Rolle-sagt-nicht-eigene-Sitzung"
 
 observe "$n Pruefungen, $falsch falsch${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ "$falsch" = 0 ]

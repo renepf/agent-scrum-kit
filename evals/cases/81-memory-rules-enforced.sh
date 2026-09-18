@@ -19,5 +19,5 @@ anzahl="$(ls "$SANDBOX/memory/engineer-a/facts" | wc -l | tr -d ' ')"
 grep -q 'Korrigiert 2026-09-11' "$SANDBOX/memory/engineer-a/facts/api-limit.md" || fehler="$fehler Aenderung-nicht-geschrieben"
 [ "$anzahl" = 1 ] || fehler="$fehler $anzahl-Dateien-statt-1"
 observe "Dublette (andere Schreibweise) → abgelehnt · 'gestern' → abgelehnt · Typ 'vermutung' → abgelehnt · gleicher Slug → geaendert, $anzahl Datei${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

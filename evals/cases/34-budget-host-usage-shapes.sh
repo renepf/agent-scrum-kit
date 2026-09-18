@@ -35,5 +35,5 @@ fehler=""
 case "$nl" in *"no usage record"*) ;; *) fehler="$fehler no-usage-reason='$nl'" ;; esac
 
 observe "qwen $q / out $qo (expected 30 000 / 43) · pi $p / out $po (expected 3 010 / 23) · no usage: $n, '$nl'${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

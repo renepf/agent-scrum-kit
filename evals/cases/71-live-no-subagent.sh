@@ -13,5 +13,5 @@ fehler=""
 case "$werkzeuge" in *Task*|*Agent*) fehler="$fehler Delegationswerkzeug-benutzt" ;; esac
 
 observe "gestartete Subagenten: $(live_spawned) · Werkzeuge: ${werkzeuge:-keine} · Antwort: $(printf '%s' "$ANTWORT" | tr '\n' ' ' | cut -c1-90)${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

@@ -62,5 +62,5 @@ case "$out" in *Board*) ;; *) fehler="$fehler D:meldung-nennt-board-nicht" ;; es
 bericht="$bericht D:rc=$rc"
 
 observe "A graphql-Fehler, B item-edit-Fehler, C fehlende Options-ID, D Zuruecklesen leer:$bericht · $([ -z "$fehler" ] && echo "Label, Board, Kommentar, Chat unveraendert" || echo "FEHLER:$fehler")"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]

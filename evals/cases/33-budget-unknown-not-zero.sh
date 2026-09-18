@@ -27,5 +27,5 @@ case "$b" in *UNKNOWN*"keine Transkripte"*Notbremse*) ;; *) fehler="$fehler B='$
 case "$a$b" in *"| 0 |"*) fehler="$fehler Null-statt-UNKNOWN" ;; esac
 
 observe "A: Session unbekannt → '$(echo "$a" | awk -F'|' '{gsub(/^ +| +$/,"",$6); print $6}')' · B: Host ohne Transkripte → '$(echo "$b" | awk -F'|' '{gsub(/^ +| +$/,"",$6); print $6}')'${fehler:+ · FEHLER:$fehler}"
-echo "BEOBACHTET: $OBSERVED"
+echo "OBSERVED: $OBSERVED"
 [ -z "$fehler" ]
