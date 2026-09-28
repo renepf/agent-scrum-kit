@@ -108,5 +108,5 @@ if alive():
 for k in ("sid1", "sid2"):
     s = res.get(k)
     fs = glob.glob(os.path.expanduser(f"~/.claude/projects/*/{s}.jsonl")) if s else []
-    res[k + "_transkript"] = bool(fs)
+    res[k + "_transcript"] = bool(fs)
 print("RESULT", json.dumps(res))

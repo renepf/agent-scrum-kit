@@ -24,7 +24,7 @@ for k in ("start1", "old_ended", "registered_again", "loop_ends_on_stop", "resta
 if not r.get("pid1") or r.get("pid1") == r.get("pid2"): f.append("pid-unchanged")
 if not r.get("sid1") or r.get("sid1") == r.get("sid2"): f.append("session-id-unchanged")
 if r.get("reg2") != r.get("sid2"): f.append("registry-weicht-ab")
-if r.get("anchor2") != "engineer-a": f.append("anker")
+if r.get("anchor2") != "engineer-a": f.append("anchor")
 if (r.get("starts_in_log") or 0) < 2: f.append("no-second-start-in-the-log")
 print("OBS PID %s -> %s · session %s -> %s · starts in the log %s · the stop ended the loop: %s" % (
     r.get("pid1"), r.get("pid2"), str(r.get("sid1"))[:8], str(r.get("sid2"))[:8], r.get("starts_in_log"), r.get("loop_ends_on_stop")))
