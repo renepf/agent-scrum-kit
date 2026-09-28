@@ -13,11 +13,14 @@ KIT_REPO="clearprobe/projekt"
 KIT_WORKTREE_ROOT="$K"
 KIT_ISSUE_BACKEND="file"
 ENV
+# The artefact chain sprint-new.sh has demanded since c750d37: without it no sprint is cut,
+# so no session could register. In the real loop the requirements-engineer writes these.
+mkdir -p "$K/tickets/9"; for a in intent.md spec.md plan.md; do printf 'live case setup\n' > "$K/tickets/9/$a"; done
 ( cd "$K" && KIT_ROLE=product-owner KIT_SESSION_ID=setup KIT_HOST_PID=$$ bin/sprint-new.sh clearprobe 9 ) > /dev/null 2>&1
 rm -f "$K"/sprints/*/roster.md "$K"/sprints/*/.lease-* "$K"/sprints/*/.tick-*; rm -rf "$K/.pid-roles"
 res="$(python3 "$KIT_ROOT/evals/lib/clear-pty.py" "$K" "$W/screen.txt" 2>&1 | sed -n 's/^RESULT //p' | tail -1)"
 [ -n "$res" ] || { echo "OBSERVED: BLOCKED — the driver returned no result"; exit 3; }
-grep -qiE 'session limit|usage limit|rate limit' "$W/screen.txt" && { echo "OBSERVED: BLOCKED — Kontingent"; exit 3; }
+grep -qiE 'session limit|usage limit|rate limit' "$W/screen.txt" && { echo "OBSERVED: BLOCKED — quota"; exit 3; }
 # Display and check in ONE call, and tight: if the result cannot be read,
 # python ends with exit != 0 and the case fails. Before, the display ran empty on a quoting
 # error, and an unreadable answer would have counted as "no errors".

@@ -13,6 +13,9 @@ KIT_REPO="startprobe/projekt"
 KIT_WORKTREE_ROOT="$K"
 KIT_ISSUE_BACKEND="file"
 ENV
+# The artefact chain sprint-new.sh has demanded since c750d37: without it no sprint is cut,
+# so no session could register. In the real loop the requirements-engineer writes these.
+mkdir -p "$K/tickets/1"; for a in intent.md spec.md plan.md; do printf 'live case setup\n' > "$K/tickets/1/$a"; done
 ( cd "$K" && KIT_ROLE=product-owner KIT_SESSION_ID=setup KIT_HOST_PID=$$ bin/tickets.sh add-label 1 status:planned \
   && KIT_ROLE=product-owner KIT_SESSION_ID=setup KIT_HOST_PID=$$ bin/sprint-new.sh startprobe 1 ) > /dev/null 2>&1
 rm -f "$K"/sprints/*/roster.md "$K"/sprints/*/.lease-* "$K"/sprints/*/.tick-*; rm -rf "$K/.pid-roles"
@@ -27,7 +30,14 @@ for r in $ROLES; do
       < /dev/null > "$W/out/$r.jsonl" 2> "$W/out/$r.err" ) &
   JOBS="$JOBS $!"
 done
+# tick.sh removes the anchor of every dead host (tick.sh:43). The sessions end one after
+# another, so the last ticks clean up the earlier anchors before this case can read them.
+# The anchor is a live artefact: snapshot it while the hosts run.
+mkdir -p "$W/anchors"
+( while :; do for f in "$K"/.pid-roles/*; do [ -f "$f" ] && cp "$f" "$W/anchors/$(basename "$f")"; done; sleep 0.2; done ) 2>/dev/null &
+WATCH=$!
 wait $JOBS
+kill "$WATCH" 2>/dev/null; wait "$WATCH" 2>/dev/null
 out="$(python3 - "$W" <<'PY'
 import glob, json, os, sys
 W = sys.argv[1]; K = W + "/kit"
@@ -47,9 +57,10 @@ for f in sorted(glob.glob(W + "/out/*.jsonl")):
     if not res or any(s in txt for s in ("session limit", "usage limit", "rate limit", "API Error")):
         blocked.append(role); continue
     sid = (init or {}).get("session_id"); rsid, rpid = roster.get(role, ("-", "-")); pids.add(rpid)
-    anchor = open(f"{K}/.pid-roles/{rpid}").read().strip() if os.path.exists(f"{K}/.pid-roles/{rpid}") else None
+    ap = f"{W}/anchors/{rpid}"
+    anchor = open(ap).read().strip() if os.path.exists(ap) else None
     mcp = [m["status"] for m in (init or {}).get("mcp_servers", [])]
-    checks = {"sid": sid == rsid, "anker": anchor == role, "hook": hook, "mcp": mcp == ["connected", "connected"],
+    checks = {"sid": sid == rsid, "anchor": anchor == role, "hook": hook, "mcp": mcp == ["connected", "connected"],
               "spawned0": (res.get("subagent_stats") or {}).get("spawned") == 0, "tick": f"ROLE={role} TICK=ok" in txt}
     if not all(checks.values()): bad.append(role + ":" + ",".join(k for k, v in checks.items() if not v))
 print(f"ROWS {len(rows)}")

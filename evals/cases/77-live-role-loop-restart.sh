@@ -9,11 +9,17 @@ K="$W/kit"; mkdir -p "$K"
 ( cd "$KIT_ROOT" && tar --exclude .git --exclude kit.env --exclude board.env --exclude sprints --exclude .pid-roles --exclude .role-loop --exclude 'memory/*/*' -cf - . ) | ( cd "$K" && tar -xf - )
 cp "$K/kit.env.example" "$K/kit.env"
 printf 'KIT_REPO="restartprobe/projekt"\nKIT_WORKTREE_ROOT="%s"\nKIT_ISSUE_BACKEND="file"\n' "$K" >> "$K/kit.env"
+# The artefact chain sprint-new.sh has demanded since c750d37: without it no sprint is cut,
+# so no session could register. In the real loop the requirements-engineer writes these.
+mkdir -p "$K/tickets/9"; for a in intent.md spec.md plan.md; do printf 'live case setup\n' > "$K/tickets/9/$a"; done
 ( cd "$K" && KIT_ROLE=product-owner KIT_SESSION_ID=setup KIT_HOST_PID=$$ bin/sprint-new.sh restartprobe 9 ) > /dev/null 2>&1
+# Since 9b8de23 the loop starts a model only when the tick reports work (case 35).
+# Without a free ticket in engineer-a's queue it waits KIT_TICK_INTERVAL and never starts the host.
+( cd "$K" && KIT_ROLE=product-owner KIT_SESSION_ID=setup KIT_HOST_PID=$$ bin/tickets.sh add-label 9 status:planned ) > /dev/null 2>&1
 rm -f "$K"/sprints/*/roster.md "$K"/sprints/*/.lease-* "$K"/sprints/*/.tick-*; rm -rf "$K/.pid-roles"
 res="$(cd /tmp && python3 "$KIT_ROOT/evals/lib/restart-pty.py" "$K" "$W/screen.log" 2>&1 | sed -n 's/^RESULT //p' | tail -1)"
 [ -n "$res" ] || { echo "OBSERVED: BLOCKED — the driver returned no result"; exit 3; }
-grep -qiE 'session limit|usage limit|rate limit' "$W/screen.log" && { echo "OBSERVED: BLOCKED — Kontingent"; exit 3; }
+grep -qiE 'session limit|usage limit|rate limit' "$W/screen.log" && { echo "OBSERVED: BLOCKED — quota"; exit 3; }
 # Display and check in one call; an unreadable result fails.
 if ! verdict="$(printf '%s' "$res" | python3 -c '
 import json, sys
@@ -23,7 +29,7 @@ for k in ("start1", "old_ended", "registered_again", "loop_ends_on_stop", "resta
     if r.get(k) is not True: f.append(k)
 if not r.get("pid1") or r.get("pid1") == r.get("pid2"): f.append("pid-unchanged")
 if not r.get("sid1") or r.get("sid1") == r.get("sid2"): f.append("session-id-unchanged")
-if r.get("reg2") != r.get("sid2"): f.append("registry-weicht-ab")
+if r.get("reg2") != r.get("sid2"): f.append("registry-differs")
 if r.get("anchor2") != "engineer-a": f.append("anchor")
 if (r.get("starts_in_log") or 0) < 2: f.append("no-second-start-in-the-log")
 print("OBS PID %s -> %s · session %s -> %s · starts in the log %s · the stop ended the loop: %s" % (

@@ -10,6 +10,9 @@ K="$W/kit"; mkdir -p "$K"
 ( cd "$KIT_ROOT" && tar --exclude .git --exclude kit.env --exclude board.env --exclude sprints --exclude .pid-roles --exclude .role-loop --exclude 'memory/*/*' -cf - . ) | ( cd "$K" && tar -xf - )
 cp "$K/kit.env.example" "$K/kit.env"
 printf 'KIT_REPO="askprobe/projekt"\nKIT_WORKTREE_ROOT="%s"\nKIT_ISSUE_BACKEND="file"\n' "$K" >> "$K/kit.env"
+# The artefact chain sprint-new.sh has demanded since c750d37: without it no sprint is cut,
+# so no session could register. In the real loop the requirements-engineer writes these.
+mkdir -p "$K/tickets/12"; for a in intent.md spec.md plan.md; do printf 'live case setup\n' > "$K/tickets/12/$a"; done
 ( cd "$K" && KIT_ROLE=product-owner KIT_SESSION_ID=setup KIT_HOST_PID=$$ bin/sprint-new.sh askprobe 12 ) > /dev/null 2>&1
 rm -f "$K"/sprints/*/roster.md "$K"/sprints/*/.lease-* "$K"/sprints/*/.tick-*; rm -rf "$K/.pid-roles"
 res="$(cd /tmp && python3 "$KIT_ROOT/evals/lib/ask-pty.py" "$K" "$W/screen.log" 2>&1 | sed -n 's/^RESULT //p' | tail -1)"
@@ -17,10 +20,10 @@ res="$(cd /tmp && python3 "$KIT_ROOT/evals/lib/ask-pty.py" "$K" "$W/screen.log" 
 if ! verdict="$(printf '%s' "$res" | python3 -c '
 import json, sys
 r = json.load(sys.stdin)
-if r.get("limit"): print("BLOCK Kontingent"); sys.exit(0)
+if r.get("limit"): print("BLOCK quota"); sys.exit(0)
 if not r.get("sid") or not r.get("tools_after_question"): print("BLOCK no tool calls measured after the question"); sys.exit(0)
 f = []
-if r.get("ask_tool"): f.append("AskUserQuestion-aufgerufen")
+if r.get("ask_tool"): f.append("AskUserQuestion-called")
 if r.get("dialog"): f.append("Auswahldialog-offen")
 print("OBS tools after the question: %s · AskUserQuestion: %s · dialog: %s" % (r.get("tools_after_question"), r.get("ask_tool"), r.get("dialog")))
 print("ERRORS " + " ".join(f))
