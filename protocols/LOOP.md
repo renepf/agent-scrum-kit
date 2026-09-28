@@ -14,7 +14,7 @@ Two truths, strictly separated:
 | What | Where | Who writes |
 |---|---|---|
 | **Ticket status** — where the ticket stands | status field of the GitHub Project (`KIT_BOARD=github-project`), the label as a mirror | only `bin/status.sh` |
-| **Ownership** — who holds it right now | label `owner:<role>` | only `bin/status.sh` and `bin/claim.sh` |
+| **Ownership** — who holds it right now | label `owner:<role>` | only `bin/status.sh` |
 | **Reasoning, findings, cross-talk** | `sprints/<sprint>/chat/<role>.md` | every role only its own file |
 
 The chat **never** decides whose turn it is. If the chat fails, the loop runs on.
@@ -30,13 +30,13 @@ assignee cannot tell `engineer-a` and `engineer-b` apart.
 | 2 | `planned` | Planned | in the sprint, ready to be picked up | **nobody** | an engineer picks it up |
 | 3 | `in-progress` | In progress | implementation is running | exactly **one** engineer | finished **and** the PR open |
 | 4 | `rfr` | RfR | Ready for Review — waiting | **nobody** | a reviewer picks it up |
-| 5 | `in-review` | In review | reviewers work **actively**, in parallel | qa-ruthless, simplicity-reviewer, security-engineer | all three PASS for the current HEAD |
-| 6 | `rft` | RfT | Ready for Testing — waiting | **nobody** | the acceptance-tester picks it up |
-| 7 | `in-testing` | In Testing | acceptance test against the running build | acceptance-tester | ACCEPTANCE PASS, MERGE-GATE OK, the PO decision |
+| 5 | `in-review` | In review | the reviewing engineer works **actively** | an engineer that did **not** build it | all three PASS for the current HEAD, each naming its reviewer |
+| 6 | `rft` | RfT | Ready for Testing — waiting | **nobody** | the reviewing engineer picks it up |
+| 7 | `in-testing` | In Testing | acceptance test against the running build | the reviewing engineer | ACCEPTANCE PASS, MERGE-GATE OK, the PO decision |
 | 8 | `done` | Done | merged and closed, **no** label | — | — |
 
 **Ready means waiting, In means active.** Whoever picks a ticket up sets the
-In status **immediately**; a further reviewer joins with `bin/claim.sh`.
+In status **immediately**. One engineer reviews a ticket, not two — one `owner:` label, all four hats.
 
 ### Allowed edges — exactly these
 
@@ -54,10 +54,10 @@ backlog → planned → in-progress → rfr → in-review → rft → in-testing
 | `in-progress → rfr` | the engineer with `owner:` | foreign ownership is refused; **scope:** every file of the PR lies within the approved OWNS revision |
 | `rfr → in-review` | a reviewer | sets `owner:<reviewer>`, further reviewers stay |
 | `in-review → rft` | a reviewer | **gate:** QA PASS, SIMPLICITY PASS, SECURITY PASS for the current HEAD; every executable gate of the ledger ran green for this HEAD; lint without an error; one QA mutation line per executable gate |
-| `rft → in-testing` | acceptance-tester | — |
-| `in-testing → done` | product-owner, or merge-gate with `PO OK` for the current HEAD | normally through `bin/merge.sh`; every gate green or attested for the current HEAD; no open `ABANDON` |
+| `rft → in-testing` | an engineer that did not build it | — |
+| `in-testing → done` | **product-owner only** | normally through `bin/merge.sh`; `MERGE-GATE OK` of the reviewing engineer for the current HEAD; every gate green or attested; no open `ABANDON` |
 | `in-review → in-progress` | a reviewer | `owner:` back to the engineer from the comment history |
-| `in-testing → in-progress` | acceptance-tester, merge-gate, product-owner | the same |
+| `in-testing → in-progress` | the reviewing engineer or the product-owner | the same |
 
 Every other transition is refused. After a rejection **the same loop runs from the
 start**: in-progress → rfr → in-review → rft → in-testing. No shortcut, no "small fix".
@@ -121,7 +121,7 @@ worktree stands on the HEAD of the PR. Green means exit 0 and `EXPECT` in stdout
 `- [x]` and `EVIDENCE: v1 head=<sha8> def=<digest> …` stand there, otherwise `- [ ]` and `EVIDENCE: pending`.
 Evidence holds only for this HEAD and this definition of `CHECK`, `EXPECT` and `CWD`: a push
 or a changed line invalidates it. Time limit per gate: `KIT_GATE_TIMEOUT` seconds. A
-manual gate is attested by the acceptance-tester or the product-owner for the current HEAD:
+manual gate is attested by the reviewing engineer (never the builder) or the product-owner, for the current HEAD:
 `bin/gates.sh attest <nr> <gate> "<evidence>"`. `CHECK` is shell code from the ledger and runs with the
 rights of the session that starts it.
 
@@ -157,10 +157,10 @@ the kit cannot prevent it.
 
 ### The last word: product-owner
 
-Before `done` two things stand in the PR, both for the current HEAD: `MERGE-GATE OK` from the merge-gate, then the
-decision of the product-owner. They merge themselves with `bin/merge.sh`, or write `PO OK`, which lets
-merge-gate run `bin/merge.sh`. `merge.sh` checks the approvals, measures CI **fresh**,
-merges, checks `MERGED` and sets `done`.
+Before `done` two things stand in the PR, both for the current HEAD: `MERGE-GATE OK` from the reviewing engineer, then the
+decision of the product-owner. They merge themselves with `bin/merge.sh` — nobody else may, and the
+`PO OK` detour is gone with the merge-gate role (owner 2026-09-28). `merge.sh` checks the approvals,
+measures CI **fresh**, merges, checks `MERGED` and sets `done`.
 
 ## 3. Cast — ten sessions
 
@@ -168,13 +168,14 @@ merges, checks `MERGED` and sets `done`.
 |---|---|---|
 | `product-owner` | sprint, stories, ACs, cadence, the last word | all |
 | `requirements-engineer` | `intent.md` and `spec.md` per ticket, `plan.md` with the product-owner | `backlog` |
-| `engineer-a`, `engineer-b` | implementation, TDD, PR | `planned`, rejections first |
-| `qa-ruthless` | missing tests, mutations, acceptance tests | `rfr`, `in-review` |
-| `simplicity-reviewer` | deletion list, verdict on the solution path before `planned` | `rfr`, `in-review` |
-| `security-engineer` | inputs, permissions, crypto, logs, network | `rfr`, `in-review` |
-| `acceptance-tester` | ACs against the running build | `rft` |
-| `merge-gate` | holistic review, CI, approval | `in-testing` |
+| `engineer-a`, `engineer-b`, `engineer-c` | on their own ticket: implementation, TDD, PR. On a foreign one: all four hats — QA, simplicity, security, acceptance — plus the merge report | `planned`, rejections first; `rfr`, `in-review`, `rft`, `in-testing` of the other two |
 | `watchdog` | token state, twins, queue, commit | — |
+
+Four eyes in round robin (owner 2026-09-28): `engineer-a` reviews `b` or `c`, `engineer-b` reviews
+`a` or `c`, `engineer-c` reviews `a` or `b`. Nobody reviews their own work; `bin/status.sh` turns
+the builder away at `in-review`, `rft` and `in-testing`. The handbook per hat stays in
+`roles/qa-ruthless.md`, `roles/simplicity-reviewer.md`, `roles/security-engineer.md`,
+`roles/acceptance-tester.md` and `roles/merge-gate.md` — they are no longer roles.
 
 Outside the loop: `kit-maintainer` — changes to job descriptions as a pull request.
 
@@ -182,7 +183,7 @@ Outside the loop: `kit-maintainer` — changes to job descriptions as a pull req
 
 ### Start
 
-1. `product-owner` and `simplicity-reviewer` first: before `planned` the product-owner needs the
+1. `product-owner` first: before `planned` the product-owner needs the
    verdict on the solution path, and only `sprint-new.sh` creates `sprints/CURRENT`.
 2. `watchdog`, so that budget and twins are measured from the first ticket on.
 3. Everybody else right after. They need no special case: `tick.sh` reports "no active
@@ -201,10 +202,7 @@ Outside the loop: `kit-maintainer` — changes to job descriptions as a pull req
 | Role | Interval | Reason |
 |---|---|---|
 | `watchdog` | 5 min | pure measuring, must see STOP and twins in time |
-| `engineer-a`, `engineer-b` | 5 min | pick up `planned` and rejections quickly |
-| `qa-ruthless`, `simplicity-reviewer`, `security-engineer` | 5 min | `rfr` is the most frequent waiting state; the `rft` gate must not be the bottleneck |
-| `acceptance-tester` | 10 min | the device queue is serial, polling faster brings nothing |
-| `merge-gate` | 10 min | waits for `in-testing` and green CI, both take time |
+| `engineer-a`, `engineer-b`, `engineer-c` | 5 min | they pick up `planned`, rejections **and** every review state; `rfr` is the most frequent waiting state and the `rft` gate must not be the bottleneck |
 | `product-owner` | 10 min | holds the cadence, sees every state |
 | `requirements-engineer` | 10 min | works ahead of the sprint; a ticket in the `backlog` does not wait on minutes |
 

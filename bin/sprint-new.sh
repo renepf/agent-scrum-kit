@@ -66,7 +66,7 @@ mkdir -p "$DIR/chat"
   echo
   echo "- every ticket closed"
   echo "- CI green on the integration branch"
-  echo "- every user-visible ticket checked by the acceptance-tester against the running build"
+  echo "- every user-visible ticket checked against the running build by the reviewing engineer"
   echo "- no open worktrees except for open PRs"
 } > "$DIR/sprint.md"
 

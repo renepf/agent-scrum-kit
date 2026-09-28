@@ -185,6 +185,20 @@ with_lock() {
 # A push after the review invalidates old verdicts. Format per verdict, first line:
 #   <VERDICT> — HEAD `<sha8>`, ...
 # Sets VERDICT_MISSING (empty = all there), VERDICT_PR, VERDICT_HEAD8. Call directly, never in $(…).
+# Which engineer built the ticket? The only source is the comment history this kit writes itself:
+# "**In progress** — engineer-b ...". Prints the role, or nothing. Never guesses.
+ticket_builder() {
+  local ticket="$1" head
+  head="**$(board_name in-progress)** — "
+  "$BIN_DIR/tickets.sh" comments "$ticket" | python3 -c '
+import json, re, sys
+head = sys.argv[1]
+hits = [m.group(1) for b in json.loads(sys.stdin.read() or "[]")
+        for m in [re.match(re.escape(head) + r"(engineer-[a-z]) ", b)] if m]
+print(hits[-1] if hits else "")
+' "$head"
+}
+
 verdicts_missing() {
   local ticket="$1"; shift
   local pr_line pr head8 v missing=""
@@ -193,14 +207,22 @@ verdicts_missing() {
   [ -n "$pr" ] && [ -n "$head8" ] && [ "$pr" != "$head8" ] || die "#$ticket: PR or HEAD not readable ('$pr_line')"
   local bodies
   bodies="$("$BIN_DIR/tickets.sh" pr-comments "$pr")" || die "PR #$pr: comments not readable — do not guess"
+  local authors="" tag
   for v in "$@"; do
-    printf '%s\n' "$bodies" | python3 -c '
-import json, sys
+    # Prints the reviewer named in the verdict ("· engineer-b"), empty if it names none,
+    # and exits 1 if the verdict for this HEAD is absent altogether.
+    tag="$(printf '%s\n' "$bodies" | python3 -c '
+import json, re, sys
 v, head = sys.argv[1], sys.argv[2]
 bodies = json.loads(sys.stdin.read() or "[]")
-ok = any(b.splitlines()[0].startswith(v) and head in b.splitlines()[0] for b in bodies if b.strip())
-sys.exit(0 if ok else 1)
-' "$v" "$head8" || missing="$missing '$v'"
+first = [b.splitlines()[0] for b in bodies if b.strip()]
+hit = [l for l in first if l.startswith(v) and head in l]
+if not hit:
+    sys.exit(1)
+m = re.search(r"·\s*([a-z][a-z0-9-]*)", hit[-1])
+print(m.group(1) if m else "")
+' "$v" "$head8")" || { missing="$missing '$v'"; continue; }
+    authors="$authors$v=$tag"$'\n'
   done
-  VERDICT_PR="$pr"; VERDICT_HEAD8="$head8"; VERDICT_MISSING="$missing"
+  VERDICT_PR="$pr"; VERDICT_HEAD8="$head8"; VERDICT_MISSING="$missing"; VERDICT_AUTHORS="$authors"
 }

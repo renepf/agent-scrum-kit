@@ -69,22 +69,13 @@
    "name": "status:in-testing"
   },
   {
+   "name": "sprint:current"
+  },
+  {
    "name": "owner:engineer-a"
   },
   {
    "name": "owner:engineer-b"
-  },
-  {
-   "name": "owner:simplicity-reviewer"
-  },
-  {
-   "name": "owner:security-engineer"
-  },
-  {
-   "name": "owner:acceptance-tester"
-  },
-  {
-   "name": "sprint:current"
   }
  ]
 }

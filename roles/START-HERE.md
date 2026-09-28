@@ -9,19 +9,22 @@ The setup before that is in `INSTALL.md`.
 | Step | Terminal | `export KIT_ROLE=` | Role file | Interval |
 |---|---|---|---|---|
 | 1 | 1 | `product-owner` | `roles/product-owner.md` | 10 min |
-| 1 | 2 | `simplicity-reviewer` | `roles/simplicity-reviewer.md` | 5 min |
-| 1 | 3 | `requirements-engineer` | `roles/requirements-engineer.md` | 10 min |
+| 1 | 2 | `requirements-engineer` | `roles/requirements-engineer.md` | 10 min |
 | 2 | 3 | `watchdog` | `roles/watchdog.md` | 5 min |
 | 3 | 4 | `engineer-a` | `roles/engineer.md` | 5 min |
 | 3 | 5 | `engineer-b` | `roles/engineer.md` | 5 min |
-| 3 | 6 | `qa-ruthless` | `roles/qa-ruthless.md` | 5 min |
-| 3 | 7 | `security-engineer` | `roles/security-engineer.md` | 5 min |
-| 3 | 8 | `acceptance-tester` | `roles/acceptance-tester.md` | 10 min |
-| 3 | 9 | `merge-gate` | `roles/merge-gate.md` | 10 min |
+| 3 | 6 | `engineer-c` | `roles/engineer.md` | 5 min |
 
-Why this order: before `planned` the product-owner needs the verdict of the simplicity-reviewer,
-and only their `sprint-new.sh` creates the sprint. The watchdog measures from the first ticket on.
-Everybody else may start at once — their tick reports "no active sprint" and ends normally.
+Five terminals since 2026-09-28, plus `kit-maintainer` when the kit itself is worked on. The
+reviewing roles are gone: every engineer reviews a **foreign** ticket, wearing all four hats —
+QA, simplicity, security, acceptance. Their handbooks stay in `roles/qa-ruthless.md`,
+`roles/simplicity-reviewer.md`, `roles/security-engineer.md`, `roles/acceptance-tester.md` and
+`roles/merge-gate.md`.
+
+Why this order: before `planned` the product-owner needs the verdict of an engineer on the
+solution, and only their `sprint-new.sh` creates the sprint. The watchdog measures from the first
+ticket on. Everybody else may start at once — their tick reports "no active sprint" and ends
+normally.
 
 The `kit-maintainer` does not run along. It starts only when something lies in `evals/findings/` or
 an eval case fails.

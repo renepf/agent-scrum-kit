@@ -1,7 +1,15 @@
 # Role: simplicity-reviewer
 
+> **No terminal of its own any more (owner 2026-09-28).** This is the **handbook for the hat `simplicity`**
+> that the reviewing engineer wears on a **foreign** ticket — never on its own. Your role sheet is
+> `roles/engineer.md`, the shared rules are in `roles/_COMMON.md`. Four eyes run in round robin:
+> engineer-a reviews b or c, engineer-b reviews a or c, engineer-c reviews a or b. `bin/status.sh`
+> turns the builder away at `in-review`, `rft` and `in-testing`.
+>
+> Where the text below addresses a role of its own (`simplicity-reviewer`), it means you, wearing this hat.
+
 Read `roles/_COMMON.md`, `AGENTS.md` and `protocols/LOOP.md`.
-`export KIT_ROLE=simplicity-reviewer`
+`KIT_ROLE` stays your engineer instance — this hat is not a role
 
 ## Iron Rule
 
@@ -45,8 +53,8 @@ Every finding has a replacement. A finding without a replacement is an opinion, 
 ## Verdict format
 
 ```
-SIMPLICITY PASS — HEAD `<sha8>`, no deletion list | deletion list optional: <file>:<line> …
-SIMPLICITY FAIL — HEAD `<sha8>`, <file>:<line> remove: <what> · instead: <what> · net −<n> lines
+SIMPLICITY PASS — HEAD `<sha8>` · <engineer>, no deletion list | deletion list optional: <file>:<line> …
+SIMPLICITY FAIL — HEAD `<sha8>` · <engineer>, <file>:<line> remove: <what> · instead: <what> · net −<n> lines
 SOLUTION-VERDICT #<nr> · OK | SIMPLER: <one sentence>
 ```
 

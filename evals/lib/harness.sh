@@ -86,11 +86,12 @@ PY2
 
 # Every gate of a ticket green for the HEAD of its PR, in the evidence format of bin/gates.py (executable:
 # definition bound, manual: attested), plus a QA PASS with one mutation line per executable gate. With
-# $2=gatesonly without the QA comment. Without a ledger, a plannable ledger first. For cases that do not
-# check the gates themselves.
+# $2=gatesonly without the QA comment. $3 is the reviewer the QA PASS names (default engineer-b) —
+# the rft gate rejects a verdict without one, and one signed by the builder. Without a ledger, a
+# plannable ledger first. For cases that do not check the gates themselves.
 sandbox_gates_green() {
   [ -f "$SANDBOX/tickets/$1/GATES.md" ] || sandbox_plannable "$1"
-  python3 - "$BIN" "$SANDBOX/issues.json" "$SANDBOX/tickets/$1/GATES.md" "$1" "${2:-}" <<'PY2'
+  python3 - "$BIN" "$SANDBOX/issues.json" "$SANDBOX/tickets/$1/GATES.md" "$1" "${2:-}" "${3:-engineer-b}" <<'PY2'
 import json, sys
 sys.path.insert(0, sys.argv[1])
 import gates
@@ -102,7 +103,7 @@ gates.write_results(path, text, doc, {
     for g in doc["gates"]})
 if sys.argv[5] != "gatesonly":
     lines = ["%s: mutation eval → red" % g["id"] for g in doc["gates"] if g["check"] is not None]
-    db[sys.argv[4]]["pr"].setdefault("comments", []).append("QA PASS — HEAD `%s`, eval\n%s" % (head, "\n".join(lines)))
+    db[sys.argv[4]]["pr"].setdefault("comments", []).append("QA PASS — HEAD `%s` · %s, eval\n%s" % (head, sys.argv[6], "\n".join(lines)))
     json.dump(db, open(sys.argv[2], "w"), indent=2, sort_keys=True)
 PY2
 }

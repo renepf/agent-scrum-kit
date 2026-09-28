@@ -58,7 +58,8 @@ mk() { gh label create "$1" --repo "$KIT_REPO" --color "$2" --description "$3" -
 printf '%s\n' "$KIT_STATUS_MAP" | grep '|' | while IFS='|' read -r key name; do
   [ "$key" = "done" ] || mk "$KIT_LABEL_PREFIX$key" "ededed" "mirror of the board status '$name' — only bin/status.sh sets it"
 done
-for r in engineer-a engineer-b qa-ruthless simplicity-reviewer security-engineer acceptance-tester; do
+# Every role that can own a ticket: the three engineers build and review (owner 2026-09-28).
+for r in engineer-a engineer-b engineer-c; do
   mk "$KIT_OWNER_PREFIX$r" "c5def5" "holds the ticket — only bin/status.sh and bin/claim.sh set it"
 done
 mk "$KIT_SPRINT_LABEL" "0e8a16" "ticket belongs to the active sprint"

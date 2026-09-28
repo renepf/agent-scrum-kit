@@ -5,7 +5,9 @@ CASE_HOST=""
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 sandbox; trap sandbox_cleanup EXIT
 sandbox_sprint > /dev/null
-export KIT_ROLE=qa-ruthless
+# The reviewing engineer moves rfr → in-review. The tickets carry no comment history, so no engineer
+# counts as their builder — the four-eyes gate lets engineer-b through and the board is what fails.
+export KIT_ROLE=engineer-b
 
 fake_gh '{
  "21": {"labels": ["status:rfr"], "assignees": [], "state": "OPEN", "comments": [], "board": "o-rfr"},

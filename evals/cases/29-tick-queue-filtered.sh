@@ -13,17 +13,19 @@ done
 sandbox_ticket 9 planned                       # not in the sprint
 
 nummern() { KIT_ROLE="$1" "$BIN/tick.sh" 2>&1 | grep -oE '^  #[0-9]+' | tr -d ' #' | sort -n | tr '\n' ' ' | sed 's/ $//'; }
-e="$(nummern engineer-a)"; q="$(nummern qa-ruthless)"; t="$(nummern acceptance-tester)"
-m="$(nummern merge-gate)"; p="$(nummern product-owner)"; w="$(nummern watchdog)"
+# Since the cut of 2026-09-28 an engineer sees five states: planned to build, and rfr, in-review,
+# rft, in-testing to review a foreign ticket. Which of them is its own, the gate decides — not the
+# queue. requirements-engineer sees only the backlog, the product-owner everything, watchdog nothing.
+e="$(nummern engineer-a)"; r="$(nummern requirements-engineer)"
+p="$(nummern product-owner)"; w="$(nummern watchdog)"; k="$(nummern kit-maintainer)"
 
 errors=""
-[ "$e" = "1" ] || errors="$errors engineer-a='$e'"
-[ "$q" = "2" ] || errors="$errors qa-ruthless='$q'"
-[ "$t" = "3" ] || errors="$errors acceptance-tester='$t'"
-[ "$m" = "4" ] || errors="$errors merge-gate='$m'"
+[ "$e" = "1 2 3 4" ] || errors="$errors engineer-a='$e'"
+[ "$r" = "5" ] || errors="$errors requirements-engineer='$r'"
 [ "$p" = "1 2 3 4 5" ] || errors="$errors product-owner='$p'"
 [ -z "$w" ] || errors="$errors watchdog='$w'"
+[ -z "$k" ] || errors="$errors kit-maintainer='$k'"
 
-observe "engineer-a [$e] · qa-ruthless [$q] · acceptance-tester [$t] · merge-gate [$m] · product-owner [$p] · watchdog [$w] · #9 outside the sprint nowhere${errors:+ · ERRORS:$errors}"
+observe "engineer-a [$e] · requirements-engineer [$r] · product-owner [$p] · watchdog [$w] · kit-maintainer [$k] · #9 outside the sprint nowhere${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
 [ -z "$errors" ]

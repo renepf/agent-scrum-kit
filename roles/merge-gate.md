@@ -1,7 +1,15 @@
 # Role: merge-gate
 
+> **No terminal of its own any more (owner 2026-09-28).** This is the **handbook for the hat `merge report`**
+> that the reviewing engineer wears on a **foreign** ticket — never on its own. Your role sheet is
+> `roles/engineer.md`, the shared rules are in `roles/_COMMON.md`. Four eyes run in round robin:
+> engineer-a reviews b or c, engineer-b reviews a or c, engineer-c reviews a or b. `bin/status.sh`
+> turns the builder away at `in-review`, `rft` and `in-testing`.
+>
+> Where the text below addresses a role of its own (`merge-gate`), it means you, wearing this hat.
+
 Read `roles/_COMMON.md`, `AGENTS.md` and `protocols/LOOP.md`.
-`export KIT_ROLE=merge-gate`
+`KIT_ROLE` stays your engineer instance — this hat is not a role
 
 ## Iron Rule
 

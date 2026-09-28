@@ -8,14 +8,14 @@ L="$KIT_ROOT/adapters/claude-code/role-loop.sh"; ST="$KIT_ROOT/.role-loop"
 errors=""
 rm -rf "$ST"
 # A: three fast aborts → the loop gives up, exit 1
-KIT_LOOP_CLAUDE='true' KIT_LOOP_SLEEP=0 "$L" merge-gate > /dev/null 2>&1; ra=$?
-starts="$(grep -c 'starting claude' "$ST/merge-gate.log")"
+KIT_LOOP_CLAUDE='true' KIT_LOOP_SLEEP=0 "$L" engineer-b > /dev/null 2>&1; ra=$?
+starts="$(grep -c 'starting claude' "$ST/engineer-b.log")"
 [ "$ra" = 1 ] && [ "$starts" = 3 ] || errors="$errors A:rc=$ra,starts=$starts"
 # B: a stop file after the second start → the loop ends cleanly
 cnt="$SANDBOX/cnt"; : > "$cnt"
-KIT_LOOP_CLAUDE="echo x >> '$cnt'; [ \$(wc -l < '$cnt') -ge 2 ] && touch '$ST/qa-ruthless.stop'; true" KIT_LOOP_SLEEP=0 "$L" qa-ruthless > /dev/null 2>&1; rb=$?
+KIT_LOOP_CLAUDE="echo x >> '$cnt'; [ \$(wc -l < '$cnt') -ge 2 ] && touch '$ST/engineer-c.stop'; true" KIT_LOOP_SLEEP=0 "$L" engineer-c > /dev/null 2>&1; rb=$?
 [ "$rb" = 0 ] && [ "$(wc -l < "$cnt" | tr -d ' ')" = 2 ] || errors="$errors B:rc=$rb,starts=$(wc -l < "$cnt")"
-grep -q 'stop file found' "$ST/qa-ruthless.log" || errors="$errors B:log"
+grep -q 'stop file found' "$ST/engineer-c.log" || errors="$errors B:log"
 # C: the environment inside the loop: KIT_ROLE and KIT_ROLE_LOOP
 envf="$SANDBOX/env"
 KIT_LOOP_CLAUDE="echo \"\$KIT_ROLE \$KIT_ROLE_LOOP\" > '$envf'; touch '$ST/watchdog.stop'" KIT_LOOP_SLEEP=0 "$L" watchdog > /dev/null 2>&1

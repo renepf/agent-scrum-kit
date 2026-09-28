@@ -19,7 +19,7 @@ h1="$(shasum "$KIT_BOARD_ENV_FILE" | cut -d' ' -f1)"
 
 o2="$(KIT_BOARD_FIXTURE="$F/mismatches.json" "$BIN/board-check.sh" --write 2>&1)"; r2=$?
 [ "$r2" = 1 ] || errors="$errors mismatching-board-exit-$r2"
-for expected in "board option In Testing.*missing" "board option Todo.*surplus" "FAIL  order" "label owner:qa-ruthless.*missing"; do
+for expected in "board option In Testing.*missing" "board option Todo.*surplus" "FAIL  order" "label owner:engineer-c.*missing"; do
   printf '%s' "$o2" | grep -qE "$expected" || errors="$errors not-detected:'$expected'"
 done
 h2="$(shasum "$KIT_BOARD_ENV_FILE" | cut -d' ' -f1)"

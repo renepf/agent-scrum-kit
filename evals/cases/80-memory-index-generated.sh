@@ -4,17 +4,17 @@ CASE_KIND="static"
 CASE_HOST=""
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 sandbox; trap sandbox_cleanup EXIT
-export KIT_ROLE=qa-ruthless
+export KIT_ROLE=engineer-b
 TYPE=feedback "$BIN/brain.sh" note mutation-per-guarantee "green after removing a guard means a test is missing" <<'EOF' > /dev/null
 One mutation per guarantee. See [[empty-start-state]] and [[does-not-exist-yet]].
 EOF
 TYPE=project "$BIN/brain.sh" note empty-start-state "a test with an empty state often does not see the real path" <<'EOF' > /dev/null
 Measured 2026-09-10.
 EOF
-I="$SANDBOX/memory/qa-ruthless/INDEX.md"
+I="$SANDBOX/memory/engineer-b/INDEX.md"
 lines="$(grep -c '^| \[facts/' "$I")"
 h1="$(shasum "$I" | cut -d' ' -f1)"
-KIT_ROLE=qa-ruthless "$BIN/brain.sh" index > /dev/null
+KIT_ROLE=engineer-b "$BIN/brain.sh" index > /dev/null
 h2="$(shasum "$I" | cut -d' ' -f1)"
 open_link="$(grep -c '`\[\[does-not-exist-yet\]\]`' "$I" || true)"
 resolved="$(grep -c '`\[\[empty-start-state\]\]`' "$I" || true)"

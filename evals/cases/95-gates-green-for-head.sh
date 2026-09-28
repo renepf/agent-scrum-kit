@@ -27,7 +27,8 @@ head1="$(git -C "$P" rev-parse HEAD)"; h1="${head1:0:8}"
 
 pr() { # <head> <labels-json>
   sandbox_issue 51 "{\"labels\":$2,\"pr\":{\"number\":510,\"head\":\"$1\",\"comments\":[],\"checks\":\"pass\",\"state\":\"OPEN\",\"files\":[\"export.txt\"]}}"
-  for v in "QA PASS" "SIMPLICITY PASS" "SECURITY PASS" "MERGE-GATE OK"; do sandbox_pr_comment 51 "$v — HEAD \`${1:0:8}\`, eval
+  # Every verdict names its reviewer: engineer-b reviews what engineer-a built.
+  for v in "QA PASS" "SIMPLICITY PASS" "SECURITY PASS" "MERGE-GATE OK"; do sandbox_pr_comment 51 "$v — HEAD \`${1:0:8}\` · engineer-b, eval
 AC-1: mutation row check off → red"; done
 }
 ledger() { # <check> <expect>
@@ -46,11 +47,14 @@ OWNS: export.txt, tools/**
 LEDGER
 }
 GUT_CHECK="python3 tools/check_export.py"; GUT_EXPECT="export checked: 3 rows"
-IN_REVIEW='["status:in-review","owner:qa-ruthless"]'
+IN_REVIEW='["status:in-review","owner:engineer-b"]'
 sandbox_issue 51 '{"body":"AC-1: the export has 3 rows\nAC-2: hint visible on the running build"}'
+# The builder comes from the comment history (ticket_builder in bin/common.sh): engineer-a built it,
+# so engineer-b is the one allowed to release and to accept it.
+sandbox_issue 51 '{"comments":["**In progress** — engineer-a picked it up"]}'
 pr "$head1" "$IN_REVIEW"
 ledger "$GUT_CHECK" "$GUT_EXPECT"
-rft() { KIT_ROLE=qa-ruthless "$BIN/status.sh" 51 rft x 2>&1; }
+rft() { KIT_ROLE=engineer-b "$BIN/status.sh" 51 rft x 2>&1; }
 run() { (cd "$P" && KIT_ROLE=engineer-a "$BIN/gates.sh" run 51 2>&1); }
 L="$SANDBOX/tickets/51/GATES.md"
 
@@ -113,18 +117,20 @@ done
 expect g-timeout-reported "$og" '*timed out*'
 expect g-rft "$(rft)" '*rejected*AC-1*'
 
-# h) The merge: AC-1 green, AC-2 manual without evidence → refused; evidence only from the acceptance-tester; then the merge
+# h) The merge: AC-1 green, AC-2 manual without evidence → refused; the evidence comes from the
+#    REVIEWING engineer, never from the builder (engineer-a built #51); then the merge
 ledger "$GUT_CHECK" "$GUT_EXPECT"
-pr "$head2" '["status:in-testing","owner:acceptance-tester"]'
+pr "$head2" '["status:in-testing","owner:engineer-b"]'
 run > /dev/null
 merge() { KIT_ROLE=product-owner "$BIN/merge.sh" 51 2>&1; }
 expect h-manual-without-evidence "$(merge)" '*rejected*AC-2*'
-expect h-attest-role "$(KIT_ROLE=engineer-a "$BIN/gates.sh" attest 51 AC-2 "seen" 2>&1)" '*acceptance-tester*'
-expect h-attest-executable "$(KIT_ROLE=acceptance-tester "$BIN/gates.sh" attest 51 AC-1 "seen" 2>&1)" '*AC-1*executable*'
-expect h-attest "$(KIT_ROLE=acceptance-tester "$BIN/gates.sh" attest 51 AC-2 "hint visible, screenshot hint.png" 2>&1)" '*AC-2*'
-check h-evidence-head grep -q "EVIDENCE: manual head=$h2 by=acceptance-tester" "$L"
+# The builder is turned away — that is the four-eyes rule on the evidence itself.
+expect h-attest-role "$(KIT_ROLE=engineer-a "$BIN/gates.sh" attest 51 AC-2 "seen" 2>&1)" '*built this ticket*'
+expect h-attest-executable "$(KIT_ROLE=engineer-b "$BIN/gates.sh" attest 51 AC-1 "seen" 2>&1)" '*AC-1*executable*'
+expect h-attest "$(KIT_ROLE=engineer-b "$BIN/gates.sh" attest 51 AC-2 "hint visible, screenshot hint.png" 2>&1)" '*AC-2*'
+check h-evidence-head grep -q "EVIDENCE: manual head=$h2 by=engineer-b" "$L"
 expect h-merge "$(merge)" '*in-testing → done*'
 
-observe "$((n - wrong))/$n checks passed · never ran, a run on the HEAD, a new push, a wrong checkout, a changed definition, 3 kinds of failure, a manual gate before the merge, attest only by the acceptance-tester and only for manual gates${errors:+ · ERRORS:$errors}"
+observe "$((n - wrong))/$n checks passed · never ran, a run on the HEAD, a new push, a wrong checkout, a changed definition, 3 kinds of failure, a manual gate before the merge, attest only by the reviewing engineer and only for manual gates${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
 [ -z "$errors" ]

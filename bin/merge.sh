@@ -3,16 +3,16 @@
 #
 #   bin/merge.sh 795
 #
-# product-owner: needs 'MERGE-GATE OK — HEAD `<sha8>`' in the PR and green CI.
-# merge-gate:    needs 'PO OK — HEAD `<sha8>`' on top. The product-owner has the last word.
+# Only the product-owner merges (owner 2026-09-28; the merge-gate role is gone). It needs
+# 'MERGE-GATE OK — HEAD `<sha8>` · <engineer>' in the PR — written by the REVIEWING engineer, never
+# by the builder — and green CI.
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 [ $# -ge 1 ] || die "usage: bin/merge.sh <ticket>"
 TICKET="$1"; R="$(role)"
-case "$R" in product-owner|merge-gate) ;; *) die "only the product-owner merges, or merge-gate with PO OK — not $R" ;; esac
+case "$R" in product-owner) ;; *) die "only the product-owner merges — not $R" ;; esac
 "$BIN_DIR/preflight.sh" > /dev/null || die "preflight failed — stop and report"
 
 NEED=("MERGE-GATE OK")
-[ "$R" = "merge-gate" ] && NEED+=("PO OK")
 verdicts_missing "$TICKET" "${NEED[@]}"
 # Merge report: a measurement for the product-owner, never a gate. It prints before any rejection;
 # a failed read is UNKNOWN in the report and stops nothing.

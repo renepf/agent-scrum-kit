@@ -1,7 +1,15 @@
 # Role: qa-ruthless
 
+> **No terminal of its own any more (owner 2026-09-28).** This is the **handbook for the hat `QA`**
+> that the reviewing engineer wears on a **foreign** ticket — never on its own. Your role sheet is
+> `roles/engineer.md`, the shared rules are in `roles/_COMMON.md`. Four eyes run in round robin:
+> engineer-a reviews b or c, engineer-b reviews a or c, engineer-c reviews a or b. `bin/status.sh`
+> turns the builder away at `in-review`, `rft` and `in-testing`.
+>
+> Where the text below addresses a role of its own (`qa-ruthless`), it means you, wearing this hat.
+
 Read `roles/_COMMON.md`, `AGENTS.md` and `protocols/LOOP.md`.
-`export KIT_ROLE=qa-ruthless`
+`KIT_ROLE` stays your engineer instance — this hat is not a role
 
 ## Iron Rule
 
@@ -49,10 +57,10 @@ green for this HEAD. Whoever sets `rft` runs `bin/gates.sh run <nr>` on the HEAD
 ## Verdict format
 
 ```
-QA PASS — HEAD `<sha8>`, <n> tests added, measured <time>
+QA PASS — HEAD `<sha8>` · <engineer>, <n> tests added, measured <time>
 AC-1: mutation <what> → red
 AC-2: mutation <what> → red
-QA FAIL — HEAD `<sha8>`, uncovered: <guarantee> (<file>:<line>)
+QA FAIL — HEAD `<sha8>` · <engineer>, uncovered: <guarantee> (<file>:<line>)
 ```
 
 One line per executable gate in the ledger with the mutation that turns **exactly that gate** red.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One round of situational awareness. EVERY role calls this at the start of EVERY loop round.
 #
-#   export KIT_ROLE=qa-ruthless
+#   export KIT_ROLE=engineer-a
 #   bin/tick.sh
 #
 # Idempotent. In this order:
@@ -81,11 +81,15 @@ for i in json.load(sys.stdin):
         REJECTED="$("$BIN_DIR/tickets.sh" comments "$n" | python3 -c '
 import json, re, sys
 me, n, ip = sys.argv[1], sys.argv[2], sys.argv[3]
-heads = [(m.group(1), m.group(2), b) for b in json.load(sys.stdin)
-         for m in [re.match(r"^\*\*([^*]+)\*\* — ([a-z-]+) ", b)] if m]
-if heads and heads[-1][0] == ip and heads[-1][1] != me:
-    note = heads[-1][2].split("\n", 2)[-1].strip()
-    print(f"↩ #{n} REJECTED by {heads[-1][1]} — comes before any new ticket:")
+# A rejection is the in-progress comment that names YOU as the owner and someone else as the sender:
+# "**In progress** — engineer-c (sent back by engineer-a)". Before 2026-09-29 the comment named the
+# acting role, and the tick read "someone other than me" as the rejection — that broke the moment
+# the comment started naming the owner, which the four-eyes gate needs.
+heads = [(m.group(1), m.group(2), m.group(3), b) for b in json.load(sys.stdin)
+         for m in [re.match(r"^\*\*([^*]+)\*\* — ([a-z-]+)(?: \(sent back by ([a-z-]+)\))? ", b)] if m]
+if heads and heads[-1][0] == ip and heads[-1][2] and heads[-1][2] != me:
+    note = heads[-1][3].split("\n", 2)[-1].strip()
+    print(f"↩ #{n} REJECTED by {heads[-1][2]} — comes before any new ticket:")
     print(f"    {note[:160]}")
     print(f"    Read the finding, fix it, push, then status.sh {n} rfr. Old PASS verdicts do not hold for the new HEAD.")
 ' "$R" "$n" "$IP")"

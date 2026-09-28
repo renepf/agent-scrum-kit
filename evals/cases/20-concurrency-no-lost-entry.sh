@@ -6,7 +6,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 sandbox; trap sandbox_cleanup EXIT
 SPRINT="$(sandbox_sprint)"
 
-ROLES="product-owner engineer-a engineer-b qa-ruthless simplicity-reviewer security-engineer acceptance-tester merge-gate watchdog"
+# The whole cast at once — seven roles since the cut of 2026-09-28. The point is the count that
+# comes out at the end, not how many roles there are: not one entry may be lost.
+ROLES="product-owner requirements-engineer engineer-a engineer-b engineer-c watchdog kit-maintainer"
 PRO_ROLLE=5
 
 for r in $ROLES; do

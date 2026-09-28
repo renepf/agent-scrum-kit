@@ -82,7 +82,7 @@ Nennt es `missing required scopes`, ist der Token gueltig und nur eine Berechtig
 
 ### 2.1 Reihenfolge
 
-1. **product-owner** und **simplicity-reviewer** zuerst. Der PO braucht vor `planned` das
+1. **product-owner** zuerst. Der PO braucht vor `planned` das
    Verdict zum Loesungsweg, und erst sein `bin/sprint-new.sh` legt den Sprint an.
 2. **watchdog** direkt danach. Er misst von Anfang an und ist die einzige Rolle, die committet.
 3. Alle uebrigen in beliebiger Reihenfolge. Sie brauchen keinen Sonderfall: ihr Tick meldet
@@ -123,19 +123,24 @@ Rollenblaetter werden **nicht** in jeder Runde neu gelesen, das wuerde Kontext v
 Jede Rolle laeuft mit **festem Intervall** (Tabelle 2.3). Eine Runde ohne Arbeit endet nach dem
 Tick; sie kostet einen Tick, nicht mehr.
 
-### 2.3 Die neun Terminals
+### 2.3 Die fuenf Terminals
 
 | # | `KIT_ROLE` | `<datei>` | `<intervall>` | wartet auf |
 |---|---|---|---|---|
 | 1 | `product-owner` | `product-owner.md` | `10m` | sieht alle Zustaende |
-| 2 | `simplicity-reviewer` | `simplicity-reviewer.md` | `5m` | `@simplicity-reviewer` vom PO, dann `rfr` |
+| 2 | `requirements-engineer` | `requirements-engineer.md` | `10m` | `backlog` |
 | 3 | `watchdog` | `watchdog.md` | `5m` | nichts, misst im Takt |
-| 4 | `engineer-a` | `engineer.md` | `5m` | Rueckweisungen, dann `planned` |
-| 5 | `engineer-b` | `engineer.md` | `5m` | Rueckweisungen, dann `planned` |
-| 6 | `qa-ruthless` | `qa-ruthless.md` | `5m` | `rfr`, `in-review` |
-| 7 | `security-engineer` | `security-engineer.md` | `5m` | `rfr`, `in-review` |
-| 8 | `acceptance-tester` | `acceptance-tester.md` | `10m` | `rft` |
-| 9 | `merge-gate` | `merge-gate.md` | `10m` | `in-testing` und `@merge-gate` |
+| 4 | `engineer-a` | `engineer.md` | `5m` | Rueckweisungen, dann ein fremdes `rfr`, dann `planned` |
+| 5 | `engineer-b` | `engineer.md` | `5m` | dasselbe |
+| 6 | `engineer-c` | `engineer.md` | `5m` | dasselbe |
+
+Seit dem 28. September 2026 gibt es die pruefenden Rollen nicht mehr. Jeder Ingenieur baut sein
+eigenes Ticket und prueft ein **fremdes**, mit allen vier Hueten — QA, Einfachheit, Sicherheit,
+Abnahme — dazu der Merge-Bericht. Vier Augen im Ringtausch: `engineer-a` prueft `b` oder `c`,
+`engineer-b` prueft `a` oder `c`, `engineer-c` prueft `a` oder `b`. `bin/status.sh` weist den
+Erbauer ab, und jedes Verdict nennt seinen Pruefer. Das Handbuch je Hut bleibt in
+`roles/qa-ruthless.md`, `roles/simplicity-reviewer.md`, `roles/security-engineer.md`,
+`roles/acceptance-tester.md` und `roles/merge-gate.md`.
 
 Warum diese Takte: `protocols/LOOP.md` Abschnitt 4. `engineer-a` und `engineer-b` lesen dasselbe
 Blatt; der Rollenname in der ersten Eingabe unterscheidet sie.
@@ -166,7 +171,7 @@ Das macht der product-owner selbst, nach seinem Rollenblatt:
 3. `bin/sprint-new.sh <slug> <ticketnummern…>` — die Tickets bleiben dabei auf `backlog`.
    Erst dieser Schritt legt den Chat an; vorher scheitert jedes `say.sh` mit
    `kein aktiver Sprint`.
-4. Den Loesungsweg per `@simplicity-reviewer` als Frage in den Chat stellen, Verdict abwarten.
+4. Den Loesungsweg als Frage an einen Ingenieur stellen, der es nicht baut, Verdict abwarten.
 5. Je Ticket `bin/status.sh <nr> planned "Verdict: <kurz>"`. Ohne Gate fuer jede AC lehnt es ab.
 
 Am Ende jedes Tickets hat der product-owner das letzte Wort: `bin/merge.sh <nr>` merged erst,
@@ -248,7 +253,7 @@ Aendert sich `roles/_COMMON.md`, betrifft das alle neun Sessions.
 | `INSTALL.md` | Einrichtung Schritt fuer Schritt, mit gemessenen Ausgaben und Fehlertabelle |
 | `protocols/LOOP.md` | Statusmodell, Kanten, Gates, Loop-Reihenfolge, Tick, Chat, Zwillingssperre, Budget |
 | `adapters/<host>/` | wie eine Session startet, eine Rolle laedt, ihre Kennung meldet |
-| `bin/` | `tick.sh`, `status.sh`, `claim.sh`, `merge.sh`, `say.sh`, `reindex.sh`, `brain.sh`, `budget.sh`, `register.sh`, `restart-self.sh`, `sprint-new.sh`, `commit.sh`, `board-setup.sh`, `board-check.sh`, `preflight.sh`, `tickets.sh`, `gates.py`, `gates.sh`, `revise.sh` |
+| `bin/` | `tick.sh`, `status.sh`, `merge.sh`, `say.sh`, `reindex.sh`, `brain.sh`, `budget.sh`, `register.sh`, `restart-self.sh`, `sprint-new.sh`, `commit.sh`, `board-setup.sh`, `board-check.sh`, `preflight.sh`, `tickets.sh`, `gates.py`, `gates.sh`, `revise.sh` |
 | `tickets/<nr>/` | `GATES.md`: Gate-Ledger je Ticket, je AC ein Gate, `OWNS:` als Umfang, Format und Regeln aus unlazy (MIT); die Freigabe des Umfangs steht als Kommentar am Issue |
 | `evals/` | die Suite, die prueft, ob das alles haelt |
 | `memory/` | Gedaechtnis je Rolle plus geteilt, eine Datei je Fakt, generierter Index |

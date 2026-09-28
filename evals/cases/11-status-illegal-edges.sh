@@ -13,7 +13,7 @@ ALLOWED=" backlog>planned planned>in-progress in-progress>rfr rfr>in-review in-r
 role_for() {
   case "$1" in
     backlog|planned|done) echo product-owner ;; in-progress|rfr) echo engineer-a ;;
-    in-review|rft) echo qa-ruthless ;; in-testing) echo acceptance-tester ;;
+    in-review|rft|in-testing) echo engineer-b ;;
   esac
 }
 
@@ -24,6 +24,9 @@ for from_ in $STATES; do
     case "$ALLOWED" in *" $from_>$to_ "*) continue ;; esac
     nr=$((nr + 1)); total=$((total + 1))
     sandbox_ticket "$nr" "$from_"
+    # engineer-a is the builder, engineer-b reviews: otherwise the four-eyes gate would explain the
+    # refusal instead of the missing edge.
+    sandbox_issue "$nr" '{"comments":["**In progress** — engineer-a picked it up"]}'
     before="$(sandbox_labels "$nr")"
     # Capture the output first: under pipefail "status.sh | grep" would be wrong as soon as status.sh
     # aborts with exit 1 as intended — even when grep finds the message.

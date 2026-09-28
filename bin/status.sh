@@ -12,8 +12,10 @@ source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 T="$BIN_DIR/tickets.sh"
 P="$KIT_LABEL_PREFIX"; O="$KIT_OWNER_PREFIX"
-REVIEWERS="qa-ruthless simplicity-reviewer security-engineer"
-ENGINEERS="engineer-a engineer-b"
+# Four eyes in round robin: every engineer reviews, none reviews what it built. The gate does not
+# ask which role you are, it asks whether you are the builder — see ticket_builder in common.sh.
+ENGINEERS="engineer-a engineer-b engineer-c"
+REVIEWERS="$ENGINEERS"
 
 # The only allowed edges. Two of them are the backward edge.
 EDGES="
@@ -87,24 +89,18 @@ $LINT_MSG"
     fi
     ;;
   in-progress)
-    if in_list "$R" "$ENGINEERS"; then
-      [ "$OLD" = "planned" ] || die "$R picks up only from 'planned'. A rejection is set by the reviewer."
+    if [ "$OLD" = "planned" ]; then
+      in_list "$R" "$ENGINEERS" || die "out of 'planned' a ticket is picked up only by an engineer, not $R"
       OWNER="$R"
     else
       case "$OLD" in
-        in-review)  in_list "$R" "$REVIEWERS" || die "out of 'in-review' only a reviewer rejects, not $R" ;;
-        in-testing) in_list "$R" "acceptance-tester merge-gate product-owner" || die "out of 'in-testing' only acceptance-tester, merge-gate or product-owner reject, not $R" ;;
+        in-review)  in_list "$R" "$ENGINEERS product-owner" || die "out of 'in-review' only the reviewing engineer or the product-owner rejects, not $R" ;;
+        in-testing) in_list "$R" "$ENGINEERS product-owner" || die "out of 'in-testing' only the reviewing engineer or the product-owner rejects, not $R" ;;
       esac
-      # Backward edge: the engineer is the one who last set the ticket to in-progress —
-      # it is in the comments this script writes itself. Do not guess.
-      IP="$(board_name in-progress)"
-      OWNER="$("$T" comments "$TICKET" | python3 -c '
-import json, re, sys
-head = "**" + sys.argv[1] + "** — "
-hits = [m.group(1) for b in json.load(sys.stdin)
-        for m in [re.match(re.escape(head) + r"(engineer-[ab]) ", b)] if m]
-print(hits[-1] if hits else "")
-' "$IP")"
+      # Backward edge: the ticket goes back to the engineer that built it. One source for that,
+      # the same the four-eyes gates ask: ticket_builder in common.sh. Its own copy of the regex
+      # knew only engineer-a and engineer-b and left a third engineer without an owner.
+      OWNER="$(ticket_builder "$TICKET")"
       [ -n "$OWNER" ] || die "#$TICKET: no earlier engineer in the comment history — do not guess"
     fi
     ;;
@@ -121,13 +117,27 @@ print(hits[-1] if hits else "")
       || die "#$TICKET: rfr rejected (OWNS revision ${APPROVAL%%$'\t'*}) — $SCOPE_MSG"
     ;;
   in-review)
-    in_list "$R" "$REVIEWERS" || die "'in-review' is picked up only by a reviewer, not $R"
-    OWNER="$R"; KEEP="$REVIEWERS"
+    in_list "$R" "$REVIEWERS" || die "'in-review' is picked up only by an engineer, not $R"
+    BUILDER="$(ticket_builder "$TICKET")"
+    [ "$R" != "$BUILDER" ] || die "#$TICKET: in-review rejected — $R built this ticket itself. Four eyes means another engineer reviews: hand it over in the chat."
+    OWNER="$R"; KEEP=""
     ;;
   rft)
-    in_list "$R" "$REVIEWERS" || die "'rft' is set only by a reviewer, not $R"
+    in_list "$R" "$REVIEWERS" || die "'rft' is set only by an engineer, not $R"
+    BUILDER="$(ticket_builder "$TICKET")"
+    [ "$R" != "$BUILDER" ] || die "#$TICKET: rft rejected — $R built this ticket and may not release it itself."
     verdicts_missing "$TICKET" "QA PASS" "SIMPLICITY PASS" "SECURITY PASS"
-    [ -z "$VERDICT_MISSING" ] || die "#$TICKET: rft rejected — in PR #$VERDICT_PR the following is missing for HEAD $VERDICT_HEAD8:$VERDICT_MISSING. Format of the first line: '<VERDICT> — HEAD \`$VERDICT_HEAD8\`, ...'"
+    [ -z "$VERDICT_MISSING" ] || die "#$TICKET: rft rejected — in PR #$VERDICT_PR the following is missing for HEAD $VERDICT_HEAD8:$VERDICT_MISSING. Format of the first line: '<VERDICT> — HEAD \`$VERDICT_HEAD8\` · <engineer>, ...'"
+    # Every verdict names its reviewer. Without the name four eyes cannot be measured: all sessions
+    # share one account, and since one role gives all three verdicts, the kind of verdict no longer
+    # tells who wrote it.
+    while IFS='=' read -r v a; do
+      [ -n "$v" ] || continue
+      [ -n "$a" ] || die "#$TICKET: rft rejected — '$v' in PR #$VERDICT_PR names no reviewer. First line: '$v — HEAD \`$VERDICT_HEAD8\` · <engineer>, ...'"
+      [ "$a" != "$BUILDER" ] || die "#$TICKET: rft rejected — '$v' comes from $a, who built the ticket. Another engineer has to review it."
+    done <<VERDICTS
+$VERDICT_AUTHORS
+VERDICTS
     # The verdicts do not replace the comparison: every executable gate ran green for this HEAD.
     GATE_MSG="$(python3 "$BIN_DIR/gates.py" unmet "$TICKETS_DIR/$TICKET/GATES.md" "$VERDICT_HEAD8" runnable 2>&1)" \
       || die "#$TICKET: rft rejected — $GATE_MSG"
@@ -142,17 +152,16 @@ $LINT_RFT"
       || die "#$TICKET: rft rejected — $QA_MSG"
     ;;
   in-testing)
-    [ "$R" = "acceptance-tester" ] || die "'in-testing' is picked up only by the acceptance-tester, not $R"
+    in_list "$R" "$REVIEWERS" || die "'in-testing' is picked up only by an engineer, not $R"
+    BUILDER="$(ticket_builder "$TICKET")"
+    [ "$R" != "$BUILDER" ] || die "#$TICKET: in-testing rejected — $R built this ticket. The acceptance is run by another engineer."
     OWNER="$R"
     ;;
   done)
+    # Since the cast shrank there is no merge-gate: done and the merge belong to the product-owner.
     case "$R" in
       product-owner) ;;
-      merge-gate)
-        verdicts_missing "$TICKET" "PO OK"
-        [ -z "$VERDICT_MISSING" ] || die "#$TICKET: done rejected — no 'PO OK — HEAD \`$VERDICT_HEAD8\`' in PR #$VERDICT_PR. The product-owner has the last word."
-        ;;
-      *) die "'done' is set only by the product-owner, or by merge-gate with PO OK — not $R" ;;
+      *) die "'done' is set only by the product-owner — not $R" ;;
     esac
     # Not even past the merge is there a done while an AC is given up via ABANDON.
     HANDOFF="$(python3 "$BIN_DIR/gates.py" abandoned "$TICKETS_DIR/$TICKET/GATES.md" 2>&1)" || die "#$TICKET: done rejected — $HANDOFF"
@@ -184,8 +193,17 @@ if [ -z "$OWNER" ]; then
   for a in $("$T" assignees "$TICKET"); do "$T" unassign "$TICKET" "$a"; done
 fi
 
+# Who the comment names: at in-progress the OWNER, everywhere else the acting role. Reason: this
+# line is the only source for "who built this ticket" (ticket_builder). Named it the actor, a
+# rejection would make the reviewer the builder — then the real builder could review its own work
+# in the second round and the rejecting one could not (measured 2026-09-29).
+WER="$R"
+if [ "$NEW" = "in-progress" ] && [ -n "${OWNER:-}" ] && [ "$OWNER" != "$R" ]; then
+  WER="$OWNER (sent back by $R)"
+fi
+
 # On planned this comment is at the same time the approval of the scope (bin/gates.py approved).
-"$T" comment "$TICKET" "**$(board_name "$NEW")** — $R · $(now) · session \`$SID\`
+"$T" comment "$TICKET" "**$(board_name "$NEW")** — $WER · $(now) · session \`$SID\`
 
 ${NOTE:-_no comment_}${OWNS_LEDGER:+
 

@@ -34,7 +34,7 @@ else
     || die "labels of $KIT_REPO not readable: $LABELS_JSON"
 fi
 
-OWNING_ROLES="engineer-a engineer-b qa-ruthless simplicity-reviewer security-engineer acceptance-tester"
+OWNING_ROLES="engineer-a engineer-b engineer-c"
 
 RESULT="$(python3 - "$KIT_STATUS_MAP" "$KIT_LABEL_PREFIX" "$KIT_OWNER_PREFIX" "$KIT_SPRINT_LABEL" "$OWNING_ROLES" \
   "$PROJECT_JSON" "$FIELDS_JSON" "$LABELS_JSON" <<'PY'

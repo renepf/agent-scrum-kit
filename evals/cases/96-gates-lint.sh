@@ -7,6 +7,8 @@ sandbox; trap sandbox_cleanup EXIT
 sandbox_sprint > /dev/null
 
 n=0; wrong=0; errors=""
+# The builder of a ticket comes from the comment history (ticket_builder in bin/common.sh).
+BUILT_BY_A='{"comments":["**In progress** — engineer-a picked it up"]}'
 fail() { wrong=$((wrong + 1)); errors="$errors $*"; }
 expect() { n=$((n + 1)); case "$2" in $3) ;; *) fail "$1:'$(printf '%s' "$2" | tail -1 | head -c 140)'" ;; esac; }
 
@@ -58,35 +60,39 @@ k62="$(KIT_ROLE=product-owner "$BIN/tickets.sh" comments 62)"
 expect c-hint-in-the-comment "$k62" '*Lint hints*AC-2*manual-gate*'
 
 # d) rft: the CHECK weakened to a fixed echo after planned and run green because of it → refused
-sandbox_issue 63 '{"labels":["status:in-review","owner:qa-ruthless"],"pr":{"number":630,"head":"63636363aa","comments":[],"files":["src/a.py"]}}'
+# engineer-a built the ticket (the comment status.sh writes itself), engineer-b reviews it: the
+# builder is turned away at rft, and every verdict names its reviewer.
+sandbox_issue 63 '{"labels":["status:in-review","owner:engineer-b"],"pr":{"number":630,"head":"63636363aa","comments":[],"files":["src/a.py"]}}'
+sandbox_issue 63 "$BUILT_BY_A"
 sandbox_plannable 63
-for v in "SIMPLICITY PASS" "SECURITY PASS"; do sandbox_pr_comment 63 "$v — HEAD \`63636363\`, eval"; done
+for v in "SIMPLICITY PASS" "SECURITY PASS"; do sandbox_pr_comment 63 "$v — HEAD \`63636363\` · engineer-b, eval"; done
 python3 - "$SANDBOX/tickets/63/GATES.md" <<'PY'
 import sys
 p = sys.argv[1]; t = open(p).read()
 open(p, "w").write(t.replace("CHECK: python3 tools/check_result.py", "CHECK: echo result checked"))
 PY
 sandbox_gates_green 63
-expect d-rft-weakened "$(KIT_ROLE=qa-ruthless "$BIN/status.sh" 63 rft x 2>&1)" '*rejected*tautological-check*'
+expect d-rft-weakened "$(KIT_ROLE=engineer-b "$BIN/status.sh" 63 rft x 2>&1)" '*rejected*tautological-check*'
 
 # e) rft: one QA line "AC-<n>: mutation … → red" per executable gate for the current HEAD; manual ones need none
-sandbox_issue 64 '{"body":"AC-1: the export has 3 rows\nAC-2: an empty list gives an empty file\nAC-3: the hint is visible","labels":["status:in-review","owner:qa-ruthless"],"pr":{"number":640,"head":"64646464aa","comments":[],"files":["src/a.py"]}}'
+sandbox_issue 64 '{"body":"AC-1: the export has 3 rows\nAC-2: an empty list gives an empty file\nAC-3: the hint is visible","labels":["status:in-review","owner:engineer-b"],"pr":{"number":640,"head":"64646464aa","comments":[],"files":["src/a.py"]}}'
+sandbox_issue 64 "$BUILT_BY_A"
 printf '# Gates: #64\n\nOWNS: src/**\n\n- [ ] AC-1: the export has 3 rows\n  CHECK: python3 tools/check_export.py\n  EXPECT: export checked: 3 rows\n  EVIDENCE: pending\n\n- [ ] AC-2: an empty list gives an empty file\n  CHECK: python3 tools/check_empty.py\n  EXPECT: empty file checked\n  EVIDENCE: pending\n\n- [ ] AC-3: the hint is visible\n  EVIDENCE: pending\n' | sandbox_ledger 64
 sandbox_gates_green 64 gatesonly
-for v in "SIMPLICITY PASS" "SECURITY PASS"; do sandbox_pr_comment 64 "$v — HEAD \`64646464\`, eval"; done
-rft64() { KIT_ROLE=qa-ruthless "$BIN/status.sh" 64 rft x 2>&1; }
-sandbox_pr_comment 64 'QA PASS — HEAD `64646464`, 2 tests added'
+for v in "SIMPLICITY PASS" "SECURITY PASS"; do sandbox_pr_comment 64 "$v — HEAD \`64646464\` · engineer-b, eval"; done
+rft64() { KIT_ROLE=engineer-b "$BIN/status.sh" 64 rft x 2>&1; }
+sandbox_pr_comment 64 'QA PASS — HEAD `64646464` · engineer-b, 2 tests added'
 expect e-without-lines "$(rft64)" '*rejected*mutation*AC-1*AC-2*'
-sandbox_pr_comment 64 'QA PASS — HEAD `11111111`, old
+sandbox_pr_comment 64 'QA PASS — HEAD `11111111` · engineer-b, old
 AC-1: mutation Zeilenzaehler aus → red
 AC-2: mutation Leerpruefung aus → red'
 expect e-old-HEAD-does-not-count "$(rft64)" '*rejected*mutation*AC-1*AC-2*'
-sandbox_pr_comment 64 'QA PASS — HEAD `64646464`, addendum
+sandbox_pr_comment 64 'QA PASS — HEAD `64646464` · engineer-b, addendum
 AC-1: mutation Zeilenzaehler aus → red'
 oe="$(rft64)"
 expect e-only-AC-1 "$oe" '*rejected*mutation*AC-2*'
 case "$oe" in *AC-3*) fail e:manual-gate-demanded ;; esac
-sandbox_pr_comment 64 'QA PASS — HEAD `64646464`, addendum
+sandbox_pr_comment 64 'QA PASS — HEAD `64646464` · engineer-b, addendum
 AC-2: mutation Leerpruefung aus → red'
 expect e-both "$(rft64)" '*in-review → rft*'
 

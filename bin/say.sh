@@ -2,7 +2,7 @@
 # Append a chat entry to your OWN role file and reindex.
 #
 #   bin/say.sh "#712 · PR #755 green, 14 tests" <<'EOF'
-#   Open: network drop in the middle of the call → @qa-ruthless please check.
+#   Open: network drop in the middle of the call → @engineer-b please check.
 #   EOF
 #
 # Append-only. Existing lines are never changed — the index points at

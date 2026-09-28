@@ -13,14 +13,16 @@ st() { if KIT_ROLE="$1" "$BIN/status.sh" 1 "$2" "eval" > /dev/null 2>&1; then pa
 st product-owner planned
 st engineer-a in-progress
 st engineer-a rfr
-st qa-ruthless in-review
-KIT_ROLE=simplicity-reviewer "$BIN/claim.sh" 1 > /dev/null 2>&1 || errors="$errors claim-simplicity"
-KIT_ROLE=security-engineer "$BIN/claim.sh" 1 > /dev/null 2>&1 || errors="$errors claim-security"
-for v in "QA PASS" "SIMPLICITY PASS" "SECURITY PASS"; do sandbox_pr_comment 1 "$v — HEAD \`a1b2c3d4\`, eval"; done
-sandbox_gates_green 1
-st security-engineer rft
-st acceptance-tester in-testing
-sandbox_pr_comment 1 "MERGE-GATE OK — HEAD \`a1b2c3d4\`, eval"
+# engineer-a built it, so engineer-b reviews it — and wears every hat from here to the acceptance.
+st engineer-b in-review
+# There is no second reviewer to claim the ticket any more (bin/claim.sh is gone): the one
+# reviewing engineer takes ownership at in-review, which is what the claim used to show.
+case "$(sandbox_labels 1)" in *"owner:engineer-b"*) ;; *) errors="$errors review-owner='$(sandbox_labels 1)'" ;; esac
+for v in "SIMPLICITY PASS" "SECURITY PASS"; do sandbox_pr_comment 1 "$v — HEAD \`a1b2c3d4\` · engineer-b, eval"; done
+sandbox_gates_green 1 "" engineer-b
+st engineer-b rft
+st engineer-b in-testing
+sandbox_pr_comment 1 "MERGE-GATE OK — HEAD \`a1b2c3d4\` · engineer-b, eval"
 KIT_ROLE=product-owner "$BIN/merge.sh" 1 > /dev/null 2>&1 && path="$path>done(merge.sh)" || errors="$errors merge.sh"
 
 state="$(python3 -c 'import json,sys; i=json.load(open(sys.argv[1]))["1"]; print(i["state"], i["pr"]["state"], ",".join(i["labels"]) or "no-labels")' "$SANDBOX/issues.json")"

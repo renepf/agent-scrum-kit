@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-CASE_DESC="nine real sessions start in parallel: each reads its role, ticks, registers with its own session id and PID, MCP connected, no subagent"
+CASE_DESC="every role starts as a real session in parallel: each reads its role, ticks, registers with its own session id and PID, MCP connected, no subagent"
 CASE_KIND="live"
 CASE_HOST="claude-code"
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
-# Cost: nine model calls with two role sheets and one tick each (on 2026-09-14 ~90 s).
+# Cost: one model call per role with two role sheets and one tick each (nine roles on 2026-09-14 ~90 s,
+# five since the cut of 2026-09-28).
 W="$(mktemp -d "${TMPDIR:-/tmp}/kit-start9.XXXXXX")"; trap 'rm -rf "$W"' EXIT
 K="$W/kit"; mkdir -p "$K" "$W/out"
 ( cd "$KIT_ROOT" && tar --exclude .git --exclude kit.env --exclude board.env --exclude sprints --exclude .pid-roles --exclude .role-loop --exclude 'memory/*/*' -cf - . ) | ( cd "$K" && tar -xf - )
@@ -19,7 +20,8 @@ mkdir -p "$K/tickets/1"; for a in intent.md spec.md plan.md; do printf 'live cas
 ( cd "$K" && KIT_ROLE=product-owner KIT_SESSION_ID=setup KIT_HOST_PID=$$ bin/tickets.sh add-label 1 status:planned \
   && KIT_ROLE=product-owner KIT_SESSION_ID=setup KIT_HOST_PID=$$ bin/sprint-new.sh startprobe 1 ) > /dev/null 2>&1
 rm -f "$K"/sprints/*/roster.md "$K"/sprints/*/.lease-* "$K"/sprints/*/.tick-*; rm -rf "$K/.pid-roles"
-ROLES="product-owner simplicity-reviewer watchdog engineer-a engineer-b qa-ruthless security-engineer acceptance-tester merge-gate"
+ROLES="product-owner requirements-engineer watchdog engineer-a engineer-b engineer-c"
+ERWARTET="$(echo "$ROLES" | wc -w | tr -d " ")"
 JOBS=""
 for r in $ROLES; do
   case "$r" in engineer-*) f=engineer.md ;; *) f="$r.md" ;; esac
@@ -72,6 +74,6 @@ PY
 rows="$(printf '%s' "$out" | sed -n 's/^ROWS //p')"; pids="$(printf '%s' "$out" | sed -n 's/^PIDS //p')"
 blocked="$(printf '%s' "$out" | sed -n 's/^BLOCKED //p')"; bad="$(printf '%s' "$out" | sed -n 's/^BAD //p')"
 [ -z "$blocked" ] || { echo "OBSERVED: BLOCKED — the host did not answer for:$blocked"; exit 3; }
-observe "roster $rows/9 · $pids distinct host PIDs · per role session-id=roster, anchor, hook anchor, MCP 2x connected, 0 subagents, TICK=ok${bad:+ · ERRORS: $bad}"
+observe "roster $rows/$ERWARTET · $pids distinct host PIDs · per role session-id=roster, anchor, hook anchor, MCP 2x connected, 0 subagents, TICK=ok${bad:+ · ERRORS: $bad}"
 echo "OBSERVED: $OBSERVED"
-[ "$rows" = 9 ] && [ "$pids" = 9 ] && [ -z "$bad" ]
+[ "$rows" = "$ERWARTET" ] && [ "$pids" = "$ERWARTET" ] && [ -z "$bad" ]

@@ -50,7 +50,7 @@ no `plan.md`, or one of them empty. A ticket a colleague already holds (`owner:`
 6. `tickets/<nr>/intent.md`: problem in the originator's words, why now, who is affected, what is explicitly
    out of scope, and every open question as `UNKNOWN — <where to clear it>`. No solution, no technique.
 7. `tickets/<nr>/spec.md`: what the result does, observable from outside — states, inputs, edge cases, what
-   happens when it fails. Written for the product-owner and the acceptance-tester, not for a compiler. Where
+   happens when it fails. Written for the product-owner and whoever runs the acceptance, not for a compiler. Where
    you see a candidate for an acceptance criterion, write it as a sentence; the product-owner decides whether
    it becomes an `AC-<n>` in the issue.
 8. `tickets/<nr>/plan.md`, **together with the product-owner**: the steps and the files the work touches, in

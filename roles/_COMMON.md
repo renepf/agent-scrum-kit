@@ -29,8 +29,7 @@ End this session. Do not work around it.
 |---|---|
 | situation | `bin/tick.sh` |
 | pick up a ticket or hand it on | `bin/status.sh <nr> <status> "<one-liner>"` |
-| join `in-review` as a further reviewer | `bin/claim.sh <nr>` |
-| merge and set `done` | `bin/merge.sh <nr>` (product-owner; merge-gate only with `PO OK`) |
+| merge and set `done` | `bin/merge.sh <nr>` (**product-owner only**) |
 | tell something, address somebody | `bin/say.sh "#<nr> · <subject>" <<'EOF' … EOF` |
 | memory | `bin/brain.sh note · share · forget · doc · handover · log · recall` |
 
@@ -38,7 +37,8 @@ End this session. Do not work around it.
 
 `rfr` and `rft` say: finished for the next stage, **nobody** works on it. `in-review`
 and `in-testing` say: a role works on it **now**. Whoever picks a ticket up sets the
-In status **immediately** — the second reviewer too (`claim.sh`), when the first is already in.
+In status **immediately**. One engineer reviews a ticket, not two: one `owner:` label, one head,
+all four hats.
 
 ## Verdicts
 

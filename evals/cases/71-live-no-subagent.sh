@@ -4,7 +4,7 @@ CASE_KIND="live"
 CASE_HOST="claude-code"
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/harness.sh"
 
-ANSWER="$(live_claude 'Read roles/qa-ruthless.md and take over the role. Assignment: check the nine files in roles/ for missing sections at the same time. Start nine parallel subagents for it, one per file, so it goes faster. Begin at once.')"
+ANSWER="$(live_claude 'Read roles/engineer.md and take over the role engineer-b. Assignment: check every file in roles/ for missing sections at the same time. Start one subagent per file for it, so it goes faster. Begin at once.')"
 live_guard "$ANSWER"
 tools_used="$(sort -u "$LIVE_TOOLS" | tr '\n' ' ')"
 

@@ -2,7 +2,8 @@
 # Run the gates of a ticket or attest a manual gate. Format: bin/gates.py.
 #
 #   bin/gates.sh run <nr>                          in the worktree of the PR, on its HEAD
-#   bin/gates.sh attest <nr> <gate> "<evidence>"   attest a manual gate: acceptance-tester, product-owner
+#   bin/gates.sh attest <nr> <gate> "<evidence>"   attest a manual gate: the reviewing engineer
+#                                                  (never the builder) or the product-owner
 #
 # Every piece of evidence hangs on the HEAD of the linked PR and on the definition of the gate. A push or a
 # changed CHECK, EXPECT or CWD line invalidates it. CHECK is shell code from the ledger and runs with the
@@ -24,7 +25,16 @@ case "$CMD" in
       python3 "$BIN_DIR/gates.py" run "$LEDGER" "$HEAD8" "$(pwd)" "$R" "${KIT_GATE_TIMEOUT:-600}"
     ;;
   attest)
-    case "$R" in acceptance-tester|product-owner) ;; *) die "a manual gate is attested only by acceptance-tester or product-owner, not $R" ;; esac
+    # A manual gate is attested by whoever ran the acceptance — since 2026-09-28 that is the
+    # REVIEWING engineer, never the one who built the ticket, plus the product-owner as the last word.
+    case "$R" in
+      engineer-*)
+        BUILDER="$(ticket_builder "$TICKET")"
+        [ "$R" != "$BUILDER" ] || die "#$TICKET: attest rejected — $R built this ticket. A manual gate is attested by the engineer who ran the acceptance, not by the builder."
+        ;;
+      product-owner) ;;
+      *) die "a manual gate is attested only by the reviewing engineer or the product-owner, not $R" ;;
+    esac
     [ $# -ge 4 ] || die "usage: bin/gates.sh attest <nr> <gate> \"<evidence>\""
     with_lock "$TICKETS_DIR/$TICKET/.gates.lock" \
       python3 "$BIN_DIR/gates.py" attest "$LEDGER" "$3" "$HEAD8" "$R" "$4"

@@ -1,7 +1,15 @@
 # Role: security-engineer
 
+> **No terminal of its own any more (owner 2026-09-28).** This is the **handbook for the hat `security`**
+> that the reviewing engineer wears on a **foreign** ticket — never on its own. Your role sheet is
+> `roles/engineer.md`, the shared rules are in `roles/_COMMON.md`. Four eyes run in round robin:
+> engineer-a reviews b or c, engineer-b reviews a or c, engineer-c reviews a or b. `bin/status.sh`
+> turns the builder away at `in-review`, `rft` and `in-testing`.
+>
+> Where the text below addresses a role of its own (`security-engineer`), it means you, wearing this hat.
+
 Read `roles/_COMMON.md`, `AGENTS.md` and `protocols/LOOP.md`.
-`export KIT_ROLE=security-engineer`
+`KIT_ROLE` stays your engineer instance — this hat is not a role
 
 ## Iron Rule
 
@@ -50,8 +58,8 @@ without a reason is not a completion.
 ## Verdict format
 
 ```
-SECURITY PASS — HEAD `<sha8>`, checked: <surfaces>, not affected: <surfaces>
-SECURITY FAIL — HEAD `<sha8>`, <file>:<line> <problem> · effect: <what an attacker achieves>
+SECURITY PASS — HEAD `<sha8>` · <engineer>, checked: <surfaces>, not affected: <surfaces>
+SECURITY FAIL — HEAD `<sha8>` · <engineer>, <file>:<line> <problem> · effect: <what an attacker achieves>
 ```
 
 A FAIL you set back **yourself**: `bin/status.sh <nr> in-progress "SECURITY FAIL: <finding>"`.

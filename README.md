@@ -82,7 +82,7 @@ If it says `missing required scopes`, the token is valid and only a permission i
 
 ### 2.1 Order
 
-1. **product-owner** and **simplicity-reviewer** first. Before `planned` the PO needs the
+1. **product-owner** first. Before `planned` the PO needs the
    verdict on the solution path, and only their `bin/sprint-new.sh` creates the sprint.
 2. **watchdog** right after. It measures from the start and is the only role that commits.
 3. Everybody else in any order. They need no special case: their tick reports
@@ -123,19 +123,23 @@ role sheets are **not** read again every round, that would burn context:
 Every role runs on a **fixed interval** (table 2.3). A round without work ends after the
 tick; it costs one tick, no more.
 
-### 2.3 The nine terminals
+### 2.3 The five terminals
 
 | # | `KIT_ROLE` | `<file>` | `<interval>` | waits for |
 |---|---|---|---|---|
 | 1 | `product-owner` | `product-owner.md` | `10m` | sees every state |
-| 2 | `simplicity-reviewer` | `simplicity-reviewer.md` | `5m` | `@simplicity-reviewer` from the PO, then `rfr` |
+| 2 | `requirements-engineer` | `requirements-engineer.md` | `10m` | `backlog` |
 | 3 | `watchdog` | `watchdog.md` | `5m` | nothing, measures on its interval |
-| 4 | `engineer-a` | `engineer.md` | `5m` | rejections, then `planned` |
-| 5 | `engineer-b` | `engineer.md` | `5m` | rejections, then `planned` |
-| 6 | `qa-ruthless` | `qa-ruthless.md` | `5m` | `rfr`, `in-review` |
-| 7 | `security-engineer` | `security-engineer.md` | `5m` | `rfr`, `in-review` |
-| 8 | `acceptance-tester` | `acceptance-tester.md` | `10m` | `rft` |
-| 9 | `merge-gate` | `merge-gate.md` | `10m` | `in-testing` and `@merge-gate` |
+| 4 | `engineer-a` | `engineer.md` | `5m` | rejections, then a foreign `rfr`, then `planned` |
+| 5 | `engineer-b` | `engineer.md` | `5m` | the same |
+| 6 | `engineer-c` | `engineer.md` | `5m` | the same |
+
+Since 2026-09-28 the reviewing roles are gone. Every engineer builds its own ticket and reviews a
+**foreign** one, wearing all four hats — QA, simplicity, security, acceptance — plus the merge
+report. Four eyes in round robin: `engineer-a` reviews `b` or `c`, `engineer-b` reviews `a` or `c`,
+`engineer-c` reviews `a` or `b`. `bin/status.sh` turns the builder away, and every verdict names its
+reviewer. The handbook per hat stays in `roles/qa-ruthless.md`, `roles/simplicity-reviewer.md`,
+`roles/security-engineer.md`, `roles/acceptance-tester.md` and `roles/merge-gate.md`.
 
 Why these cadences: `protocols/LOOP.md` section 4. `engineer-a` and `engineer-b` read the same
 sheet; the role name in the first input tells them apart.
@@ -166,7 +170,7 @@ The product-owner does that themselves, per their role sheet:
 3. `bin/sprint-new.sh <slug> <ticket numbers…>` — the tickets stay on `backlog` while you do this.
    Only this step creates the chat; before it, every `say.sh` fails with
    `no active sprint`.
-4. Put the solution path into the chat as a question to `@simplicity-reviewer`, wait for the verdict.
+4. Put the solution path into the chat as a question to an engineer that will not build it, wait for the verdict.
 5. Per ticket `bin/status.sh <nr> planned "verdict: <short>"`. Without a gate for every AC it refuses.
 
 At the end of every ticket the product-owner has the last word: `bin/merge.sh <nr>` merges only
@@ -248,7 +252,7 @@ If `roles/_COMMON.md` changes, that concerns all nine sessions.
 | `INSTALL.md` | setup step by step, with measured outputs and an error table |
 | `protocols/LOOP.md` | status model, edges, gates, loop order, tick, chat, twin lock, budget |
 | `adapters/<host>/` | how a session starts, loads a role, reports its id |
-| `bin/` | `tick.sh`, `status.sh`, `claim.sh`, `merge.sh`, `say.sh`, `reindex.sh`, `brain.sh`, `budget.sh`, `register.sh`, `restart-self.sh`, `sprint-new.sh`, `commit.sh`, `board-setup.sh`, `board-check.sh`, `preflight.sh`, `tickets.sh`, `gates.py`, `gates.sh`, `revise.sh` |
+| `bin/` | `tick.sh`, `status.sh`, `merge.sh`, `say.sh`, `reindex.sh`, `brain.sh`, `budget.sh`, `register.sh`, `restart-self.sh`, `sprint-new.sh`, `commit.sh`, `board-setup.sh`, `board-check.sh`, `preflight.sh`, `tickets.sh`, `gates.py`, `gates.sh`, `revise.sh` |
 | `tickets/<nr>/` | `GATES.md`: the gate ledger per ticket, one gate per AC, `OWNS:` as the scope, format and rules from unlazy (MIT); the approval of the scope stands as a comment on the issue |
 | `evals/` | the suite that checks whether all of this holds |
 | `memory/` | memory per role plus a shared one, one file per fact, a generated index |

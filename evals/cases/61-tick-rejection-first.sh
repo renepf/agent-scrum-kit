@@ -11,8 +11,9 @@ sandbox_issue 22 '{"title":"a new ticket","labels":["sprint:current","status:pla
 KIT_ROLE=product-owner "$BIN/status.sh" 21 planned x > /dev/null
 KIT_ROLE=engineer-a "$BIN/status.sh" 21 in-progress x > /dev/null
 KIT_ROLE=engineer-a "$BIN/status.sh" 21 rfr x > /dev/null
-KIT_ROLE=qa-ruthless "$BIN/status.sh" 21 in-review x > /dev/null
-KIT_ROLE=qa-ruthless "$BIN/status.sh" 21 in-progress "boundary value 0 untested" > /dev/null
+# engineer-b reviews what engineer-a built and throws it back — the rejection belongs to engineer-a.
+KIT_ROLE=engineer-b "$BIN/status.sh" 21 in-review x > /dev/null
+KIT_ROLE=engineer-b "$BIN/status.sh" 21 in-progress "boundary value 0 untested" > /dev/null
 
 a="$(KIT_ROLE=engineer-a "$BIN/tick.sh" 2>&1)"
 b="$(KIT_ROLE=engineer-b "$BIN/tick.sh" 2>&1)"

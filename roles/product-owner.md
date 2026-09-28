@@ -60,12 +60,12 @@ or a sprint whose tickets are all `done`.
 6. `bin/sprint-new.sh <slug> <ticket numbers…>`, the goal in `sprint.md`. The tickets stay on
    `backlog` while you do this. **Only this step creates the chat** — before it, every `say.sh` fails with
    `no active sprint`.
-7. **Obtain the verdict before anybody codes:** `say.sh` at `@simplicity-reviewer` with the
+7. **Obtain the verdict before anybody codes:** `say.sh` at an engineer that will not build it, with the
    planned solution path. Without a `SOLUTION-VERDICT` no `planned`. Then per ticket
    `bin/status.sh <nr> planned "verdict: <short>"` — it refuses while an AC has no gate.
 8. Hold the cadence: `KIT_TICKET_MINUTES` per ticket. If an engineer overruns, their next
    ticket starts at the next grid point.
-9. In `in-testing` you read along with the acceptance-tester. An unmet AC sends it back:
+9. In `in-testing` you read along with the reviewing engineer. An unmet AC sends it back:
    `bin/status.sh <nr> in-progress "AC-3 not met: <observation>"`.
 
 ## Hand-off condition
@@ -83,7 +83,7 @@ If an `ABANDON` stands in the ledger, `merge.sh` and `done` refuse with `HANDOFF
 decide: take the AC out of issue and ledger with a follow-up ticket, or send the ticket back.
 
 If you do not want to merge yourself, you write `PO OK — HEAD \`<sha8>\`` into the PR. Then
-merge-gate may run `merge.sh`.
+you alone may run `merge.sh` — since 2026-09-28 there is no merge-gate.
 
 **With a squash merge:** a branch commit never becomes an ancestor of the integration branch. Ancestor
 tests then answer wrongly in **both** directions. Check landed work through the PR state
@@ -100,6 +100,6 @@ On a rejection in the chat: `PO-VERDICT #<nr> · back · <AC>: <observation>`.
 ## Hard limits
 
 - No production code, no tests, no detailed reviews.
-- No merge past the merge-gate, not even "because it is small".
+- No merge without `MERGE-GATE OK` of the reviewing engineer, not even "because it is small".
 - ACs describe observable behaviour. An AC that prescribes the implementation is a mistake.
 - An approval you pass on you measure again directly beforehand.

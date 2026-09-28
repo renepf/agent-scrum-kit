@@ -9,6 +9,8 @@ sandbox_sprint > /dev/null
 n=0; wrong=0; errors=""
 fail() { wrong=$((wrong + 1)); errors="$errors $*"; }
 expect() { n=$((n + 1)); case "$2" in $3) ;; *) fail "$1:'$(printf '%s' "$2" | tail -1 | head -c 140)'" ;; esac; }
+# The builder of a ticket comes from the comment history (ticket_builder in bin/common.sh).
+BUILT_BY_A='{"comments":["**In progress** — engineer-a picked it up"]}'
 pr_state() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]]["pr"].get("state","OPEN"))' "$SANDBOX/issues.json" "$1"; }
 
 ledger() { # <nr> <with-abandon: yes|no>
@@ -23,18 +25,24 @@ ledger() { # <nr> <with-abandon: yes|no>
 }
 
 # a) The merge and done with an open ABANDON: refused, nothing merged, nothing written
-sandbox_issue 81 '{"body":"AC-1: the print view shows every row\nAC-2: the print lands on the printer","labels":["status:in-testing","owner:acceptance-tester"],"pr":{"number":810,"head":"81818181aa","comments":["MERGE-GATE OK — HEAD `81818181`, eval","PO OK — HEAD `81818181`, eval"],"checks":"pass","state":"OPEN","files":["src/print/view.py"]}}'
+# engineer-a built it, engineer-b reviewed it: the MERGE-GATE OK comes from the reviewing engineer
+# and names it. 'PO OK' is gone — the product-owner merges, it does not countersign itself.
+sandbox_issue 81 '{"body":"AC-1: the print view shows every row\nAC-2: the print lands on the printer","labels":["status:in-testing","owner:engineer-b"],"pr":{"number":810,"head":"81818181aa","comments":["MERGE-GATE OK — HEAD `81818181` · engineer-b, eval"],"checks":"pass","state":"OPEN","files":["src/print/view.py"]}}'
+sandbox_issue 81 "$BUILT_BY_A"
 ledger 81 yes
 sandbox_gates_green 81 gatesonly
 s1="$(sandbox_snap 81)"
 expect a-merge-po "$(KIT_ROLE=product-owner "$BIN/merge.sh" 81 2>&1)" '*HANDOFF REQUIRED*AC-2*printer API missing*'
-expect a-merge-gate "$(KIT_ROLE=merge-gate "$BIN/merge.sh" 81 2>&1)" '*HANDOFF REQUIRED*AC-2*'
+# There is no second merging role any more (merge-gate is gone). What that check measured — no
+# other role gets past the ABANDON — is now the stronger truth: no other role merges at all.
+expect a-merge-only-po "$(KIT_ROLE=engineer-b "$BIN/merge.sh" 81 2>&1)" '*only the product-owner merges*'
 expect a-done-direkt "$(KIT_ROLE=product-owner "$BIN/status.sh" 81 done x 2>&1)" '*HANDOFF REQUIRED*AC-2*'
 n=$((n + 1)); [ "$(pr_state 81)" = OPEN ] || fail "a:PR-gemergt-trotz-ABANDON($(pr_state 81))"
 n=$((n + 1)); [ "$s1" = "$(sandbox_snap 81)" ] || fail a:state-changed
 
 # b) The review does not block it: rft without evidence and without a QA line for the abandoned gate
-sandbox_issue 82 '{"body":"AC-1: the print view shows every row\nAC-2: the print lands on the printer","labels":["status:in-review","owner:qa-ruthless"],"pr":{"number":820,"head":"82828282aa","comments":["SIMPLICITY PASS — HEAD `82828282`, eval","SECURITY PASS — HEAD `82828282`, eval","QA PASS — HEAD `82828282`, eval\nAC-1: mutation Zeilenzaehler aus → red"],"files":["src/print/view.py"]}}'
+sandbox_issue 82 '{"body":"AC-1: the print view shows every row\nAC-2: the print lands on the printer","labels":["status:in-review","owner:engineer-b"],"pr":{"number":820,"head":"82828282aa","comments":["SIMPLICITY PASS — HEAD `82828282` · engineer-b, eval","SECURITY PASS — HEAD `82828282` · engineer-b, eval","QA PASS — HEAD `82828282` · engineer-b, eval\nAC-1: mutation Zeilenzaehler aus → red"],"files":["src/print/view.py"]}}'
+sandbox_issue 82 "$BUILT_BY_A"
 ledger 82 yes
 sandbox_gates_green 82 gatesonly
 python3 - "$SANDBOX/tickets/82/GATES.md" <<'PY'
@@ -44,7 +52,7 @@ head, sep, rest = t.partition("- [x] AC-2:")
 rest = re.sub(r"EVIDENCE: .*", "EVIDENCE: pending", rest, count=1)
 open(p, "w").write(head + "- [ ] AC-2:" + rest)
 PY
-expect b-rft-skips "$(KIT_ROLE=qa-ruthless "$BIN/status.sh" 82 rft x 2>&1)" '*in-review → rft*'
+expect b-rft-skips "$(KIT_ROLE=engineer-b "$BIN/status.sh" 82 rft x 2>&1)" '*in-review → rft*'
 
 # c) The run skips an abandoned gate, even when its CHECK would fail
 P="$SANDBOX/lauf"; mkdir -p "$P"
@@ -60,6 +68,6 @@ ledger 81 no
 sandbox_gates_green 81 gatesonly
 expect d-merge-after-the-decision "$(KIT_ROLE=product-owner "$BIN/merge.sh" 81 2>&1)" '*in-testing → done*'
 
-observe "$((n - wrong))/$n checks passed · the merge (PO, merge-gate) and done refused with ABANDON, the PR open, nothing written · rft skips · the run skips · merged after the PO decision${errors:+ · ERRORS:$errors}"
+observe "$((n - wrong))/$n checks passed · the PO merge and done refused with ABANDON, no other role merges, the PR open, nothing written · rft skips · the run skips · merged after the PO decision${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
 [ -z "$errors" ]
