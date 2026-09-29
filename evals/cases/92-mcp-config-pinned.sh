@@ -26,11 +26,22 @@ for name, s in {**std, **opt}.items():
     if not pkgs: errors.append(f"{name}:no-package-found")
     for a in pkgs:
         if not PIN.match(a): errors.append(f"{name}:unpinned:{a}")
-    befund.append(f"{name}=" + ",".join(p for p in pkgs if "caveman" not in p))
+    found.append(f"{name}=" + ",".join(p for p in pkgs if "caveman" not in p))
+# --mcp-config ADDS to the globally configured servers; only --strict-mcp-config pins the
+# session to exactly this list. Measured 2026-09-29 with the same one-shot call: 51 346 tokens
+# plain, 52 172 with --mcp-config alone, 35 428 with --strict-mcp-config.
+loop = open(os.path.join(root, "adapters/claude-code/role-loop.sh")).read()
+starts = [l for l in loop.splitlines() if "--mcp-config" in l and not l.lstrip().startswith("#")]
+if not starts:
+    errors.append("role-loop:starts-without-mcp-config")
+for l in starts:
+    if "--strict-mcp-config" not in l:
+        errors.append("role-loop:mcp-config-without-strict")
+found.append("role start pins %d config(s) strictly" % len(starts))
 lic = open(os.path.join(root, "adapters/claude-code/README.md")).read()
 if "Dual-Use" not in lic or "revenue" not in lic: errors.append("licence-note-jcodemunch-missing")
-print("FOUND " + " · ".join(befund))
-print("ERRORS " + " ".join(fehler))
+print("FOUND " + " · ".join(found))
+print("ERRORS " + " ".join(errors))
 PY
 )"
 found="$(printf '%s' "$out" | sed -n 's/^FOUND //p')"; errors="$(printf '%s' "$out" | sed -n 's/^ERRORS //p')"

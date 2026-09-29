@@ -60,7 +60,10 @@ while :; do
   fi
   start=$(date +%s)
   echo "$(now) · starting claude (tick code $trc)" >> "$LOG"
-  ( cd "$KIT_ROOT" && eval "${KIT_LOOP_CLAUDE:-claude -n \"$R\" --settings adapters/claude-code/settings.json --mcp-config .mcp.json}" )
+  # --strict-mcp-config, not just --mcp-config: the latter ADDS to whatever MCP servers the
+  # host has configured globally. Measured 2026-09-29 with one and the same one-shot call:
+  # plain 51 346 tokens · --mcp-config alone 52 172 · with --strict-mcp-config 35 428.
+  ( cd "$KIT_ROOT" && eval "${KIT_LOOP_CLAUDE:-claude -n \"$R\" --settings adapters/claude-code/settings.json --mcp-config .mcp.json --strict-mcp-config}" )
   rc=$?; dur=$(( $(date +%s) - start ))
   echo "$(now) · claude ended rc=$rc after ${dur}s" >> "$LOG"
   [ -f "$STOP" ] && { echo "$(now) · stop file found, the loop ends" >> "$LOG"; break; }
