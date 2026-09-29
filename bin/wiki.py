@@ -184,35 +184,53 @@ def cmd_verify(a):
     print(f"VERIFIED {a[0]}: {ok} quote(s) found verbatim at the pinned commit")
     if promote:
         text = open(p, encoding="utf-8").read()
-        text = re.sub(r"^verified:.*?(?=^\w|\n---)", f"verified:\n  - {{by: wiki.sh, at: {now()}}}\n", text, count=1, flags=re.S | re.M)
-        rel = os.path.relpath(p, STAGING)
-        if rel.startswith(".."):
-            die("--promote works only on a file under the staging directory")
-        dest = os.path.join(ROOT, rel)
-        os.makedirs(os.path.dirname(dest), exist_ok=True)
-        open(dest, "w", encoding="utf-8").write(text)
-        os.remove(p)
-        print(f"promoted: {dest}")
+        stamp = f"verified:\n  - {{by: wiki.sh, at: {now()}}}\n"
+        text = re.sub(r"^verified:[^\n]*\n(?:[ \t]+-[^\n]*\n)*", stamp, text, count=1, flags=re.M)
+        if not os.path.relpath(p, STAGING).startswith(".."):
+            dest = os.path.join(ROOT, os.path.relpath(p, STAGING))
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            open(dest, "w", encoding="utf-8").write(text)
+            os.remove(p)
+            print(f"promoted: {dest}")
+        elif not os.path.relpath(p, ROOT).startswith(".."):
+            open(p, "w", encoding="utf-8").write(text)
+            print(f"verified in place: {p}")
+        else:
+            die("--promote works only on a file under staging or the wiki")
 
 
 def cmd_lint(_):
     cs = concepts(ROOT)
     problems = []
     idx = os.path.join(ROOT, "index.md")
-    linked = set(re.findall(r"\]\(([^)#]+\.md)", open(idx).read())) if os.path.exists(idx) else set()
+    names = {rel for rel, _, _ in cs}
+    graph = {rel: {os.path.normpath(os.path.join(os.path.dirname(rel), l))
+                   for l in re.findall(r"\]\(([^)#\s]+\.md)", body)} for rel, _, body in cs}
+    reach, todo = set(), []
     if not os.path.exists(idx):
         problems.append("index.md missing")
-    elif len(open(idx).read().split("\n")) > 200:
-        problems.append("index.md over 200 lines")
-    names = {rel for rel, _, _ in cs}
+    else:
+        text = open(idx, encoding="utf-8").read()
+        if len(text.split("\n")) > 200:
+            problems.append("index.md over 200 lines")
+        todo = [os.path.normpath(l) for l in re.findall(r"\]\(([^)#\s]+\.md)", text)]
+        for l in todo:
+            if l not in names and not os.path.exists(os.path.join(ROOT, l)):
+                problems.append(f"index.md: dead link {l}")
+    while todo:
+        c = todo.pop()
+        if c in reach or c not in graph:
+            continue
+        reach.add(c)
+        todo.extend(graph[c])
     today = datetime.datetime.now(datetime.timezone.utc)
     for rel, fm, body in cs:
         if not fm.get("type"):
             problems.append(f"{rel}: no type")
-        if rel not in linked:
-            problems.append(f"{rel}: orphan (not linked from index.md)")
-        for l in re.findall(r"\]\(([^)#]+\.md)", body):
-            if os.path.normpath(os.path.join(os.path.dirname(rel), l)) not in names:
+        if rel not in reach:
+            problems.append(f"{rel}: orphan (not reachable from index.md)")
+        for l in graph[rel]:
+            if l not in names:
                 problems.append(f"{rel}: dead link {l}")
         sa = fm.get("stale_after")
         if sa and re.match(r"\d{4}-\d\d-\d\dT", str(sa)) and str(sa) < now():
@@ -222,19 +240,24 @@ def cmd_lint(_):
             age = (today.date() - datetime.date.fromisoformat(gen.group(1))).days
             if age > 14:
                 problems.append(f"{rel}: unverified for {age} days")
-    for l in linked:
-        if not os.path.exists(os.path.join(ROOT, l)):
-            problems.append(f"index.md: dead link {l}")
     print(f"lint: {len(cs)} concept(s), {len(problems)} problem(s)")
     for p in problems:
         print(f"  - {p}")
     sys.exit(1 if problems else 0)
 
 
-CMDS = {"seed": cmd_seed, "query": cmd_query, "add": cmd_add, "verify": cmd_verify,
+def cmd_scan(a):
+    if not a:
+        die("usage: wiki.sh scan <scope.json>   (deterministic first-fill pass, writes <WIKI_ROOT>/<feature>.md and <feature>/*)")
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import wiki_scan
+    wiki_scan.run(a[0], REPOS, ROOT, now())
+
+
+CMDS = {"scan": cmd_scan, "seed": cmd_seed, "query": cmd_query, "add": cmd_add, "verify": cmd_verify,
         "lint": cmd_lint, "receipt": cmd_receipt, "gate": cmd_gate}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] not in CMDS:
-        die("usage: wiki.sh {seed|query|add|verify|lint|receipt|gate} ...")
+        die("usage: wiki.sh {seed|query|add|verify|lint|scan|receipt|gate} ...")
     CMDS[sys.argv[1]](sys.argv[2:])
