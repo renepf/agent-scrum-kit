@@ -78,6 +78,8 @@ there invalidates every later layer (DOC).
   **golden questions**: questions with a known file and line, taken from the 35 code comparisons under
   `awave-ops/scrum/agents/requirements-engineer/docs/*-quervergleich-code.md`. Pass threshold (owner, 2026-09-29):
   **100 %**, and the librarian must reach it **independently**, without a human correcting an answer.
+  Counting rule (owner, 2026-09-29, strict): a question counts as answered only when the answer names the
+  expected file **and** line range. A partial hit (right file, wrong lines) or an answer without a source is a miss.
 
 ## 6. Cache rules (MEASURED, `claude -p`, one prefix, one variable at a time)
 
@@ -107,5 +109,5 @@ measured 14B speed. Android size and MoE speed: `UNKNOWN`.
 ## 8. Not decided
 
 `UNKNOWN — schema of android_sources / parity_status` (proposal only) · `UNKNOWN — whether jcodemunch or graphify read Swift and Kotlin` ·
-`UNKNOWN — Gemma 4 licence and 4-bit size` · `UNKNOWN — how a golden question counts as answered` (proposal: the answer names the expected file and line range; a partial hit is a miss).
+`UNKNOWN — Gemma 4 licence and 4-bit size` · 
 "Gauntlet" = a fixed sequence of pass/fail gates with one goal (owner confirmed the reading, 2026-09-29); the takeover prompt is in the ops handover, section 17.
