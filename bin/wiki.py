@@ -254,10 +254,137 @@ def cmd_scan(a):
     wiki_scan.run(a[0], REPOS, ROOT, now())
 
 
-CMDS = {"scan": cmd_scan, "seed": cmd_seed, "query": cmd_query, "add": cmd_add, "verify": cmd_verify,
+SYM = re.compile(r"^- `(.+?)` \((\w+)\) Zeilen (\d+)-(\d+)\s*$")
+
+
+def symbols_of(body):
+    """(name, kind, a, b, description) for every symbol block of a scanned concept."""
+    out, lines = [], body.split("\n")
+    for i, l in enumerate(lines):
+        m = SYM.match(l)
+        if m:
+            desc = ""
+            for nxt in lines[i + 1:i + 4]:
+                if nxt.startswith("  Beschreibung: "):
+                    desc = nxt[len("  Beschreibung: "):]
+            out.append((m.group(1), m.group(2), int(m.group(3)), int(m.group(4)), desc))
+    return out
+
+
+def src_of(fm):
+    m = SRC.match(as_list(fm.get("sources"))[0]) if as_list(fm.get("sources")) else None
+    return m.groups() if m else None
+
+
+def render_cite(tag, path, a, b, sha):
+    return f"{tag}:{path}:{a}-{b}@{sha}"
+
+
+def cmd_ask(a):
+    if not a:
+        die('usage: wiki.sh ask "<question>"   (local model picks candidates; the script renders file:lines)')
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import wiki_llm
+    q = " ".join(a)
+    files = [(rel, fm, body) for rel, fm, body in concepts(ROOT) if src_of(fm) and fm.get("type") != "feature"]
+    lines = [f"{i}. {rel} | {fm.get('title','')} | {fm.get('description','')}" for i, (rel, fm, _) in enumerate(files)]
+    system = "You route questions to source files. Answer only with a line `IDS: n,n,n` (at most 3 ids from the list). No other text."
+    fid = wiki_llm.pick_ids(system, f"Question: {q}\n\nFiles:\n" + "\n".join(lines), set(range(len(files))), 3)
+    cands = []
+    for i in fid:
+        rel, fm, body = files[i]
+        tag, path, _, _, sha = src_of(fm)
+        for name, kind, x, y, desc in symbols_of(body):
+            cands.append((rel, tag, path, sha, name, kind, x, y, desc))
+    if not cands:
+        print("UNKNOWN - no matching file in the wiki")
+        return
+    cl = [f"{i}. {c[2].split('/')[-1]} | {c[5]} {c[4]} | {c[8]}" for i, c in enumerate(cands)]
+    system = "You pick the code location that answers the question. Answer only with a line `IDS: n` (best id first, at most 2). No other text."
+    sid = wiki_llm.pick_ids(system, f"Question: {q}\n\nLocations:\n" + "\n".join(cl), set(range(len(cands))), 2)
+    if not sid:
+        print("UNKNOWN - the model named no location")
+        return
+    for i in sid:
+        rel, tag, path, sha, name, kind, x, y, desc = cands[i]
+        print(f"answer: {render_cite(tag, path, x, y, sha)}  ({kind} {name}; concept {rel}; UNGEPRUEFT unless verified)")
+
+
+def cmd_describe(a):
+    if len(a) != 1:
+        die("usage: wiki.sh describe <concept-file in the wiki>   (writes the proposal to staging; verify --promote promotes)")
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import wiki_llm
+    p = os.path.abspath(a[0])
+    text = open(p, encoding="utf-8").read()
+    fm, body = parse(text)
+    ref = src_of(fm)
+    if not ref:
+        die("no source in frontmatter")
+    tag, path, _, _, sha = ref
+    r = subprocess.run(["git", "-C", REPOS[tag], "show", f"{sha}:{path}"], capture_output=True, text=True)
+    if r.returncode:
+        die(f"cannot read source {tag}:{path}@{sha}")
+    src = r.stdout.split("\n")
+    syms = symbols_of(body)
+    listing = "\n".join(f"{i}|{n}|{k}|{x}-{y}" for i, (n, k, x, y, _) in enumerate(syms, 1))
+    numbered = "\n".join(f"{i + 1}: {l}" for i, l in enumerate(src))
+    system = ("You document source files for a wiki. For file summary use id 0 and for each listed symbol its id. "
+              "One line per id, exactly `ID|German description, one sentence|verbatim quote from that symbol's lines`. "
+              "The quote must be copied character by character from the source. No other text.")
+    out = wiki_llm.chat(system, f"File {path}\nSymbols (id|name|kind|lines):\n0|file summary|file|1-{len(src)}\n{listing}\n\nSource:\n{numbered}", 3000)
+    kept, rejected, notes = 0, 0, {}
+    for line in out.split("\n"):
+        m = re.match(r"^\s*(\d+)\|(.+?)\|(.+)$", line)
+        if not m:
+            continue
+        i, desc, quote = int(m.group(1)), m.group(2).strip(), m.group(3).strip().strip("`")
+        if i == 0:
+            a1, b1 = 1, len(src)
+        elif 1 <= i <= len(syms):
+            a1, b1 = syms[i - 1][2], syms[i - 1][3]
+        else:
+            rejected += 1
+            continue
+        if wiki_llm.norm(quote) and wiki_llm.norm(quote) in wiki_llm.norm("\n".join(src[a1 - 1:b1])):
+            notes[i] = (desc, quote, a1, b1)
+            kept += 1
+        else:
+            rejected += 1
+    new, i = [], 0
+    for l in body.split("\n"):
+        new.append(l)
+        m = SYM.match(l)
+        if m:
+            i += 1
+        # description goes right under the declaration quote of its symbol
+        if m is None and l.startswith("  > [") and i in notes and not any(x.startswith("  Beschreibung:") for x in new[-3:]):
+            new.append(f"  Beschreibung: {notes[i][0]}")
+            new.append(f"  > [{tag}:{path}:{notes[i][2]}-{notes[i][3]}@{sha}] {notes[i][1]}")
+    ftext = text
+    if 0 in notes:
+        ftext = re.sub(r"^description:.*$", "description: " + notes[0][0], ftext, count=1, flags=re.M)
+        new.insert(new.index("## Symbole") if "## Symbole" in new else 0, f"Beschreibung: {notes[0][0]}\n> [{tag}:{path}:1-{len(src)}@{sha}] {notes[0][1]}\n")
+    head = re.match(r"^---\n.*?\n---\n", ftext, re.S).group(0)
+    rel = os.path.relpath(p, ROOT)
+    dest = os.path.join(STAGING, rel)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    open(dest, "w", encoding="utf-8").write(head + "\n".join(new))
+    print(f"describe {rel}: kept {kept}, rejected {rejected} (quote not found in the symbol's lines) -> {dest}")
+
+
+def cmd_golden(a):
+    if not a:
+        die("usage: wiki.sh golden <golden.json>")
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import wiki_golden
+    wiki_golden.run(a[0], os.path.join(os.path.dirname(os.path.abspath(__file__)), "wiki.sh"))
+
+
+CMDS = {"golden": cmd_golden, "describe": cmd_describe, "ask": cmd_ask, "scan": cmd_scan, "seed": cmd_seed, "query": cmd_query, "add": cmd_add, "verify": cmd_verify,
         "lint": cmd_lint, "receipt": cmd_receipt, "gate": cmd_gate}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] not in CMDS:
-        die("usage: wiki.sh {seed|query|add|verify|lint|scan|receipt|gate} ...")
+        die("usage: wiki.sh {seed|query|add|verify|lint|scan|describe|ask|golden|receipt|gate} ...")
     CMDS[sys.argv[1]](sys.argv[2:])
