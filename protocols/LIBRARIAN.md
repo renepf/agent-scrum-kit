@@ -76,8 +76,8 @@ there invalidates every later layer (DOC).
   `UNKNOWN — not measured`. The notebook's "2 to 5 hours for 33 MB" confuses generation with prompt rate.
 - Swapping the model keeps the wiki (files) and drops KV caches and prompt tricks. A candidate is judged on
   **golden questions**: questions with a known file and line, taken from the 35 code comparisons under
-  `awave-ops/scrum/agents/requirements-engineer/docs/*-quervergleich-code.md`. Pass threshold:
-  `UNKNOWN — the owner sets it after the baseline run`.
+  `awave-ops/scrum/agents/requirements-engineer/docs/*-quervergleich-code.md`. Pass threshold (owner, 2026-09-29):
+  **100 %**, and the librarian must reach it **independently**, without a human correcting an answer.
 
 ## 6. Cache rules (MEASURED, `claude -p`, one prefix, one variable at a time)
 
@@ -107,5 +107,5 @@ measured 14B speed. Android size and MoE speed: `UNKNOWN`.
 ## 8. Not decided
 
 `UNKNOWN — schema of android_sources / parity_status` (proposal only) · `UNKNOWN — whether jcodemunch or graphify read Swift and Kotlin` ·
-`UNKNOWN — Gemma 4 licence and 4-bit size` · `UNKNOWN — pass threshold for golden questions` ·
-`UNKNOWN — the term "gauntlet" used by the owner; see the takeover prompt in the ops handover, section 17`.
+`UNKNOWN — Gemma 4 licence and 4-bit size` · `UNKNOWN — how a golden question counts as answered` (proposal: the answer names the expected file and line range; a partial hit is a miss).
+"Gauntlet" = a fixed sequence of pass/fail gates with one goal (owner confirmed the reading, 2026-09-29); the takeover prompt is in the ops handover, section 17.
