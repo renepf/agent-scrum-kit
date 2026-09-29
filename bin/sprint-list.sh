@@ -31,18 +31,16 @@ KIT_BOARD_JSON="$("$BIN_DIR/tickets.sh" sprint)" \
   || die "sprint tickets not readable — a failure, not a state"
 export KIT_BOARD_JSON
 
-NEW="$(python3 - "$LIST" "$(basename "$SPRINT")" "$EXPECT" "${KIT_OWNER_PREFIX:-owner:}" "${KIT_LABEL_PREFIX:-status:}" <<'PY'
+# common.sh guarantees both prefixes with ": ${VAR:=default}" — no second default here.
+NEW="$(python3 - "$LIST" "$(basename "$SPRINT")" "$EXPECT" "$KIT_OWNER_PREFIX" "$KIT_LABEL_PREFIX" <<'PY'
 import datetime, json, os, re, sys
 
 list_path, sprint_name, expect, owner_prefix, status_prefix = sys.argv[1:6]
 board = json.loads(os.environ["KIT_BOARD_JSON"])
 
 def label(labels, prefix):
-    for l in labels:
-        name = l["name"] if isinstance(l, dict) else l
-        if name.startswith(prefix):
-            return name[len(prefix):]
-    return ""
+    # Both backends emit [{"name": ...}]: bin/tickets.sh:82 and the gh --json form.
+    return next((l["name"][len(prefix):] for l in labels if l["name"].startswith(prefix)), "")
 
 rows = {}
 for i in board:

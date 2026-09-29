@@ -64,7 +64,9 @@ def usage_for(sid):
     if not paths:
         return None
     turns = []
-    for path in paths:
+    # sorted(): the floor is turns[0], so the order in which the adapter printed its paths must
+    # not decide which request counts as the first one.
+    for path in sorted(paths):
         with open(path, encoding="utf-8", errors="replace") as fh:
             for line in fh:
                 try:
@@ -108,6 +110,7 @@ print("Working share = context minus the first request of the session. The first
 print("scaffolding (system prompt, instructions, tool schemas) — the role does not control it, so")
 print("the thresholds measure the working share, not the context.")
 print("A per-role exception comes from KIT_WARN_TOKENS_<ROLE> / KIT_STOP_TOKENS_<ROLE> in kit.env.")
+print("A row decided by such an exception names it — the two numbers above are the general ones.")
 print()
 print("| Role | Session-ID | Context | Output total | State | Working share |")
 print("|---|---|---|---|---|---|")
@@ -134,6 +137,10 @@ for role, sid in rows:
         state = "warning — take no new ticket"
     else:
         state = "ok"
+    # The header names the general thresholds. A row decided by another pair has to say so where
+    # it is read, not only where it is configured.
+    if (role_warn, role_stop) != (warn, stop):
+        state += f" · own threshold {num(role_warn)} / {num(role_stop)}"
     print(f"| {role} | `{sid}` | {num(ctx)} | {num(out)} | {state} | {num(share)} |")
 
 print()

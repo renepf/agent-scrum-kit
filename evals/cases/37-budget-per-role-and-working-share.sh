@@ -42,7 +42,10 @@ stop_line="$(grep -c '^STOP ' "$SPRINT/budget.md")"
 errors=""
 # 1. the same transcript, two roles: only the engineer warns
 case "$ea_state" in warning*) ;; *) errors="$errors engineer-a=$ea_state" ;; esac
-[ "$po_state" = "ok" ] || errors="$errors product-owner=$po_state"
+case "$po_state" in
+  "ok · own threshold 350 000 / 400 000") ;;
+  *) errors="$errors product-owner=$po_state" ;;
+esac
 # 2. the working share is reported, and it is context minus the first request
 [ "$ea_share" = "258900" ] || errors="$errors share-a=$ea_share"
 [ "$eb_share" = "2000" ] || errors="$errors share-b=$eb_share"

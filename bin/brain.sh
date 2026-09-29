@@ -101,8 +101,15 @@ for kind, label in (("handover", "Handovers (newest first)"), ("facts", "Facts")
     files = sorted((f for f in os.listdir(d) if f.endswith(".md")), reverse=(kind == "handover"))
     if not files:
         continue
-    print(f"## {label}\n\n| File | Description | Type | Author | As of | Links |\n|---|---|---|---|---|---|")
-    for f in files:
+    # Handovers pile up: a role that resets every half hour has hundreds after a week. Unshortened
+    # they push facts and documents out of every window that reads this index — `recall` showed
+    # nothing but handover filenames, which is the opposite of what an external brain is for.
+    # Nothing is deleted, only listed shorter, the same way the journal below is.
+    total = len(files)
+    shown = files[:20] if kind == "handover" else files
+    heading = f"{label} — newest {len(shown)} of {total}" if len(shown) < total else label
+    print(f"## {heading}\n\n| File | Description | Type | Author | As of | Links |\n|---|---|---|---|---|---|")
+    for f in shown:
         meta, body = fm(os.path.join(d, f))
         links = sorted(set(re.findall(r"\[\[([a-z0-9][a-z0-9-]*)\]\]", body)))
         dangling += [(f"{kind}/{f}", l) for l in links if l not in known]
@@ -159,7 +166,10 @@ case "$cmd" in
     ;;
   handover)
     [ $# -ge 1 ] || die "usage: brain.sh handover \"<description>\" < body"
-    cat > "$BODY"; f="$(date '+%Y-%m-%d-%H%M%S').md"
+    # Never overwrite an existing handover. Two resets inside the same second are rare but real,
+    # and the one that loses is the one nobody notices is gone.
+    cat > "$BODY"; stamp="$(date '+%Y-%m-%d-%H%M%S')"; f="$stamp.md"; n=2
+    while [ -e "$ME/handover/$f" ]; do f="$stamp-$n.md"; n=$((n + 1)); done
     write_fm "$ME/handover/$f" "handover-${f%.md}" "$1" "handover" "$BODY"
     reindex; echo "handover: memory/$R/handover/$f"
     ;;
