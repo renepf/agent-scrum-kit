@@ -71,7 +71,7 @@ n=$((n + 1)); [ "$rc" = 1 ] || fail d:rc=$rc
 out="$("$W" gate sess-1 2>&1)"; rc=$?
 expect e-denied "$out" '*wiki.sh query*'; n=$((n + 1)); [ "$rc" = 2 ] || fail e:rc=$rc
 WIKI_SESSION_ID=sess-1 "$W" query "login" > /dev/null
-"$W" gate sess-1 > /dev/null 2>&1; n=$((n + 1)); [ $? = 0 ] || fail e:still-denied
+"$W" gate sess-1 > /dev/null 2>&1; rc=$?; n=$((n + 1)); [ "$rc" = 0 ] || fail e:still-denied
 
 observe "$((n - failed))/$n checks passed · seed identical · query gives file:lines and UNGEPRUEFT · invented quote rejected, real quote promoted · lint: orphan and dead link · gate denies without receipt${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
