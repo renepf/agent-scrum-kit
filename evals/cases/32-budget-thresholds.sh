@@ -25,6 +25,6 @@ case "$lw" in warning*) ;; *) errors="$errors engineer-b=$lw" ;; esac
 case "$ls_" in *STOP*) ;; *) errors="$errors qa-ruthless=$ls_" ;; esac
 [ "$stop_line" = "STOP qa-ruthless " ] || errors="$errors flag='$stop_line'"
 
-observe "1150→ok · 260000→warning · 300010→STOP · flag line '$(echo "$stop_line" | sed 's/ $//')'${errors:+ · ERRORS:$errors}"
+observe "1150→ok · 260000→warning · 300110 (share 300000)→STOP · flag line '$(echo "$stop_line" | sed 's/ $//')'${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
 [ -z "$errors" ]

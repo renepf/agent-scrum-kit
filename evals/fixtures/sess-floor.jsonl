@@ -1,0 +1,2 @@
+{"message": {"usage": {"input_tokens": 2, "cache_read_input_tokens": 259998, "cache_creation_input_tokens": 0, "output_tokens": 12}}}
+{"message": {"usage": {"input_tokens": 500, "cache_read_input_tokens": 261500, "cache_creation_input_tokens": 0, "output_tokens": 40}}}

@@ -54,7 +54,10 @@ def turn(rec):
     return None
 
 def usage_for(sid):
-    """Context size = the largest input state of ONE turn. Not the sum over turns."""
+    """Context size = the largest input state of ONE turn. Not the sum over turns.
+    The floor is the context of the FIRST turn: the scaffolding the session already carried
+    before it did any work (system prompt, instructions, tool schemas). The role does not
+    control it, so the thresholds measure the working share = context - floor."""
     paths = transcripts(sid)
     if paths is None:
         return "NOPROBE"
@@ -71,7 +74,24 @@ def usage_for(sid):
                 t = turn(rec) if isinstance(rec, dict) else None
                 if t is not None:
                     turns.append(t)
-    return (max(c for c, _ in turns), sum(o for _, o in turns)) if turns else "NOUSAGE"
+    if not turns:
+        return "NOUSAGE"
+    return max(c for c, _ in turns), sum(o for _, o in turns), turns[0][0]
+
+
+def thresholds_for(role):
+    """A per-role exception, read from kit.env: KIT_WARN_TOKENS_<ROLE> / KIT_STOP_TOKENS_<ROLE>,
+    the role in upper case with '-' as '_'. Without an entry the general thresholds apply."""
+    key = role.upper().replace("-", "_")
+    def pick(prefix, fallback):
+        raw = os.environ.get(f"{prefix}_{key}", "").strip()
+        if not raw:
+            return fallback
+        try:
+            return int(raw)
+        except ValueError:      # a broken entry is not silently a 0
+            return fallback
+    return pick("KIT_WARN_TOKENS", warn), pick("KIT_STOP_TOKENS", stop)
 
 def num(n):
     return f"{n:,}".replace(",", " ")
@@ -84,31 +104,37 @@ print()
 print("Context = the largest input state of ONE turn (input + cache_read + cache_creation),")
 print("not the sum over all turns.")
 print("Per host: qwen-code promptTokenCount (contains the cache), pi input + cacheRead + cacheWrite.")
+print("Working share = context minus the first request of the session. The first request is the")
+print("scaffolding (system prompt, instructions, tool schemas) — the role does not control it, so")
+print("the thresholds measure the working share, not the context.")
+print("A per-role exception comes from KIT_WARN_TOKENS_<ROLE> / KIT_STOP_TOKENS_<ROLE> in kit.env.")
 print()
-print("| Role | Session-ID | Context | Output total | State |")
-print("|---|---|---|---|---|")
+print("| Role | Session-ID | Context | Output total | State | Working share |")
+print("|---|---|---|---|---|---|")
 
 stops = []
 for role, sid in rows:
     res = usage_for(sid)
     if res == "NOPROBE":
-        print(f"| {role} | `{sid}` | UNKNOWN | UNKNOWN | host writes no transcripts — emergency brake after {maxtickets} tickets |")
+        print(f"| {role} | `{sid}` | UNKNOWN | UNKNOWN | host writes no transcripts — emergency brake after {maxtickets} tickets | UNKNOWN |")
         continue
     if res == "NOUSAGE":
-        print(f"| {role} | `{sid}` | UNKNOWN | UNKNOWN | transcript has no usage record this kit knows — not read as 0 |")
+        print(f"| {role} | `{sid}` | UNKNOWN | UNKNOWN | transcript has no usage record this kit knows — not read as 0 | UNKNOWN |")
         continue
     if res is None:
-        print(f"| {role} | `{sid}` | UNKNOWN | UNKNOWN | transcript not found — do not read as 0 |")
+        print(f"| {role} | `{sid}` | UNKNOWN | UNKNOWN | transcript not found — do not read as 0 | UNKNOWN |")
         continue
-    ctx, out = res
-    if ctx >= stop:
+    ctx, out, floor = res
+    share = ctx - floor
+    role_warn, role_stop = thresholds_for(role)
+    if share >= role_stop:
         state = "**STOP** — clear the context at the ticket boundary"
         stops.append(role)
-    elif ctx >= warn:
+    elif share >= role_warn:
         state = "warning — take no new ticket"
     else:
         state = "ok"
-    print(f"| {role} | `{sid}` | {num(ctx)} | {num(out)} | {state} |")
+    print(f"| {role} | `{sid}` | {num(ctx)} | {num(out)} | {state} | {num(share)} |")
 
 print()
 for role in stops:

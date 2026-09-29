@@ -18,6 +18,6 @@ KIT_ROLE=watchdog "$BIN/budget.sh" > /dev/null 2>&1
 wert() { grep "| $1 |" "$SPRINT/budget.md" | awk -F'|' '{gsub(/ /,"",$4); print $4}'; }
 q="$(wert engineer-a)"; w="$(wert engineer-b)"; s="$(wert qa-ruthless)"
 
-observe "engineer-a $q (erwartet 1150) · engineer-b $w (erwartet 260000) · qa-ruthless $s (erwartet 300010)"
+observe "engineer-a $q (erwartet 1150) · engineer-b $w (erwartet 260000) · qa-ruthless $s (erwartet 300110)"
 echo "OBSERVED: $OBSERVED"
-[ "$q" = "1150" ] && [ "$w" = "260000" ] && [ "$s" = "300010" ]
+[ "$q" = "1150" ] && [ "$w" = "260000" ] && [ "$s" = "300110" ]

@@ -308,6 +308,16 @@ done by the tick again. If it gets lost, the interval (`KIT_TICK_INTERVAL`, in s
 **Context size** is the largest input state of a **single** turn
 (`input_tokens` + `cache_read_input_tokens` + `cache_creation_input_tokens`), **not** the sum.
 
+**What the thresholds compare is the working share**, not the context: context minus the context of
+the session's **first** request. That first request is the scaffolding — system prompt, instructions,
+tool schemas, listings — which the role neither chose nor can shrink. A role that carries 95 000 tokens
+of scaffolding would otherwise be reset at every threshold no matter how sparingly it works. `budget.md`
+reports both numbers, and the state follows the working share.
+
+**A per-role exception** comes from `KIT_WARN_TOKENS_<ROLE>` and `KIT_STOP_TOKENS_<ROLE>` in `kit.env`,
+the role name in upper case with `-` as `_` (`product-owner` → `KIT_WARN_TOKENS_PRODUCT_OWNER`). Without
+an entry the general thresholds apply; an unreadable entry falls back to them rather than to 0.
+
 A reset always at a ticket boundary: `brain.sh handover` → clear the context (**do not compact**).
 The host process may live on: the role hangs on the anchor `.pid-roles/<host-pid>`, not on the
 context. The next tick recognises the new session id, registers it and shows the handover.
