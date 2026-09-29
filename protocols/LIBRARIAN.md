@@ -109,5 +109,5 @@ measured 14B speed. Android size and MoE speed: `UNKNOWN`.
 ## 8. Not decided
 
 `UNKNOWN — schema of android_sources / parity_status` (proposal only) · `UNKNOWN — whether jcodemunch or graphify read Swift and Kotlin` ·
-`UNKNOWN — Gemma 4 licence and 4-bit size` · 
+`UNKNOWN — Gemma 4 licence and 4-bit size`.
 "Gauntlet" = a fixed sequence of pass/fail gates with one goal (owner confirmed the reading, 2026-09-29); the takeover prompt is in the ops handover, section 17.
