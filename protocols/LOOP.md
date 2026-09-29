@@ -235,6 +235,7 @@ sprints/S-<nnn>-<slug>/
 ├── roster.md      # GENERATED — role, session id, host, host PID
 ├── INDEX.md       # GENERATED — every chat line chronologically, with file:line
 ├── budget.md      # GENERATED — context state per session (watchdog)
+├── tickets.md     # GENERATED — number, title, status, owner (bin/sprint-list.sh)
 ├── simqueue.md    # who holds an exclusive device right now
 ├── .lease-<role>  # GENERATED — twin lock: session id, host PID, time
 └── chat/<role>.md

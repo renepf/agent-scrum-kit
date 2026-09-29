@@ -191,6 +191,7 @@ S=sprints/$(cat sprints/CURRENT)
 cat $S/roster.md          # wer ist registriert, mit welcher Session-ID
 tail -20 $S/INDEX.md      # was zuletzt im Chat stand, mit datei:zeile
 cat $S/budget.md          # Kontextstand je Rolle, etwaige STOP-Zeilen
+cat $S/tickets.md         # der Sprint auf einen Blick: Nummer, Titel, Status, Besitzer
 KIT_ROLE=product-owner bin/tick.sh   # das Lagebild des PO, ohne eine Session zu stoeren
 ```
 

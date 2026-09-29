@@ -225,4 +225,10 @@ fi
 # the work is already there. If the mark gets lost, the interval wakes them (fallback line).
 wake_roles "$NEW"
 
+# The local ticket list follows the board (D50). One board call, so it can happen after every
+# transition. This ticket is exempt from the comparison — its row is supposed to have changed.
+# A failed rebuild does not undo the transition that already happened: it is reported, not fatal.
+"$BIN_DIR/sprint-list.sh" --expect-change "$TICKET" > /dev/null \
+  || echo "warning: #$TICKET moved, but the local list could not be rebuilt" >&2
+
 echo "#$TICKET: $OLD → $NEW${OWNER:+ (owner:$OWNER)}"
