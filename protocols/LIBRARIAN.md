@@ -1,7 +1,7 @@
 # LIBRARIAN — the shared project wiki and its only writer
 
 Design, not implementation. Nothing here is built yet. Evidence and German working notes:
-`awave-ops/scrum/KV-CACHING-LLM-WIKI-OKF.md` (sections 3–5 measurements, 6 and 10 design).
+the ops repo file `scrum/KV-CACHING-LLM-WIKI-OKF.md` (sections 3–5 measurements, 6 and 10 design).
 Every fact below is marked **MEASURED** (own run 2026-09-29), **DOC** (Anthropic docs), **OKF-SPEC**
 (v0.2, Google Cloud), **NB** (notebook "Claude Best Principles", a source claim, not proof), or
 `UNKNOWN — <where to clear it>`.
@@ -76,7 +76,7 @@ there invalidates every later layer (DOC).
   `UNKNOWN — not measured`. The notebook's "2 to 5 hours for 33 MB" confuses generation with prompt rate.
 - Swapping the model keeps the wiki (files) and drops KV caches and prompt tricks. A candidate is judged on
   **golden questions**: questions with a known file and line, taken from the 35 code comparisons under
-  `awave-ops/scrum/agents/requirements-engineer/docs/*-quervergleich-code.md`. Pass threshold (owner, 2026-09-29):
+  `scrum/agents/requirements-engineer/docs/*-quervergleich-code.md` in the ops repo. Pass threshold (owner, 2026-09-29):
   **100 %**, and the librarian must reach it **independently**, without a human correcting an answer.
   Counting rule (owner, 2026-09-29, strict): a question counts as answered only when the answer names the
   expected file **and** line range. A partial hit (right file, wrong lines) or an answer without a source is a miss.
@@ -100,7 +100,7 @@ Sources stay in place and are pinned by commit; nothing is copied into a `raw/` 
 2. Order for the full run: requirements, iOS, Android, ops documents **without** sprint logs.
 3. Deterministic pass first (headings, symbols, `path:line`), model second (description, links), `verify` third.
 4. Staging, then promotion; an abort resumes at the source missing from `log.md`.
-5. Both apps are covered: iOS is the reference, Android exists already (1 060 Kotlin files); the wiki holds the **gap**.
+5. Both apps are covered: iOS is the reference, Android exists already (1 060 source files); the wiki holds the **gap**.
 
 Size and time, MEASURED sizes / estimated time for the dense 14B: requirements 3.73 MB, iOS 3.29 MB,
 ops without logs 7.41 MB, sprint logs 11.3 MB (excluded). 21–31 h for the three included sets at the
@@ -108,6 +108,6 @@ measured 14B speed. Android size and MoE speed: `UNKNOWN`.
 
 ## 8. Not decided
 
-`UNKNOWN — schema of android_sources / parity_status` (proposal only) · `UNKNOWN — whether jcodemunch or graphify read Swift and Kotlin` ·
+`UNKNOWN — schema of android_sources / parity_status` (proposal only) · `UNKNOWN — whether jcodemunch or graphify read the iOS and Android source languages` ·
 `UNKNOWN — Gemma 4 licence and 4-bit size`.
 "Gauntlet" = a fixed sequence of pass/fail gates with one goal (owner confirmed the reading, 2026-09-29); the takeover prompt is in the ops handover, section 17.
