@@ -23,7 +23,8 @@ fi
 [ -n "$R" ] || exit 0
 "$KIT_ROOT/adapters/claude-code/is-background.sh" && exit 0
 
-case "$R" in engineer-a|engineer-b) FILE=engineer.md ;; *) FILE="$R.md" ;; esac
+# Every engineer instance reads the same sheet; the role name in KIT_ROLE tells them apart.
+case "$R" in engineer-*) FILE=engineer.md ;; *) FILE="$R.md" ;; esac
 [ -f "$KIT_ROOT/roles/$FILE" ] || exit 0
 case "$R" in product-owner|acceptance-tester|merge-gate) IV=10m ;; *) IV=5m ;; esac
 EXTRA=""; [ "$R" = "watchdog" ] && EXTRA=" Afterwards bin/budget.sh, four looks, bin/commit.sh."

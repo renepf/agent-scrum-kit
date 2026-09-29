@@ -126,6 +126,9 @@ merge() { KIT_ROLE=product-owner "$BIN/merge.sh" 51 2>&1; }
 expect h-manual-without-evidence "$(merge)" '*rejected*AC-2*'
 # The builder is turned away — that is the four-eyes rule on the evidence itself.
 expect h-attest-role "$(KIT_ROLE=engineer-a "$BIN/gates.sh" attest 51 AC-2 "seen" 2>&1)" '*built this ticket*'
+# And a role that runs no acceptance at all is turned away too. Without this check the branch for it
+# was never reached: a probe that switched it off stayed silent (measured 2026-09-29).
+expect h-attest-foreign-role "$(KIT_ROLE=watchdog "$BIN/gates.sh" attest 51 AC-2 "seen" 2>&1)" '*only by the reviewing engineer or the product-owner*'
 expect h-attest-executable "$(KIT_ROLE=engineer-b "$BIN/gates.sh" attest 51 AC-1 "seen" 2>&1)" '*AC-1*executable*'
 expect h-attest "$(KIT_ROLE=engineer-b "$BIN/gates.sh" attest 51 AC-2 "hint visible, screenshot hint.png" 2>&1)" '*AC-2*'
 check h-evidence-head grep -q "EVIDENCE: manual head=$h2 by=engineer-b" "$L"
