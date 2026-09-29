@@ -32,13 +32,25 @@ file_backend() {
 import fcntl, json, os, sys
 path, sprint_label, cmd, args = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4:]
 
+# An I/O error ends in ONE line that names the file, never in a stack trace — the same
+# standard the gates hold (case 98). A caller reads a trace as a crash, not as a state.
+def io_die(what, err):
+    print(f"ERROR: {what} {path}: {err}", file=sys.stderr)
+    sys.exit(1)
+
 # One lock around read+write: nine sessions must not overtake each other here.
-lock = open(path + ".lock", "w")
-fcntl.flock(lock, fcntl.LOCK_EX)
+try:
+    lock = open(path + ".lock", "w")
+    fcntl.flock(lock, fcntl.LOCK_EX)
+except OSError as e:
+    io_die("cannot lock", e)
 db = {}
 if os.path.exists(path):
-    with open(path, encoding="utf-8") as fh:
-        db = json.load(fh)
+    try:
+        with open(path, encoding="utf-8") as fh:
+            db = json.load(fh)
+    except (OSError, ValueError) as e:
+        io_die("cannot read", e)
 
 def issue(n):
     i = db.setdefault(str(n), {})

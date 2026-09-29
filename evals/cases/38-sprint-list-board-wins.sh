@@ -54,6 +54,10 @@ chmod 644 "$SANDBOX/issues.json"
 # The message has to name the READ. Swallowing the read error and dying later over empty JSON
 # also exits non-zero — that would leave the rule untested (the probe stayed green and silent).
 case "$msg" in *"sprint tickets not readable"*) ;; *) errors="$errors 5:msg='$msg'" ;; esac
+# Und es bleibt bei Zeilen, die die Datei nennen — kein Stacktrace. Derselbe Standard wie Fall 98.
+case "$msg" in *Traceback*) errors="$errors 5:traceback" ;; esac
+lines="$(printf '%s\n' "$msg" | grep -c .)"
+[ "$lines" -le 2 ] || errors="$errors 5:lines=$lines"
 
 observe "rebuild: $rows rows, the foreign ticket stays out · after planned #41 shows 'planned' · a hand-edited row is corrected and the deviation named · a clean rebuild names none · a failed read exits $rc, changes nothing and says '$(printf '%s' "$msg" | head -c 40)'${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
