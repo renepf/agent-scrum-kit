@@ -61,6 +61,11 @@ n=$((n + 1)); [ -f "$WIKI_ROOT/good.md" ] && [ ! -f "$WIKI_STAGING/good.md" ] ||
 expect c-verified-set "$(cat "$WIKI_ROOT/good.md")" '*by: wiki.sh*'
 n=$((n + 1)); [ -f "$WIKI_STAGING/bad.md" ] || fail c:bad-disappeared
 
+# c2) an indented (symbol-list) quote is checked too
+printf -- '---\ntype: feature\ntitle: Indented\nverified: []\n---\n- `x`\n  > [and:Auth.kt:2-3@%s] token = invented(user)\n' "$SHA" > "$WIKI_STAGING/indented.md"
+out="$("$W" verify "$WIKI_STAGING/indented.md" 2>&1)"; expect c2-indented-rejected "$out" '*REJECT*quote not found*'
+rm -f "$WIKI_STAGING/indented.md"
+
 # d) lint finds the orphan and the dead link
 out="$("$W" lint 2>&1)"; rc=$?
 expect d-orphan "$out" '*orphan.md: orphan*'

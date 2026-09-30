@@ -8,7 +8,7 @@ RECEIPTS = os.environ.get("WIKI_RECEIPT_DIR", os.path.join(os.environ.get("TMPDI
 REPOS = dict(p.split("=", 1) for p in os.environ.get("WIKI_REPOS", "").split(",") if "=" in p)
 RESERVED = ("index.md", "log.md")
 SRC = re.compile(r"^([A-Za-z0-9_-]+):(.+):(\d+)-(\d+)@([0-9a-f]{7,40})$")
-QUOTE = re.compile(r"^> \[([^\]]+)\] (.+)$")
+QUOTE = re.compile(r"^\s*> \[([^\]]+)\] (.+)$")
 
 
 def now():
