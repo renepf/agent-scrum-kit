@@ -13,7 +13,7 @@ class H(http.server.BaseHTTPRequestHandler):
             ids = [l.split(".")[0] for l in user.split("\n") if re.match(r"^\d+\. ", l) and "login" in l.lower()]
             out = "IDS: " + (ids[0] if ids else "99")
         else:
-            out = "0|Anmeldung der Nutzer|fun login(user: String)\n1|Holt ein neues Token|token = refresh(user)\n2|Erfundene Zeile|this text is not in the source\n"
+            out = "0¦Anmeldung der Nutzer¦fun login(user: String)\n1¦Holt ein neues Token¦token = refresh(user)\n2¦Erfundene Zeile¦this text is not in the source\n"
         body = json.dumps({"choices": [{"message": {"content": out}}]}).encode()
         self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers(); self.wfile.write(body)
 

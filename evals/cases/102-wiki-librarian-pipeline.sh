@@ -30,7 +30,7 @@ PORT_FILE="$T/port"; python3 "$KIT_ROOT/evals/lib/stub_llm.py" > "$PORT_FILE" & 
 for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$PORT_FILE" ] && break; sleep 0.3; done
 export WIKI_LLM_URL="http://127.0.0.1:$(cat "$PORT_FILE")"
 
-out="$("$W" describe "$C")"; expect describe-counts "$out" '*kept 2, rejected 1*'
+out="$("$W" describe "$C")"; expect describe-counts "$out" '*kept 2, rejected 2 of 4*'
 ST="$WIKI_STAGING/auth/and-auth__AuthVm.kt.md"
 expect describe-desc "$(cat "$ST")" '*Beschreibung: Holt ein neues Token*'
 n=$((n + 1)); grep -q 'Erfundene Zeile' "$ST" && fail describe:invented-kept
@@ -41,6 +41,12 @@ out="$("$W" ask "wo meldet sich der Nutzer an login")"
 expect ask-cites "$out" "*answer: and:feature/auth/AuthVm.kt:3-5@$SHA*"
 out="$(WIKI_LLM_URL=http://127.0.0.1:1 "$W" ask "login" 2>&1)"; rc=$?
 expect ask-failure "$out" '*model call failed*'; n=$((n + 1)); [ "$rc" != 0 ] || fail ask:rc-zero
+
+# fill: describe + verify --promote per file, log line per file, resume skips logged files, stop file halts before a batch
+touch "$T/.wiki-stop"; out="$("$W" fill)"; expect fill-stop "$out" '*STOP*'
+rm -f "$T/.wiki-stop"; out="$("$W" fill)"; expect fill-run "$out" '*fill auth/and-auth__AuthVm.kt.md: kept 2, rejected 2 of 4; verified, promoted*'
+expect fill-log "$(cat "$WIKI_ROOT/log.md")" '*fill auth/and-auth__AuthVm.kt.md*'
+out="$("$W" fill)"; expect fill-resume "$out" '*0 concept(s) to do*'
 
 cat > "$T/golden.json" <<J
 [{"id":"g1","question":"wo meldet sich der Nutzer an login","expected":[{"side":"and","path_suffix":"feature/auth/AuthVm.kt","a":4,"b":4}]},

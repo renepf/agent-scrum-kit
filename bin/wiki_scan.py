@@ -65,14 +65,22 @@ def symbols(kind, lines):
             end = heads[k + 1][0] - 1 if k + 1 < len(heads) else len(lines) - 1
             while end > i and not lines[end].strip():
                 end -= 1
-            out.append((name, kd, i + 1, end + 1))
+            out.append((name, kd, i + 1, end + 1, i + 1))
         return out
     rx = KT if kind == "kotlin" else SW
     for i, l in enumerate(lines):
         m = rx.match(l)
         if m and not l.lstrip().startswith(("//", "*", "/*")):
             name = m.group(2) or m.group(1)
-            out.append((name, m.group(1), i + 1, span(lines, i) + 1))
+            st = i
+            while st > 0 and lines[st - 1].strip().startswith(("@", "///")):
+                st -= 1
+            if st > 0 and lines[st - 1].rstrip().endswith("*/"):
+                k = st - 1
+                while k > 0 and not lines[k].lstrip().startswith("/**"):
+                    k -= 1
+                st = k
+            out.append((name, m.group(1), st + 1, span(lines, i) + 1, i + 1))
     return out
 
 
@@ -106,11 +114,11 @@ def run(scope_path, repos, root, now):
             ref = f"{src['tag']}:{f}:1-{n}@{sha}"
             name = f"{src['tag']}-{slug(f)}.md"
             body = [f"# {os.path.basename(f)} ({src['tag']})", "", f"Feature: [{sc['title']}](../{feat}.md)", "",
-                    f"Quelle: `{ref}`, {n} Zeilen. Symboltabelle deterministisch erzeugt; die Zeilenbereiche stammen aus Klammerzaehlung, belegt ist nur die Deklarationszeile.", "",
+                    f"Quelle: `{ref}`, {n} Zeilen. Symboltabelle deterministisch erzeugt; die Zeilenbereiche (mit Annotationen und Doku-Kommentar davor) stammen aus Klammerzaehlung, belegt ist nur die Deklarationszeile.", "",
                     "## Symbole", ""]
-            for sname, kd, a, b in symbols(src["kind"], lines):
-                q = lines[a - 1].strip()
-                body += [f"- `{sname}` ({kd}) Zeilen {a}-{b}", f"  > [{src['tag']}:{f}:{a}-{a}@{sha}] {q}"]
+            for sname, kd, a, b, d in symbols(src["kind"], lines):
+                q = lines[d - 1].strip()
+                body += [f"- `{sname}` ({kd}) Zeilen {a}-{b}", f"  > [{src['tag']}:{f}:{d}-{d}@{sha}] {q}"]
             fm = ["---", f"type: {ctype(src['kind'], f)}", f"title: {os.path.basename(f)} ({src['tag']})",
                   f"description: Quelldatei {f}, {n} Zeilen, Stand {sha}. Typ aus dem Dateinamen abgeleitet.",
                   "tags:", f"  - {feat}", f"  - {src['tag']}",

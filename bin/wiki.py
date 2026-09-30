@@ -326,31 +326,45 @@ def cmd_describe(a):
     if r.returncode:
         die(f"cannot read source {tag}:{path}@{sha}")
     src = r.stdout.split("\n")
+    if src and src[-1] == "":
+        src.pop()
     syms = symbols_of(body)
-    listing = "\n".join(f"{i}|{n}|{k}|{x}-{y}" for i, (n, k, x, y, _) in enumerate(syms, 1))
     numbered = "\n".join(f"{i + 1}: {l}" for i, l in enumerate(src))
-    system = ("You document source files for a wiki. For file summary use id 0 and for each listed symbol its id. "
-              "One line per id, exactly `ID|German description, one sentence|verbatim quote from that symbol's lines`. "
-              "The quote must be copied character by character from the source. No other text.")
-    out = wiki_llm.chat(system, f"File {path}\nSymbols (id|name|kind|lines):\n0|file summary|file|1-{len(src)}\n{listing}\n\nSource:\n{numbered}", 3000)
-    kept, rejected, notes = 0, 0, {}
-    for line in out.split("\n"):
-        m = re.match(r"^\s*(\d+)\|(.+?)\|(.+)$", line)
-        if not m:
-            continue
-        i, desc, quote = int(m.group(1)), m.group(2).strip(), m.group(3).strip().strip("`")
-        if i == 0:
-            a1, b1 = 1, len(src)
-        elif 1 <= i <= len(syms):
-            a1, b1 = syms[i - 1][2], syms[i - 1][3]
-        else:
-            rejected += 1
-            continue
-        if wiki_llm.norm(quote) and wiki_llm.norm(quote) in wiki_llm.norm("\n".join(src[a1 - 1:b1])):
-            notes[i] = (desc, quote, a1, b1)
-            kept += 1
-        else:
-            rejected += 1
+    system = ("You document source files for a wiki. For the file summary use id 0 and for each listed symbol its id. "
+              "One line per id, exactly `ID¦description¦quote` (the separator is the character ¦). The description is ONE German sentence in your own words: say what the code "
+              "does for the user or the app, and use the domain words a colleague would search for (for example Bestaetigungsmail, Abmelden, "
+              "Anzeigename, Paywall), not only the function name. Never copy the quote into the description. The quote is one single line "
+              "copied character by character from that symbol's lines, choose the most telling line, never join two lines and never include the line number. Example line: `12¦Prueft beim Start, ob ein Nutzer angemeldet ist, und zeigt sonst den Anmeldedialog.¦guard let user = session.user else {` "
+              "Answer one line for EVERY requested id. No other text.")
+    items = [(0, "file summary", 1, len(src))] + [(i, n, x, y) for i, (n, k, x, y, _) in enumerate(syms, 1)]
+    kept, rejected, notes, rejlines = 0, 0, {}, []
+
+    def ask_ids(chunk):
+        nonlocal kept, rejected
+        listing = "\n".join(f"{i}: {n} (lines {x}-{y})" for i, n, x, y in chunk)
+        out = wiki_llm.chat(system, f"File {path}\n\nSource:\n{numbered}\n\nDocument exactly these ids:\n{listing}", 2500)
+        want = {i for i, _, _, _ in chunk}
+        for line in out.split("\n"):
+            m = re.match(r"^\s*(\d+)\s*¦(.+?)¦(.+)$", line)
+            if not m or int(m.group(1)) not in want or int(m.group(1)) in notes:
+                continue
+            i, desc, quote = int(m.group(1)), m.group(2).strip(), m.group(3).strip().strip("`")
+            a1, b1 = (1, len(src)) if i == 0 else (syms[i - 1][2], syms[i - 1][3])
+            bad = len(desc.split()) < 3 or (i and desc.lower() == syms[i - 1][0].lower())
+            if not bad and wiki_llm.norm(quote) and wiki_llm.norm(quote) in wiki_llm.norm("\n".join(src[a1 - 1:b1])):
+                notes[i] = (desc, quote, a1, b1)
+                kept += 1
+            else:
+                rejected += 1
+                rejlines.append(line)
+
+    size = int(os.environ.get("WIKI_DESCRIBE_CHUNK", "10"))
+    for start in range(0, len(items), size):
+        ask_ids(items[start:start + size])
+    missing = [it for it in items if it[0] not in notes]
+    for start in range(0, len(missing), size):  # one retry for what the model skipped or got wrong
+        ask_ids(missing[start:start + size])
+    rejected_final = len(items) - len(notes)
     new, i = [], 0
     for l in body.split("\n"):
         new.append(l)
@@ -370,7 +384,9 @@ def cmd_describe(a):
     dest = os.path.join(STAGING, rel)
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     open(dest, "w", encoding="utf-8").write(head + "\n".join(new))
-    print(f"describe {rel}: kept {kept}, rejected {rejected} (quote not found in the symbol's lines) -> {dest}")
+    if rejlines:
+        open(dest + ".rejected.txt", "w", encoding="utf-8").write("\n".join(rejlines) + "\n")
+    print(f"describe {rel}: kept {len(notes)}, rejected {rejected_final} of {len(items)} (no valid description with a quote found in the symbol's lines) -> {dest}")
 
 
 def cmd_golden(a):
@@ -381,10 +397,56 @@ def cmd_golden(a):
     wiki_golden.run(a[0], os.path.join(os.path.dirname(os.path.abspath(__file__)), "wiki.sh"))
 
 
-CMDS = {"golden": cmd_golden, "describe": cmd_describe, "ask": cmd_ask, "scan": cmd_scan, "seed": cmd_seed, "query": cmd_query, "add": cmd_add, "verify": cmd_verify,
+def log_add(line):
+    p = os.path.join(ROOT, "log.md")
+    text = open(p, encoding="utf-8").read() if os.path.exists(p) else "---\ntype: log\ntitle: Wiki-Log\n---\n# Log (neueste zuerst)\n"
+    head = "## " + datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    if head not in text:
+        text = re.sub(r"(# Log[^\n]*\n)", lambda m: m.group(1) + "\n" + head + "\n", text, count=1)
+    m = re.search(re.escape(head) + r"\n(.*?)(?=\n## |\Z)", text, re.S)
+    text = text[:m.end()].rstrip("\n") + "\n" + line + "\n" + text[m.end():].lstrip("\n") if m else text + "\n" + line + "\n"
+    open(p, "w", encoding="utf-8").write(text)
+
+
+def cmd_fill(a):
+    """describe -> verify --promote for every file concept not yet in log.md; stop file between batches."""
+    scope = a[0] if a else ""
+    batch = int(os.environ.get("WIKI_FILL_BATCH", "15"))
+    stop = os.path.join(ROOT, "..", ".wiki-stop")
+    log = open(os.path.join(ROOT, "log.md"), encoding="utf-8").read() if os.path.exists(os.path.join(ROOT, "log.md")) else ""
+    todo = [rel for rel, fm, _ in concepts(ROOT)
+            if src_of(fm) and fm.get("type") != "feature" and rel.startswith(scope) and f"fill {rel}:" not in log]
+    print(f"fill: {len(todo)} concept(s) to do (batch {batch})")
+    done = 0
+    for k, rel in enumerate(todo):
+        if k % batch == 0 and os.path.exists(stop):
+            print(f"STOP: {os.path.normpath(stop)} exists; {done} done, {len(todo) - done} left. Resume with the same command.")
+            return
+        import io, contextlib
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            cmd_describe([os.path.join(ROOT, rel)])
+        d = buf.getvalue().strip()
+        m = re.search(r"kept (\d+), rejected (\d+) of (\d+)", d)
+        staged = os.path.join(STAGING, rel)
+        buf = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+                cmd_verify([staged, "--promote"])
+            state = "verified, promoted"
+        except SystemExit:
+            state = "verify REJECTED, stays in staging"
+        line = f"- fill {rel}: kept {m.group(1)}, rejected {m.group(2)} of {m.group(3)}; {state}" if m else f"- fill {rel}: describe gave no count; {state}"
+        log_add(line)
+        print(line, flush=True)
+        done += 1
+    print(f"fill: {done} done")
+
+
+CMDS = {"fill": cmd_fill, "golden": cmd_golden, "describe": cmd_describe, "ask": cmd_ask, "scan": cmd_scan, "seed": cmd_seed, "query": cmd_query, "add": cmd_add, "verify": cmd_verify,
         "lint": cmd_lint, "receipt": cmd_receipt, "gate": cmd_gate}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] not in CMDS:
-        die("usage: wiki.sh {seed|query|add|verify|lint|scan|describe|ask|golden|receipt|gate} ...")
+        die("usage: wiki.sh {seed|query|add|verify|lint|scan|describe|fill|ask|golden|receipt|gate} ...")
     CMDS[sys.argv[1]](sys.argv[2:])
