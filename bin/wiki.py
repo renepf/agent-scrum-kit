@@ -204,8 +204,10 @@ def cmd_lint(_):
     problems = []
     idx = os.path.join(ROOT, "index.md")
     names = {rel for rel, _, _ in cs}
+    def prose(body):  # links inside a quoted source line are source text, not wiki links
+        return "\n".join(l for l in body.split("\n") if not QUOTE.match(l))
     graph = {rel: {os.path.normpath(os.path.join(os.path.dirname(rel), l))
-                   for l in re.findall(r"\]\(([^)#\s]+\.md)", body)} for rel, _, body in cs}
+                   for l in re.findall(r"\]\(([^)#\s]+\.md)", prose(body))} for rel, _, body in cs}
     reach, todo = set(), []
     if not os.path.exists(idx):
         problems.append("index.md missing")
@@ -299,8 +301,8 @@ def cmd_ask(a):
     if not cands:
         print("UNKNOWN - no matching file in the wiki")
         return
-    cl = [f"{i}. {c[2].split('/')[-1]} | {c[5]} {c[4]} | {c[8]}" for i, c in enumerate(cands)]
-    system = "You pick the code location that answers the question. Answer only with a line `IDS: n` (best id first, at most 2). No other text."
+    cl = [f"{i}. {c[2].split('/')[-1]} | {c[5]} {c[4]} (Zeilen {c[6]}-{c[7]}, {c[7] - c[6] + 1} lines) | {c[8]}" for i, c in enumerate(cands)]
+    system = "You pick the code location that answers the question. Prefer the most specific location: the smallest function that contains the answer, never a whole class or file when a function fits. Answer only with a line `IDS: n` (best id first, at most 2). No other text."
     sid = wiki_llm.pick_ids(system, f"Question: {q}\n\nLocations:\n" + "\n".join(cl), set(range(len(cands))), 2)
     if not sid:
         print("UNKNOWN - the model named no location")
