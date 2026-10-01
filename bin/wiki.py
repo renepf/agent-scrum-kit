@@ -282,34 +282,79 @@ def render_cite(tag, path, a, b, sha):
     return f"{tag}:{path}:{a}-{b}@{sha}"
 
 
+STOP = {"wird", "werden", "sobald", "wenn", "nach", "beim", "einen", "eines", "einem", "einer", "zeigt", "macht", "meldet", "dabei",
+        "dass", "auch", "oder", "ohne", "damit", "diese", "dieser", "dieses", "app", "ios", "android", "aus", "auf", "und", "der", "die", "das"}
+
+
+def source_lines(tag, path, sha, cache={}):
+    k = (tag, path, sha)
+    if k not in cache:
+        r = subprocess.run(["git", "-C", REPOS[tag], "show", f"{sha}:{path}"], capture_output=True, text=True)
+        cache[k] = r.stdout.split("\n") if not r.returncode else []
+    return cache[k]
+
+
 def cmd_ask(a):
     if not a:
         die('usage: wiki.sh ask "<question>"   (local model picks candidates; the script renders file:lines)')
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import wiki_llm
     q = " ".join(a)
+    terms = sorted({t for t in re.findall(r"[A-Za-zÄÖÜäöüß]{5,}", q.lower())} - STOP)
     files = [(rel, fm, body) for rel, fm, body in concepts(ROOT) if src_of(fm) and fm.get("type") != "feature"]
-    lines = [f"{i}. {rel} | {fm.get('title','')} | {fm.get('description','')}" for i, (rel, fm, _) in enumerate(files)]
-    system = "You route questions to source files. Answer only with a line `IDS: n,n,n` (at most 3 ids from the list). No other text."
-    fid = wiki_llm.pick_ids(system, f"Question: {q}\n\nFiles:\n" + "\n".join(lines), set(range(len(files))), 3)
+
+    def hits(lines):
+        low = "\n".join(lines).lower()
+        return [t for t in terms if t in low]
+
+    flines = []
+    for i, (rel, fm, _) in enumerate(files):
+        tag, path, _, _, sha = src_of(fm)
+        h = hits(source_lines(tag, path, sha))
+        flines.append(f"{i}. {rel} | {fm.get('title','')} | {fm.get('description','')} | Treffer im Quelltext: {', '.join(h) if h else '-'}")
+    system = "You route questions to source files. Answer only with a line `IDS: n,n,n,n` (at most 4 ids from the list, best first). No other text."
+    fid = wiki_llm.pick_ids(system, f"Question: {q}\n\nFiles:\n" + "\n".join(flines), set(range(len(files))), 4)
     cands = []
     for i in fid:
         rel, fm, body = files[i]
         tag, path, _, _, sha = src_of(fm)
+        src = source_lines(tag, path, sha)
         for name, kind, x, y, desc in symbols_of(body):
-            cands.append((rel, tag, path, sha, name, kind, x, y, desc))
+            cands.append((rel, tag, path, sha, name, kind, x, y, desc, hits(src[x - 1:y])))
     if not cands:
         print("UNKNOWN - no matching file in the wiki")
         return
-    cl = [f"{i}. {c[2].split('/')[-1]} | {c[5]} {c[4]} (Zeilen {c[6]}-{c[7]}, {c[7] - c[6] + 1} lines) | {c[8]}" for i, c in enumerate(cands)]
-    system = "You pick the code location that answers the question. Prefer the most specific location: the smallest function that contains the answer, never a whole class or file when a function fits. Answer only with a line `IDS: n` (best id first, at most 2). No other text."
-    sid = wiki_llm.pick_ids(system, f"Question: {q}\n\nLocations:\n" + "\n".join(cl), set(range(len(cands))), 2)
+    cl = [f"{i}. {c[2].split('/')[-1]} | {c[5]} {c[4]} (Zeilen {c[6]}-{c[7]}, {c[7] - c[6] + 1} lines) | {c[8]} | Treffer: {', '.join(c[9]) if c[9] else '-'}" for i, c in enumerate(cands)]
+    system = ("You pick the code location that answers the question. Prefer the most specific location: the smallest function that contains the answer, "
+              "never a whole class or file when a function fits. A location whose Treffer list contains the question's key words is a strong signal. "
+              "Answer only with a line `IDS: n` (best id first). No other text.")
+    sid = wiki_llm.pick_ids(system, f"Question: {q}\n\nLocations:\n" + "\n".join(cl), set(range(len(cands))), 1)
     if not sid:
         print("UNKNOWN - the model named no location")
         return
-    for i in sid:
-        rel, tag, path, sha, name, kind, x, y, desc = cands[i]
-        print(f"answer: {render_cite(tag, path, x, y, sha)}  ({kind} {name}; concept {rel}; UNGEPRUEFT unless verified)")
+    rel, tag, path, sha, name, kind, x, y, desc, _ = cands[sid[0]]
+    lo, hi, how = x, y, "whole symbol"
+    if y - x + 1 <= int(os.environ.get("WIKI_ASK_MAX_SYMBOL", "250")):
+        r = subprocess.run(["git", "-C", REPOS[tag], "show", f"{sha}:{path}"], capture_output=True, text=True)
+        if not r.returncode:
+            code = r.stdout.split("\n")[x - 1:y]
+            system = ("You narrow a code location. Copy the FIRST and the LAST line of the smallest block (at most 15 lines) that answers the question, "
+                      "character by character, without line numbers. Reply exactly two lines: `FROM: <line>` and `TO: <line>`. No other text.")
+            out = wiki_llm.chat(system, f"Question: {q}\n\nCode ({kind} {name}):\n" + "\n".join(code), 200)
+            f1 = re.search(r"FROM:\s*(.+)", out)
+            t1 = re.search(r"TO:\s*(.+)", out)
+            norm = wiki_llm.norm
+            if f1 and t1:
+                def find(q1):
+                    n1 = norm(q1.strip("` "))
+                    exact = [i for i, l in enumerate(code) if norm(l) == n1]
+                    return exact or [i for i, l in enumerate(code) if n1 and (n1 in norm(l) or (norm(l) and norm(l) in n1))]
+                ci, cj = find(f1.group(1)), find(t1.group(1))
+                ci = ci[:1]
+                cj = [j for j in cj if ci and j >= ci[0]][:1]
+                if ci and cj and cj[0] - ci[0] < 40:
+                    lo, hi, how = x + ci[0], x + cj[0], "block found by quote"
+    print(f"answer: {render_cite(tag, path, lo, hi, sha)}  ({how} in {kind} {name}; concept {rel}; UNGEPRUEFT unless verified)")
 
 
 def cmd_describe(a):

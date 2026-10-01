@@ -38,7 +38,7 @@ out="$("$W" verify "$ST" --promote 2>&1)"; expect promote "$out" '*VERIFIED*prom
 expect verified-stamp "$(cat "$C")" '*by: wiki.sh*'
 
 out="$("$W" ask "wo meldet sich der Nutzer an login")"
-expect ask-cites "$out" "*answer: and:feature/auth/AuthVm.kt:3-5@$SHA*"
+expect ask-cites "$out" "*answer: and:feature/auth/AuthVm.kt:4-4@$SHA*block found by quote*"
 out="$(WIKI_LLM_URL=http://127.0.0.1:1 "$W" ask "login" 2>&1)"; rc=$?
 expect ask-failure "$out" '*model call failed*'; n=$((n + 1)); [ "$rc" != 0 ] || fail ask:rc-zero
 
