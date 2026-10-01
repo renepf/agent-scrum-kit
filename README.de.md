@@ -258,7 +258,7 @@ Aendert sich `roles/_COMMON.md`, betrifft das alle neun Sessions.
 | `tickets/<nr>/` | `GATES.md`: Gate-Ledger je Ticket, je AC ein Gate, `OWNS:` als Umfang, Format und Regeln aus unlazy (MIT); die Freigabe des Umfangs steht als Kommentar am Issue |
 | `evals/` | die Suite, die prueft, ob das alles haelt |
 | `memory/` | Gedaechtnis je Rolle plus geteilt, eine Datei je Fakt, generierter Index |
-| `.mcp.json` | MCP-Server context7 und graphify, beide durch `caveman-shrink`; jcodemunch auf Einschalten unter `adapters/claude-code/mcp/` |
+| `.mcp.json` | MCP-Server context7, durch `caveman-shrink`; jcodemunch auf Einschalten unter `adapters/claude-code/mcp/` |
 | `kit.env` | **alles Projektwissen.** Kein Skript kennt dein Projekt, nur diese Datei |
 
 ## Die drei Regeln, die alles tragen

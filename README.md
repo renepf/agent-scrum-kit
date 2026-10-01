@@ -257,7 +257,7 @@ If `roles/_COMMON.md` changes, that concerns all nine sessions.
 | `tickets/<nr>/` | `GATES.md`: the gate ledger per ticket, one gate per AC, `OWNS:` as the scope, format and rules from unlazy (MIT); the approval of the scope stands as a comment on the issue |
 | `evals/` | the suite that checks whether all of this holds |
 | `memory/` | memory per role plus a shared one, one file per fact, a generated index |
-| `.mcp.json` | the MCP servers context7 and graphify, both through `caveman-shrink`; jcodemunch on opt-in under `adapters/claude-code/mcp/` |
+| `.mcp.json` | the MCP server context7, through `caveman-shrink`; jcodemunch on opt-in under `adapters/claude-code/mcp/` |
 | `kit.env` | **all project knowledge.** No script knows your project, only this file |
 
 ## The three rules that carry everything

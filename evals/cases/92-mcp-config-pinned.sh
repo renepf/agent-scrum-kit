@@ -14,7 +14,7 @@ def load(p):
         errors.append(f"{p}:invalid({e})"); return {}
 std = load(".mcp.json"); opt = load("adapters/claude-code/mcp/jcodemunch.json")
 if "jcodemunch" in std: errors.append("jcodemunch-on-by-default")
-if set(std) != {"context7", "graphify"}: errors.append(f"default-servers={sorted(std)}")
+if set(std) != {"context7"}: errors.append(f"default-servers={sorted(std)}")
 if set(opt) != {"jcodemunch"}: errors.append(f"opt-in-servers={sorted(opt)}")
 # package@version, package==version or package[extra]==version — anything else is unpinned.
 PIN = re.compile(r"^(@?[a-z0-9][\w./-]*@\d+\.\d+\.\d+|[a-z0-9][\w.-]*(\[[\w,]+\])?==\d+\.\d+\.\d+)$")

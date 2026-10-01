@@ -121,14 +121,12 @@ gepinnt; gemessen am 2026-09-14 per `initialize` + `tools/list`:
 | Server | Datei | Paket | Lizenz | Tools | Beschreibungen roh → gekuerzt |
 |---|---|---|---|---|---|
 | context7 | `.mcp.json` | `@upstash/context7-mcp@4.1.0` (npx) | MIT | 2 | 2435 → 2351 Zeichen |
-| graphify | `.mcp.json` | `graphifyy[mcp]==0.9.57` (uvx) | Apache-2.0 | 10 | 1229 → 1187 Zeichen |
 | jcodemunch | `adapters/claude-code/mcp/jcodemunch.json` | `jcodemunch-mcp==1.108.318` (uvx) | Dual-Use, siehe unten | 6 | — |
 
-Voraussetzungen: `npx` (Node) und `uvx` (uv). graphify liest `graphify-out/graph.json` relativ zum
-Kit-Ordner; ohne Graph startet der Server trotzdem (gemessen). Den Graph baut `graphify update <pfad>`.
+Voraussetzungen: `npx` (Node) und `uvx` (uv).
 
-`graphifyy` braucht das Extra `[mcp]`: ohne es endet `graphify-mcp` mit
-`ModuleNotFoundError: No module named 'mcp'` (gemessen an einer `uv tool install graphifyy`).
+graphify stand hier bis zum 2026-10-01 und ist entfernt: installiert, bei jeder Sitzung gestartet,
+nie abgefragt. Ein Server, der einen Handshake kostet und nichts beantwortet, ist Ballast.
 
 Start mit MCP:
 
