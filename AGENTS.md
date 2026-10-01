@@ -12,7 +12,6 @@ Applies to every role, every session, every host. One source, several names:
 | to start a session | `adapters/<host>/README.md` |
 | to store a fact permanently | `memory/README.md` |
 | to check whether the kit holds | `evals/README.md` |
-| to read or ask the shared project wiki | `protocols/LIBRARIAN.md` |
 
 Everything else you ignore until somebody points you at it. Unasked reading costs context.
 
