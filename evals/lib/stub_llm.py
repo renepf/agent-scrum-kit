@@ -6,6 +6,9 @@ class H(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a): pass
     def do_POST(self):
         req = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        if "q" in req:  # Laya route stub
+            body = json.dumps({"kind": "code", "kind_p": 0.9, "side": "android", "side_p": 0.8}).encode()
+            self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers(); self.wfile.write(body); return
         sysm, user = req["messages"][0]["content"], req["messages"][1]["content"]
         if "route questions" in sysm:
             out = "IDS: 0"

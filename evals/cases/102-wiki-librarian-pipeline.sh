@@ -39,6 +39,8 @@ expect verified-stamp "$(cat "$C")" '*by: wiki.sh*'
 
 out="$("$W" ask "wo meldet sich der Nutzer an login")"
 expect ask-cites "$out" "*answer: and:feature/auth/AuthVm.kt:4-4@$SHA*block found by quote*"
+out="$(WIKI_ROUTE_URL="$WIKI_LLM_URL" "$W" ask "wo meldet sich der Nutzer an login")"
+expect ask-route "$out" '*route: code/android*1 file(s) left*answer: and:*'
 out="$(WIKI_LLM_URL=http://127.0.0.1:1 "$W" ask "login" 2>&1)"; rc=$?
 expect ask-failure "$out" '*model call failed*'; n=$((n + 1)); [ "$rc" != 0 ] || fail ask:rc-zero
 

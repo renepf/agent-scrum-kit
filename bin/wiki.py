@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """wiki.py - implementation behind bin/wiki.sh. See protocols/LIBRARIAN.md."""
-import datetime, os, re, subprocess, sys
+import datetime, json, os, re, subprocess, sys
 
 ROOT = os.path.abspath(os.environ.get("WIKI_ROOT", "wiki"))
 STAGING = os.path.abspath(os.environ.get("WIKI_STAGING", os.path.join(ROOT, "..", "wiki-staging")))
@@ -307,6 +307,20 @@ def cmd_ask(a):
         low = "\n".join(lines).lower()
         return [t for t in terms if t in low]
 
+    rt = None
+    if os.environ.get("WIKI_ROUTE_URL"):  # Laya gate: kind of source and platform, argmax only, no invented thresholds
+        import urllib.request
+        try:
+            req = urllib.request.Request(os.environ["WIKI_ROUTE_URL"].rstrip("/") + "/", json.dumps({"q": q}).encode(), {"Content-Type": "application/json"})
+            rt = json.load(urllib.request.urlopen(req, timeout=60))
+        except Exception as e:
+            die(f"route call failed ({os.environ['WIKI_ROUTE_URL']}): {e}")
+        kinds = {"code": ("ios", "and"), "requirement": ("req",), "ticket": ("ops",)}[rt["kind"]]
+        sides = {"ios": ("ios",), "android": ("and",)}.get(rt["side"])
+        narrowed = [f for f in files if src_of(f[1])[0] in kinds and (not sides or not set(kinds) & {"ios", "and"} or src_of(f[1])[0] in sides)]
+        if narrowed:
+            files = narrowed
+        print(f"route: {rt['kind']}/{rt['side']} (p {rt['kind_p']}/{rt['side_p']}), {len(files)} file(s) left")
     flines = []
     for i, (rel, fm, _) in enumerate(files):
         tag, path, _, _, sha = src_of(fm)

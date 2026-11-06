@@ -51,6 +51,7 @@ Superseded facts get `status: deprecated`; nothing is deleted (NB, "close, never
 | `fill [prefix]` | librarian | `describe` then `verify --promote` per file, one log line per file, a `.wiki-stop` file halts between batches, resumes at files missing from `log.md` |
 | `ask "<question>"` | any role, via the librarian | the local model only names ids (file, then symbol); the script renders `tag:path:a-b@sha` |
 | `golden <golden.json>` | librarian, CI | runs the questions through `ask`, scores under the strict rule; the golden file lives outside the wiki |
+| `ask` with `WIKI_ROUTE_URL` | any role, via the librarian | Laya gate in front of `ask` (`bin/wiki_route.py --serve`, run with the Python that has `laya`): two typed choices, source kind (code, requirement, ticket) and platform; argmax only, narrows the file list before the model routes. Owner decision 2026-11-06: Laya steers the librarian |
 | `receipt <sid>` / `gate <sid>` | hooks | S3 writes, S2 checks the receipt; the denial names `wiki.sh query` |
 
 Rules the script enforces: enrich before create (patch an existing concept when the fact is an
