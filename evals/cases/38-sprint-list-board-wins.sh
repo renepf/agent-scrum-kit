@@ -59,6 +59,21 @@ case "$msg" in *Traceback*) errors="$errors 5:traceback" ;; esac
 lines="$(printf '%s\n' "$msg" | grep -c .)"
 [ "$lines" -le 2 ] || errors="$errors 5:lines=$lines"
 
-observe "rebuild: $rows rows, the foreign ticket stays out · after planned #41 shows 'planned' · a hand-edited row is corrected and the deviation named · a clean rebuild names none · a failed read exits $rc, changes nothing and says '$(printf '%s' "$msg" | head -c 40)'${errors:+ · ERRORS:$errors}"
+# 6. The lock file is the second place that can fail. An unwritable directory must answer the
+# same way: one line naming the file, exit 1 — not a stack trace from flock.
+mkdir -p "$SANDBOX/gesperrt"
+cp "$SANDBOX/issues.json" "$SANDBOX/gesperrt/issues.json"
+chmod 500 "$SANDBOX/gesperrt"
+# kit.env is read with set -a and overrides the environment (trap 30), so the override has to go
+# into a kit.env of its own — an environment variable alone would be swallowed.
+sed 's#^KIT_ISSUE_FILE=.*#KIT_ISSUE_FILE='"$SANDBOX"'/gesperrt/issues.json#' "$SANDBOX/kit.env" > "$SANDBOX/kit-lock.env"
+lockmsg="$(KIT_ENV_FILE="$SANDBOX/kit-lock.env" KIT_ROLE=product-owner "$BIN/tickets.sh" sprint 2>&1 >/dev/null)"
+lockrc=$?
+chmod 700 "$SANDBOX/gesperrt"
+[ "$lockrc" != "0" ] || errors="$errors 6:exit=0"
+case "$lockmsg" in *"cannot lock"*) ;; *) errors="$errors 6:msg='$lockmsg'" ;; esac
+case "$lockmsg" in *Traceback*) errors="$errors 6:traceback" ;; esac
+
+observe "rebuild: $rows rows, the foreign ticket stays out · after planned #41 shows 'planned' · a hand-edited row is corrected and the deviation named · a clean rebuild names none · a failed read exits $rc, changes nothing and says '$(printf '%s' "$msg" | head -c 40)' · unwritable directory: '$(printf '%s' "$lockmsg" | head -c 30)'${errors:+ · ERRORS:$errors}"
 echo "OBSERVED: $OBSERVED"
 [ -z "$errors" ]
