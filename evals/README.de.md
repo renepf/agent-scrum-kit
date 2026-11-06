@@ -21,6 +21,28 @@ bestimmten Host laeuft, wird als `[host-gebunden: <host>]` markiert.
 | `BLOCK` | der Host konnte nicht antworten: Kontingent erschoepft, API-Fehler, leere Antwort | 2 |
 | `SKIP` | live-Fall ohne `--live`, gh-Fall ohne `--gh`, net-Fall ohne `--net` | |
 
+### Wie lange ein lebender Fall wartet (76, 77)
+
+Die zwei pty-Treiber trugen eine feste Frist von 180 s. Unter Last — paralleler Build, mehrere
+Sitzungen auf derselben Maschine — braucht der erste Modellzug laenger, und der Fall wurde rot,
+obwohl nichts kaputt war. Gemessen wird jetzt der **Stillstand** statt der Gesamtzeit: solange
+sich der Bildschirm ruehrt, arbeitet die Sitzung und der Treiber wartet weiter. Erst wenn sich
+nichts mehr aendert, ist das der Befund.
+
+| Variable | Vorgabe | Wirkung |
+|---|---|---|
+| `KIT_PROBE_STILL` | `120` | Sekunden ohne jede Bildschirmaenderung, bevor der Treiber aufgibt |
+| `KIT_PROBE_DECKE` | `900` | absolute Decke, die Reissleine gegen ein Haengen |
+
+Jedes Warten meldet seine echte Dauer in der Urteilszeile — `waits 21s 22s 26s (stall budget
+120s)`. Sie reist im `RESULT` des Treibers mit, weil `run.sh` nur diese Zeile liest: eine Dauer
+auf stdout waere gemessen und trotzdem unlesbar.
+
+**Grundlinie, Fall 77 auf leerer Maschine, 2026-11-06:** 21 s, 22 s, 26 s. Die alten festen
+180 s waren also nicht an sich zu klein — sie waren zu klein **unter Last**, wo ein einzelner
+Zug ein Mehrfaches braucht. Lies die Zahlen deines letzten Laufs, bevor du eine Vorgabe
+aenderst.
+
 `BLOCK` ist **kein** Urteil ueber die Rolle. Ein fehlgeschlagener Aufruf ist ein Fehlschlag,
 kein Ergebnis — die Suite leitet daraus keinen Zustand ab, sie sagt "erneut laufen lassen".
 

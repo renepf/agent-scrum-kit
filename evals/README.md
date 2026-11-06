@@ -24,6 +24,27 @@ particular host is marked `[host-bound: <host>]`.
 `BLOCK` is **not** a verdict about the role. A failed call is a failure,
 not a result — the suite derives no state from it, it says "run it again".
 
+### How long a live case waits (76, 77)
+
+The two pty drivers used to carry a fixed 180 s. Under load — a parallel build, several sessions
+on the same machine — the first model turn takes longer, and the case went red although nothing
+was broken. They now measure **stall** instead of total time: while the screen still moves the
+session is working and the driver keeps waiting. Only when nothing changes any more is that the
+finding.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `KIT_PROBE_STILL` | `120` | seconds without any screen change before the driver gives up |
+| `KIT_PROBE_DECKE` | `900` | absolute ceiling, the ripcord against a hang |
+
+Every wait reports its real duration in the verdict line — `waits 21s 22s 26s (stall budget
+120s)`. It travels in the driver's `RESULT`, because `run.sh` reads that line and nothing else:
+a duration on stdout would be measured and still unreadable.
+
+**Baseline, case 77 on an idle machine, 2026-11-06:** 21 s, 22 s, 26 s. The old fixed 180 s was
+therefore not too small as such — it was too small *under load*, where a single turn can take
+several times as long. Read the numbers from your own last run before you change a default.
+
 ## The families
 
 | Prefix | Family | What it checks |
