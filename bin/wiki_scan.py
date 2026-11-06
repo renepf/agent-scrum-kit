@@ -16,6 +16,9 @@ SW = re.compile(r"^\s*(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:public|private|fileprivate
 MD = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
 
+BLOCK = int(os.environ.get("WIKI_BLOCK_LINES", "10"))  # owner 2026-11-06: the finer the better; ours: 10-line windows in functions longer than 12
+
+
 def git(repo, *a):
     r = subprocess.run(["git", "-C", repo, *a], capture_output=True, text=True)
     if r.returncode:
@@ -101,7 +104,10 @@ def run(scope_path, repos, root, now):
     outdir = os.path.join(root, feat)
     os.makedirs(outdir, exist_ok=True)
     made, links = [], []
+    only = {x for x in os.environ.get("WIKI_SCAN_ONLY", "").split(",") if x}
     for src in sc["sources"]:
+        if only and src["kind"] not in only:
+            continue
         repo = repos.get(src["tag"]) or raise_(f"unknown repo tag {src['tag']}")
         sha = src["commit"]
         files = git(repo, "ls-tree", "-r", "--name-only", sha).split("\n")
@@ -119,6 +125,15 @@ def run(scope_path, repos, root, now):
             for sname, kd, a, b, d in symbols(src["kind"], lines):
                 q = lines[d - 1].strip()
                 body += [f"- `{sname}` ({kd}) Zeilen {a}-{b}", f"  > [{src['tag']}:{f}:{d}-{d}@{sha}] {q}"]
+                if kd in ("fun", "func", "init") and b - a + 1 > BLOCK + 2:
+                    k = 0
+                    for lo in range(a, b + 1, BLOCK):
+                        hi = min(lo + BLOCK - 1, b)
+                        first = next((x for x in range(lo, hi + 1) if lines[x - 1].strip() and not lines[x - 1].strip().startswith(("//", "/*", "*"))), None)
+                        if first is None:
+                            continue
+                        k += 1
+                        body += [f"- `{sname}#{k}` (block) Zeilen {lo}-{hi}", f"  > [{src['tag']}:{f}:{first}-{first}@{sha}] {lines[first - 1].strip()}"]
             fm = ["---", f"type: {ctype(src['kind'], f)}", f"title: {os.path.basename(f)} ({src['tag']})",
                   f"description: Quelldatei {f}, {n} Zeilen, Stand {sha}. Typ aus dem Dateinamen abgeleitet.",
                   "tags:", f"  - {feat}", f"  - {src['tag']}",
@@ -126,6 +141,9 @@ def run(scope_path, repos, root, now):
                   f"generated: {{by: wiki.sh scan, at: {now}}}", "verified: []", "---"]
             open(os.path.join(outdir, name), "w", encoding="utf-8").write("\n".join(fm + [""] + body) + "\n")
             made.append((src["tag"], name, f))
+    if only:
+        print(f"scan {feat}: {len(made)} concept(s) of kinds {sorted(only)}; feature page left as is")
+        return made
     tag, sha = sc["readme"]["tag"], sc["readme"]["commit"]
     rp = sc["readme"]["path"]
     first = git(repos[tag], "show", f"{sha}:{rp}").split("\n")[0].strip()

@@ -12,6 +12,7 @@ expect() { n=$((n + 1)); case "$2" in $3) ;; *) fail "$1:'$(printf '%s' "$2" | t
 S="$T/src"; mkdir -p "$S/feature/auth"
 git -C "$S" init -q
 printf 'package x\nclass AuthVm {\n    fun login(user: String) {\n        token = refresh(user)\n    }\n    fun logout() { }\n}\n' > "$S/feature/auth/AuthVm.kt"
+printf 'fun bulk() {\n' >> "$S/feature/auth/AuthVm.kt"; for i in $(seq 1 14); do printf '    step%s()\n' "$i" >> "$S/feature/auth/AuthVm.kt"; done; printf '}\n' >> "$S/feature/auth/AuthVm.kt"
 git -C "$S" add . && git -C "$S" -c user.name=t -c user.email=t@t commit -qm init
 SHA="$(git -C "$S" rev-parse --short HEAD)"
 export WIKI_ROOT="$T/wiki" WIKI_STAGING="$T/staging" WIKI_REPOS="and=$S"
@@ -24,13 +25,14 @@ J
 out="$("$W" scan "$T/scope.json")"; expect scan "$out" '*scan auth: 1 concept*'
 C="$WIKI_ROOT/auth/and-auth__AuthVm.kt.md"
 expect symbols "$(cat "$C")" '*`login` (fun) Zeilen 3-5*'
+expect blocks "$(cat "$C")" '*`bulk#2` (block) Zeilen 18-23*'
 printf -- '- [Auth](auth.md)\n' > "$WIKI_ROOT/index.md"
 
 PORT_FILE="$T/port"; python3 "$KIT_ROOT/evals/lib/stub_llm.py" > "$PORT_FILE" & SP=$!
 for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$PORT_FILE" ] && break; sleep 0.3; done
 export WIKI_LLM_URL="http://127.0.0.1:$(cat "$PORT_FILE")"
 
-out="$("$W" describe "$C")"; expect describe-counts "$out" '*kept 2, rejected 2 of 4*'
+out="$("$W" describe "$C")"; expect describe-counts "$out" '*kept 2, rejected 5 of 7*'
 ST="$WIKI_STAGING/auth/and-auth__AuthVm.kt.md"
 expect describe-desc "$(cat "$ST")" '*Beschreibung: Holt ein neues Token*'
 n=$((n + 1)); grep -q 'Erfundene Zeile' "$ST" && fail describe:invented-kept
@@ -41,12 +43,15 @@ out="$("$W" ask "wo meldet sich der Nutzer an login")"
 expect ask-cites "$out" "*answer: and:feature/auth/AuthVm.kt:4-4@$SHA*block found by quote*"
 out="$(WIKI_ROUTE_URL="$WIKI_LLM_URL" "$W" ask "wo meldet sich der Nutzer an login")"
 expect ask-route "$out" '*route: code/android*1 file(s) left*answer: and:*'
+out="$(WIKI_ROUTE_URL="$WIKI_LLM_URL" "$W" brief "wie meldet der nutzer sich an login")"
+expect brief "$out" '*topic: auth*auth/and-auth__AuthVm.kt.md*verified*'
+out="$(WIKI_ROUTE_URL=http://127.0.0.1:1 "$W" brief "login" 2>&1)"; expect brief-dead "$out" '*route call failed*'
 out="$(WIKI_LLM_URL=http://127.0.0.1:1 "$W" ask "login" 2>&1)"; rc=$?
 expect ask-failure "$out" '*model call failed*'; n=$((n + 1)); [ "$rc" != 0 ] || fail ask:rc-zero
 
 # fill: describe + verify --promote per file, log line per file, resume skips logged files, stop file halts before a batch
 touch "$T/.wiki-stop"; out="$("$W" fill)"; expect fill-stop "$out" '*STOP*'
-rm -f "$T/.wiki-stop"; out="$("$W" fill)"; expect fill-run "$out" '*fill auth/and-auth__AuthVm.kt.md: kept 2, rejected 2 of 4; verified, promoted*'
+rm -f "$T/.wiki-stop"; out="$("$W" fill)"; expect fill-run "$out" '*fill auth/and-auth__AuthVm.kt.md: kept 2, rejected 5 of 7; verified, promoted*'
 expect fill-log "$(cat "$WIKI_ROOT/log.md")" '*fill auth/and-auth__AuthVm.kt.md*'
 out="$("$W" fill)"; expect fill-resume "$out" '*0 concept(s) to do*'
 

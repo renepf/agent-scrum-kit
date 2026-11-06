@@ -2,12 +2,15 @@
 
 Rule (owner D72, strict; our operationalisation is question Q1 of the handover):
 a question counts only when an answer names the expected file AND a line range that overlaps the expected
-range and is not larger than max(3 x expected length, 40) lines. A file without lines, a partial hit
+range and is not larger than max(5 x expected length, 120) lines (owner 2026-11-06 raised it from 3x/40). A file without lines, a partial hit
 (right file, no overlap), a whole-file citation, or no citation is a miss.
 The golden file lives OUTSIDE the wiki; the librarian never reads it.
 """
 import json, os, re, subprocess, sys
 
+# Owner 2026-11-06: raise the cap. The numbers are ours (assumption): 5x the expected length, at least 120 lines.
+MULT = int(os.environ.get("WIKI_GOLDEN_MULT", "5"))
+CAP = int(os.environ.get("WIKI_GOLDEN_CAP", "120"))
 CITE = re.compile(r"answer: ([A-Za-z0-9_-]+):(.+?):(\d+)-(\d+)@([0-9a-f]{7,40})")
 
 
@@ -17,7 +20,7 @@ def hit(cites, exp):
             continue
         a, b = int(a), int(b)
         ea, eb = exp["a"], exp["b"]
-        if a <= eb and b >= ea and (b - a + 1) <= max(3 * (eb - ea + 1), 40):
+        if a <= eb and b >= ea and (b - a + 1) <= max(MULT * (eb - ea + 1), CAP):
             return True
     return False
 

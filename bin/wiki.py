@@ -348,7 +348,9 @@ def cmd_ask(a):
         return
     rel, tag, path, sha, name, kind, x, y, desc, _ = cands[sid[0]]
     lo, hi, how = x, y, "whole symbol"
-    if y - x + 1 <= int(os.environ.get("WIKI_ASK_MAX_SYMBOL", "250")):
+    if kind == "block":
+        how = "block"
+    elif y - x + 1 <= int(os.environ.get("WIKI_ASK_MAX_SYMBOL", "250")):
         r = subprocess.run(["git", "-C", REPOS[tag], "show", f"{sha}:{path}"], capture_output=True, text=True)
         if not r.returncode:
             code = r.stdout.split("\n")[x - 1:y]
@@ -476,7 +478,8 @@ def cmd_fill(a):
     stop = os.path.join(ROOT, "..", ".wiki-stop")
     log = open(os.path.join(ROOT, "log.md"), encoding="utf-8").read() if os.path.exists(os.path.join(ROOT, "log.md")) else ""
     todo = [rel for rel, fm, _ in concepts(ROOT)
-            if src_of(fm) and fm.get("type") != "feature" and rel.startswith(scope) and f"fill {rel}:" not in log]
+            if src_of(fm) and fm.get("type") != "feature" and rel.startswith(scope)
+            and (not os.environ.get("WIKI_FILL_TAGS") or src_of(fm)[0] in os.environ["WIKI_FILL_TAGS"].split(",")) and (os.environ.get("WIKI_FILL_REDO") or f"fill {rel}:" not in log)]
     print(f"fill: {len(todo)} concept(s) to do (batch {batch})")
     done = 0
     for k, rel in enumerate(todo):
@@ -504,10 +507,54 @@ def cmd_fill(a):
     print(f"fill: {done} done")
 
 
-CMDS = {"fill": cmd_fill, "golden": cmd_golden, "describe": cmd_describe, "ask": cmd_ask, "scan": cmd_scan, "seed": cmd_seed, "query": cmd_query, "add": cmd_add, "verify": cmd_verify,
+def cmd_brief(a):
+    """Topic brief for an agent: Laya names the topic, the wiki returns the matching concepts with sources. No Qwen needed."""
+    if not a:
+        die('usage: wiki.sh brief "<task or topic text>"   (WIKI_ROUTE_URL = Laya route server; without it: all topics, lexical only)')
+    q = " ".join(a)
+    terms = sorted({t for t in re.findall(r"[A-Za-zÄÖÜäöüß]{4,}", q.lower())} - STOP)
+    feature = None
+    if os.environ.get("WIKI_ROUTE_URL"):
+        import urllib.request
+        try:
+            req = urllib.request.Request(os.environ["WIKI_ROUTE_URL"].rstrip("/") + "/", json.dumps({"q": q}).encode(), {"Content-Type": "application/json"})
+            rt = json.load(urllib.request.urlopen(req, timeout=60))
+        except Exception as e:
+            die(f"route call failed ({os.environ['WIKI_ROUTE_URL']}): {e}")
+        feature = rt["feature"]
+        print(f"topic: {feature} (p {rt['feature_p']}); source kind {rt['kind']} (p {rt['kind_p']}); platform {rt['side']} (p {rt['side_p']})")
+    sid = os.environ.get("WIKI_SESSION_ID") or os.environ.get("KIT_SESSION_ID")
+    if sid:
+        cmd_receipt([sid])
+    top = int(os.environ.get("WIKI_BRIEF_TOP", "8"))
+    scored = []
+    for rel, fm, body in concepts(ROOT):
+        if fm.get("type") == "feature" or not src_of(fm):
+            continue
+        if feature and rel.split("/")[0] != feature:
+            continue
+        syms = symbols_of(body)
+        text = " ".join([fm.get("title", ""), fm.get("description", "")] + [f"{n} {d}" for n, _, _, _, d in syms]).lower()
+        sc = sum(text.count(t) for t in terms)
+        if sc:
+            best = max(syms, key=lambda s: sum((s[0] + " " + s[4]).lower().count(t) for t in terms), default=None)
+            scored.append((-sc, rel, fm, best))
+    scored.sort(key=lambda x: (x[0], x[1]))
+    if not scored:
+        print("no concept for this topic. UNKNOWN - not in the wiki")
+        return
+    for sc, rel, fm, best in scored[:top]:
+        tag, path, _, _, sha = src_of(fm)
+        v = "verified" if as_list(fm.get("verified")) else "UNGEPRUEFT"
+        print(f"- {rel} [{fm.get('type')}, {v}]: {fm.get('description', '')}")
+        if best and best[4]:
+            print(f"    {best[1]} {best[0]}: {best[4]}  ->  {render_cite(tag, path, best[2], best[3], sha)}")
+
+
+CMDS = {"brief": cmd_brief, "fill": cmd_fill, "golden": cmd_golden, "describe": cmd_describe, "ask": cmd_ask, "scan": cmd_scan, "seed": cmd_seed, "query": cmd_query, "add": cmd_add, "verify": cmd_verify,
         "lint": cmd_lint, "receipt": cmd_receipt, "gate": cmd_gate}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] not in CMDS:
-        die("usage: wiki.sh {seed|query|add|verify|lint|scan|describe|fill|ask|golden|receipt|gate} ...")
+        die("usage: wiki.sh {seed|query|add|verify|lint|scan|describe|fill|ask|brief|golden|receipt|gate} ...")
     CMDS[sys.argv[1]](sys.argv[2:])

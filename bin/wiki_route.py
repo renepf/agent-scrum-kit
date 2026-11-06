@@ -4,13 +4,14 @@
   python wiki_route.py --serve [PORT]     tiny HTTP server, POST {"q": "..."} -> {"kind", "side", "kind_p", "side_p"}
   python wiki_route.py "<question>"       one-shot, prints the same JSON
 
-Laya answers two typed `choice` questions in one forward pass (no text generation):
+Laya answers three typed `choice` questions in one forward pass (no text generation):
   kind  code | requirement | ticket      what kind of source answers the question
   side  ios | android | none             which platform the question names
+  feature  auth | sales | parity         which product topic the text is about
 Only the argmax and its probability are returned; the caller decides what to do with them.
 Checkpoint: convaiinnovations/laya, subfolder multilingual (German questions). Source: github.com/NandhaKishorM/laya (Apache-2.0).
 """
-import json, sys
+import json, os, sys
 
 QUESTIONS = {
     "kind": {"type": "choice", "instructions": "Welche Art von Quelle beantwortet die Frage?", "criteria": {
@@ -21,6 +22,10 @@ QUESTIONS = {
         "ios": "iOS, Swift, iPhone oder Apple wird genannt",
         "android": "Android, Kotlin, Compose oder Google wird genannt",
         "none": "keine Plattform wird genannt"}},
+    "feature": {"type": "choice", "instructions": "Zu welchem Produktthema gehoert der Text?", "criteria": {
+        "auth": "Anmeldung, Registrierung, Konto, E-Mail-Bestaetigung, Passwort, Abmelden",
+        "sales": "Paywall, Abo, Kauf, Preis, Verkaufsscreen, Zahlung",
+        "parity": "Abgleich Android gegen iOS, Parity-Status, Geraeteabnahme"}},
 }
 _agent = None
 
@@ -29,10 +34,11 @@ def route(q):
     global _agent
     if _agent is None:
         import laya
-        _agent = laya.load("convaiinnovations/laya", subfolder="multilingual")
+        m = os.environ.get("WIKI_LAYA_MODEL")  # a fine-tuned checkpoint directory (wiki_laya_data.py + laya.train)
+        _agent = laya.load(m) if m else laya.load("convaiinnovations/laya", subfolder="multilingual")
     a = _agent.predict(q, QUESTIONS)["answers"]
-    k, s = a["kind"], a["side"]
-    return {"kind": k["choice"], "kind_p": round(k["probabilities"][k["choice"]], 4),
+    k, s, f = a["kind"], a["side"], a["feature"]
+    return {"feature": f["choice"], "feature_p": round(f["probabilities"][f["choice"]], 4), "kind": k["choice"], "kind_p": round(k["probabilities"][k["choice"]], 4),
             "side": s["choice"], "side_p": round(s["probabilities"][s["choice"]], 4)}
 
 
