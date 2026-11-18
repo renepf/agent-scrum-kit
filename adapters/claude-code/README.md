@@ -121,14 +121,12 @@ exactly; measured on 2026-09-14 with `initialize` + `tools/list`:
 | Server | File | Package | Licence | Tools | Descriptions raw → shortened |
 |---|---|---|---|---|---|
 | context7 | `.mcp.json` | `@upstash/context7-mcp@4.1.0` (npx) | MIT | 2 | 2435 → 2351 characters |
-| graphify | `.mcp.json` | `graphifyy[mcp]==0.9.57` (uvx) | Apache-2.0 | 10 | 1229 → 1187 characters |
 | jcodemunch | `adapters/claude-code/mcp/jcodemunch.json` | `jcodemunch-mcp==1.108.318` (uvx) | dual-use, see below | 6 | — |
 
-Prerequisites: `npx` (Node) and `uvx` (uv). graphify reads `graphify-out/graph.json` relative to the
-kit folder; without a graph the server still starts (measured). The graph is built by `graphify update <path>`.
+Prerequisites: `npx` (Node) and `uvx` (uv).
 
-`graphifyy` needs the extra `[mcp]`: without it `graphify-mcp` ends with
-`ModuleNotFoundError: No module named 'mcp'` (measured against a `uv tool install graphifyy`).
+graphify sat here until 2026-10-01 and was removed: it was installed, started on every session,
+and never queried. A server that costs a handshake and answers nothing is ballast.
 
 Starting with MCP:
 

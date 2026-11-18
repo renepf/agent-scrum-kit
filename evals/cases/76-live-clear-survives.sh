@@ -31,8 +31,12 @@ need = {"start_ok": True, "clear_new_id": True, "clear_registered_again": True, 
 f = [k for k, v in need.items() if r.get(k) is not v]
 if not r.get("sid1") or r.get("sid1") == r.get("sid2"): f.append("session-id-unchanged")
 if (r.get("tick_calls_after_clear") or 0) < 1: f.append("no-tick-after-clear")
-print("OBS start without input: %s · /clear: %s -> %s · registered again: %s · tick after /clear: %s" % (
-    r.get("start_ok"), str(r.get("sid1"))[:8], str(r.get("sid2"))[:8], r.get("clear_registered_again"), r.get("tick_calls_after_clear")))
+# The measured waits belong in the verdict line, see case 77.
+d = r.get("dauern") or {}
+takt = " ".join("%ds" % v for v in d.values()) or "none"
+print("OBS start without input: %s · /clear: %s -> %s · registered again: %s · tick after /clear: %s · waits %s (stall budget %ss)" % (
+    r.get("start_ok"), str(r.get("sid1"))[:8], str(r.get("sid2"))[:8], r.get("clear_registered_again"),
+    r.get("tick_calls_after_clear"), takt, r.get("still")))
 print("ERRORS " + " ".join(f))
 ')"; then
   echo "OBSERVED: the driver's result is not readable: $(printf '%s' "$res" | cut -c1-120)"

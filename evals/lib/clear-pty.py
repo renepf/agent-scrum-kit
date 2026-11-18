@@ -61,11 +61,34 @@ def reg_dump():
 def roster():
     f = glob.glob(os.path.join(K, "sprints/*/roster.md"))
     return [l.strip() for l in open(f[0]) if "| engineer-a |" in l] if f else []
+# Eine Frist, die unter Last reicht, ohne geraten zu sein (O2, 2026-11-06).
+# Vorher stand hier 180 s fest. Unter Last — paralleler Build, mehrere Sitzungen — braucht der
+# erste Modellzug laenger, und der Fall wurde rot, ohne dass etwas kaputt war.
+#
+# Jetzt zaehlt nicht die Gesamtzeit, sondern der STILLSTAND: solange sich der Bildschirm noch
+# ruehrt, arbeitet die Sitzung und wir warten weiter. Erst wenn STILL Sekunden nichts mehr
+# passiert, ist das der Befund. DECKE ist nur die Reissleine gegen ein Haengen.
+#
+# Beide Werte sind ueberschreibbar, und jeder Erfolg druckt seine Dauer — damit die naechste
+# Frist aus Messwerten kommt und nicht aus einer Schaetzung.
+STILL = int(os.environ.get("KIT_PROBE_STILL", "120"))
+DECKE = int(os.environ.get("KIT_PROBE_DECKE", "900"))
+
+# Wie lange jedes Warten wirklich brauchte. Geht ins RESULT, weil run.sh nur diese Zeile liest —
+# eine Dauer auf stdout waere gemessen und trotzdem unlesbar.
+dauern = {}
 seen_dialogs = set()
-def wait_for(pred, sec, label):
-    end = time.time() + sec
-    while time.time() < end and alive():
+def wait_for(pred, still, label):
+    t_start = time.time(); letzte_regung = t_start; vorher = screen(2500)
+    while alive():
+        if time.time() - letzte_regung > still:
+            print(f"  STILLSTAND {still}s: {label} (insgesamt {int(time.time()-t_start)}s)"); return False
+        if time.time() - t_start > DECKE:
+            print(f"  DECKE {DECKE}s erreicht: {label}"); return False
         pump(2)
+        jetzt = screen(2500)
+        if jetzt != vorher:
+            vorher = jetzt; letzte_regung = time.time()
         low = re.sub(r"\s+", " ", screen(2500).lower())
         flat = re.sub(r"\s+", "", screen(2500).lower())
         if "yes,itrustthisfolder" in flat and "trust" not in seen_dialogs:
@@ -73,12 +96,14 @@ def wait_for(pred, sec, label):
         for key, trig in (("mcp", "newmcpserver"), ("hooks", "hooksconfig")):
             if trig in flat and key not in seen_dialogs and "entertoconfirm" in flat:
                 seen_dialogs.add(key); print(f"  dialog '{key}' → Enter"); send("\r"); break
-        if pred(): return True
-    if not alive(): print(f"  PROCESS ENDED during: {label} · status={exited[0]}")
-    else: print(f"  TIMED OUT: {label}")
+        if pred():
+            d = int(time.time() - t_start); dauern[label] = d
+            print(f"  OK nach {d}s: {label}"); return True
+    # Die Schleife laeuft, solange der Prozess lebt — hier heraus heisst: er ist gegangen.
+    print(f"  PROZESS ENDETE waehrend: {label} · status={exited[0]}")
     return False
 t0 = time.time(); print(f"claude-PID {pid}")
-ok1 = wait_for(lambda: any("| engineer-a |" in r for r in roster()), 180, "start → registration without input")
+ok1 = wait_for(lambda: any("| engineer-a |" in r for r in roster()), STILL, "start → registration without input")
 pump(6)
 print("  registry files (newest 6):", reg_dump())
 sid_roster1 = (roster() or ["|||"])[0].split("|")[3].strip()
@@ -87,9 +112,9 @@ res = {"start_ok": ok1, "sid1": sid1}
 if ok1:
     pump(20)
     send("/clear"); pump(1.5); send("\r")
-    ok2 = wait_for(lambda: reg() not in (None, sid1), 60, "/clear → a new registry id")
+    ok2 = wait_for(lambda: reg() not in (None, sid1), STILL, "/clear → a new registry id")
     sid2 = reg(); print(f"[{int(time.time()-t0)}s] /clear: registry={sid2} · registry files: {reg_dump()}")
-    ok3 = wait_for(lambda: any(("| engineer-a |" in r) and (sid1 not in r) for r in roster()), 180, "/clear → registration again without input")
+    ok3 = wait_for(lambda: any(("| engineer-a |" in r) and (sid1 not in r) for r in roster()), STILL, "/clear → registration again without input")
     if not sid2 or sid2 == sid1:
         sid2 = (roster() or ["|||"])[0].split("|")[3].strip()
     print(f"[{int(time.time()-t0)}s] roster={roster()}")
@@ -109,4 +134,6 @@ for k in ("sid1", "sid2"):
     s = res.get(k)
     fs = glob.glob(os.path.expanduser(f"~/.claude/projects/*/{s}.jsonl")) if s else []
     res[k + "_transcript"] = bool(fs)
+res["dauern"] = dauern
+res["still"] = STILL
 print("RESULT", json.dumps(res))

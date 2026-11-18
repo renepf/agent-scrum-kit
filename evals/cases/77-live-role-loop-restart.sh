@@ -32,8 +32,13 @@ if not r.get("sid1") or r.get("sid1") == r.get("sid2"): f.append("session-id-unc
 if r.get("reg2") != r.get("sid2"): f.append("registry-differs")
 if r.get("anchor2") != "engineer-a": f.append("anchor")
 if (r.get("starts_in_log") or 0) < 2: f.append("no-second-start-in-the-log")
-print("OBS PID %s -> %s · session %s -> %s · starts in the log %s · the stop ended the loop: %s" % (
-    r.get("pid1"), r.get("pid2"), str(r.get("sid1"))[:8], str(r.get("sid2"))[:8], r.get("starts_in_log"), r.get("loop_ends_on_stop")))
+# The measured waits belong in the verdict line: the deadline is a stall budget now, so the real
+# durations are what the next default should be read from — not a guess.
+d = r.get("dauern") or {}
+takt = " ".join("%ds" % v for v in d.values()) or "none"
+print("OBS PID %s -> %s · session %s -> %s · starts in the log %s · the stop ended the loop: %s · waits %s (stall budget %ss)" % (
+    r.get("pid1"), r.get("pid2"), str(r.get("sid1"))[:8], str(r.get("sid2"))[:8], r.get("starts_in_log"),
+    r.get("loop_ends_on_stop"), takt, r.get("still")))
 print("ERRORS " + " ".join(f))
 ')"; then
   echo "OBSERVED: the driver's result is not readable: $(printf '%s' "$res" | cut -c1-120)"; exit 1

@@ -171,20 +171,13 @@ Das Kit liefert zwei MCP-Server fest aus und einen auf Einschalten. Jeder laeuft
 
 | Datei | Server | Standard |
 |---|---|---|
-| `.mcp.json` | context7, graphify | an |
+| `.mcp.json` | context7 | an |
 | `adapters/claude-code/mcp/jcodemunch.json` | jcodemunch | **aus** — Lizenz nur nicht-kommerziell, siehe `adapters/claude-code/README.md` Abschnitt 5 |
 
 Pruefen, dass jeder Server startet und antwortet (laedt die Pakete herunter):
 
 ```bash
 evals/run.sh --net --case 93-mcp-handshake
-```
-
-graphify braucht einen Graphen unter `graphify-out/graph.json` im Kit-Ordner. Ohne ihn startet der
-Server, findet aber nichts. Den Graphen des Projekts bauen:
-
-```bash
-uvx --from 'graphifyy[mcp]==0.9.57' graphify update "$KIT_WORKTREE_ROOT"   # ungeprueft mit diesem Pfad; gemessen nur 'graphify update .'
 ```
 
 Das caveman-Plugin (Hooks und Skills, kein MCP) ist optional:

@@ -48,27 +48,52 @@ def row():
 def reg(p):
     try: return json.load(open(os.path.expanduser(f"~/.claude/sessions/{p}.json"))).get("sessionId")
     except Exception: return None
+# Eine Frist, die unter Last reicht, ohne geraten zu sein (O2, 2026-11-06).
+# Vorher stand hier 180 s fest. Unter Last — paralleler Build, mehrere Sitzungen — braucht der
+# erste Modellzug laenger, und der Fall wurde rot, ohne dass etwas kaputt war.
+#
+# Jetzt zaehlt nicht die Gesamtzeit, sondern der STILLSTAND: solange sich der Bildschirm noch
+# ruehrt, arbeitet die Sitzung und wir warten weiter. Erst wenn STILL Sekunden nichts mehr
+# passiert, ist das der Befund. DECKE ist nur die Reissleine gegen ein Haengen.
+#
+# Beide Werte sind ueberschreibbar, und jeder Erfolg druckt seine Dauer — damit die naechste
+# Frist aus Messwerten kommt und nicht aus einer Schaetzung.
+STILL = int(os.environ.get("KIT_PROBE_STILL", "120"))
+DECKE = int(os.environ.get("KIT_PROBE_DECKE", "900"))
+
+# Wie lange jedes Warten wirklich brauchte. Geht ins RESULT, weil run.sh nur diese Zeile liest —
+# eine Dauer auf stdout waere gemessen und trotzdem unlesbar.
+dauern = {}
 trusted = []
-def wait_for(pred, sec, label):
-    end = time.time() + sec
-    while time.time() < end and not done[0]:
+def wait_for(pred, still, label):
+    t_start = time.time(); letzte_regung = t_start; vorher = flat()
+    while not done[0]:
+        if time.time() - letzte_regung > still:
+            print(f"  STILLSTAND {still}s: {label} (insgesamt {int(time.time()-t_start)}s)"); return False
+        if time.time() - t_start > DECKE:
+            print(f"  DECKE {DECKE}s erreicht: {label}"); return False
         pump(2)
+        jetzt = flat()
+        if jetzt != vorher:
+            vorher = jetzt; letzte_regung = time.time()
         f = flat()
         if "yes,itrustthisfolder" in f and "entertoconfirm" in f and len(trusted) < 3:
             trusted.append(time.time()); print(f"  trust dialog → Yes (#{len(trusted)})"); send("\x1b[B"); pump(0.8); send("\r"); buf.clear(); continue
-        if pred(): return True
-    print(f"  TIMED OUT/ENDED: {label}"); return False
+        if pred():
+            d = int(time.time() - t_start); dauern[label] = d
+            print(f"  OK nach {d}s: {label}"); return True
+    print(f"  LOOP BEENDET waehrend: {label}"); return False
 t0 = time.time(); T = lambda: int(time.time() - t0)
 print(f"role-loop bash PID {pid}")
 res = {}
-res["start1"] = wait_for(lambda: row()[0] is not None, 180, "first start registered")
+res["start1"] = wait_for(lambda: row()[0] is not None, STILL, "first start registered")
 sid1, pid1 = row(); res.update(sid1=sid1, pid1=pid1, reg1=reg(pid1))
 print(f"[{T()}s] start 1: roster sid={sid1} pid={pid1} · registry={res['reg1']} · claude children={claude_pids()}")
 pump(15)
 send("Write a short handover now with bin/brain.sh handover \"restart test\" (body: no ticket, a test of the restart) and then run bin/restart-self.sh stop \"restart test\". Nothing else."); pump(1); send("\r")
-res["old_ended"] = wait_for(lambda: str(pid1) and not os.path.exists(f"/proc/{pid1}") and os.system(f"kill -0 {pid1} 2>/dev/null") != 0, 240, "the old claude process ended")
+res["old_ended"] = wait_for(lambda: str(pid1) and not os.path.exists(f"/proc/{pid1}") and os.system(f"kill -0 {pid1} 2>/dev/null") != 0, STILL, "the old claude process ended")
 print(f"[{T()}s] old process {pid1} ended: {res['old_ended']}")
-res["registered_again"] = wait_for(lambda: row()[1] not in (None, pid1), 240, "a new process registered without input")
+res["registered_again"] = wait_for(lambda: row()[1] not in (None, pid1), STILL, "a new process registered without input")
 sid2, pid2 = row(); res.update(sid2=sid2, pid2=pid2, reg2=reg(pid2))
 anchor = os.path.join(K, ".pid-roles", str(pid2))
 res["anchor2"] = open(anchor).read().strip() if os.path.exists(anchor) else None
@@ -91,4 +116,6 @@ else:
     res["loop_ends_on_stop"] = False; os.kill(pid, signal.SIGTERM)
 loglines = open(os.path.join(K, ".role-loop", f"{ROLE}.log")).read().splitlines()
 res["log"] = [l.split(" · ", 1)[1] for l in loglines if " · " in l][-8:]
+res["dauern"] = dauern
+res["still"] = STILL
 print("RESULT", json.dumps(res, ensure_ascii=False))
