@@ -112,6 +112,26 @@ Measured on 2026-09-14 against an interactive session in a fresh kit folder:
 - In `-p` the same wake hook reports `outcome: error` (exit 2, the anchor text on stderr). The session
   runs through normally regardless; there the context hook delivers the anchor as `additionalContext`.
 
+## 4b. Engineering skills that ship with the kit
+
+`.claude/skills/` carries four skills, so a role loads them with no install step: the project
+directory is the kit root, which is where Claude Code looks.
+
+| Skill | What it does |
+|---|---|
+| `ponytail` | forces the laziest solution that works — the builder's default stance |
+| `ponytail-review` | reviews a diff for one thing only: over-engineering, as a delete-list |
+| `ponytail-audit` | the same, repo-wide instead of per diff |
+| `qa-engineer` | adversarial QA: findings with file and line, plus the tests that were missing |
+
+They are stack-agnostic on purpose. `qa-engineer` arrived bound to one private codebase and its
+stacks; that binding is cut, so it now reads the repo's own framework and conventions instead of
+assuming them. Case 43 holds the line: no skill in this template may name a project.
+
+The review chain the kit expects: the builder works under `ponytail`, a FOREIGN engineer reviews
+with `ponytail-review`, QA runs `qa-engineer` adversarially, and only the product-owner merges —
+see `roles/_COMMON.md`. There is no PR-reviewer role; the chain ends at the merge gate.
+
 ## 5. MCP servers
 
 The kit ships MCP servers in two files. Each runs through `caveman-shrink@0.1.0` (MIT), a
