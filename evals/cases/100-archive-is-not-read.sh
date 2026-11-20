@@ -60,6 +60,12 @@ CHECKS = [
     ("pass", "Bash",  {"command": "cat roles/po.md"}),
     # a folder that merely ENDS in _archive is not an archive
     ("pass", "Read",  {"file_path": "/work/proj/build/dex_archive/f.jar"}),
+    # A heredoc BODY is data, not a command. Writing a document or a commit message that QUOTES an
+    # archive path is not reading the archive. Found the hard way: the guard refused its own
+    # author's note, because the prose named a path and a reading word stood further down.
+    ("pass", "Bash",  {"command": "cat > note.md <<'EOF'\nsee archive/old.md, counted with wc\nEOF\n"}),
+    # ... and the body stops at the marker: a real read AFTER it is still refused.
+    ("deny", "Bash",  {"command": "cat > note.md <<'EOF'\nharmless prose\nEOF\ncat archive/old.md\n"}),
 ]
 for want, tool, ti in CHECKS:
     got = ask(tool, ti)

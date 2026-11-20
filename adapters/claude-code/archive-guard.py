@@ -43,6 +43,9 @@ READERS = {
 # Reading through git, which never touches the working tree.
 GIT_READERS = {"show", "cat-file", "grep", "log", "blame", "diff"}
 
+# A heredoc body: from <<MARK (also <<'MARK', <<-"MARK") to the line that is the marker alone.
+HEREDOC_RE = re.compile(r"<<-?\s*['\"]?(\w+)['\"]?\n.*?\n\1\s*(\n|$)", re.S)
+
 # One pipeline segment. A reading word behind a pipe reads the previous output, not the archive.
 SEGMENT_RE = re.compile(r"\|\||&&|[|;\n]")
 
@@ -112,6 +115,11 @@ if tool == "Bash":
     cmd = ti.get("command", "")
     if not isinstance(cmd, str):
         passthrough()
+    # A heredoc BODY is data, not a command. Writing a document or a commit message that quotes an
+    # archive path is not reading the archive. Measured 2026-11-20: the guard refused its own
+    # author's `cat > note.md <<EOF ... EOF`, because the prose named an archive path and a reading
+    # word stood a few lines further down. Strip the bodies before scanning.
+    cmd = HEREDOC_RE.sub("\n", cmd)
     if not any(in_archive(t.strip("'\""), cwd) for t in TOKEN_RE.findall(cmd)):
         passthrough()
     # Per pipeline segment, not per command: in "find archive -type f | wc -l" the reading word sits
