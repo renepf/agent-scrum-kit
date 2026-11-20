@@ -21,6 +21,19 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Read|Grep|Glob|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env python3 \"$CLAUDE_PROJECT_DIR\"/adapters/claude-code/archive-guard.py",
+            "timeout": 5,
+            "statusMessage": "archive guard: the archive is not read"
+          }
+        ]
+      }
     ]
   },
   "env": {
