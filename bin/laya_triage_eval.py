@@ -1,11 +1,14 @@
 """Base vs fine-tuned Laya on triage heldout rows: kind, side, feature, each with the row's own question block.
 
   python laya_triage_eval.py <heldout.jsonl> <ft_dir> [out.json]
-Per axis: accuracy, per-class precision/recall/F1, macro-F1, always-majority baseline, confusion matrix; parity separately; median ms per predict.
+Per axis: accuracy, per-class precision/recall/F1, macro-F1 (gold classes, plus all-classes), always-majority baseline, confusion matrix; parity separately; median ms per predict.
 """
 import collections, json, statistics, sys, time
 import laya
 
+NOTE = ("side and feature labels are produced by keyword rules on the same text (mapping.json): high scores mean rule imitation, not triage skill\n"
+        "kind label comes from source type (issue vs requirement file), not from the row text")
+print(NOTE)
 AX = ("kind", "side", "feature")
 rows = [json.loads(l) for l in open(sys.argv[1], encoding="utf-8")]
 
@@ -31,24 +34,27 @@ def report(name, pred, ms):
         acc = sum(g == q for g, q in zip(gold, p)) / len(gold)
         print("\n%s: accuracy %.3f, always-%s baseline %.3f" % (ax, acc, maj, mn / len(gold)))
         print("  %-12s %5s %5s %5s %5s" % ("class", "prec", "rec", "f1", "n"))
-        f1s, per = [], {}
+        f1s, per, gf1 = [], {}, []
         for c in cl:
             tp = sum(g == c and q == c for g, q in zip(gold, p))
             pp, gg = p.count(c), gold.count(c)
             pr, rc = tp / pp if pp else 0.0, tp / gg if gg else 0.0
             f = 2 * pr * rc / (pr + rc) if pr + rc else 0.0
-            f1s.append(f); per[c] = [pr, rc, f, gg]
+            f1s.append(f); gf1 += [f] * (gg > 0); per[c] = [pr, rc, f, gg]
             print("  %-12s %5.2f %5.2f %5.2f %5d" % (c, pr, rc, f, gg))
-        print("  macro-F1 %.3f" % (sum(f1s) / len(f1s)))
+        mg, ma = sum(gf1) / len(gf1), sum(f1s) / len(f1s)
+        print("  macro-F1 (gold classes only) %.3f, all classes %.3f" % (mg, ma))
         print("  confusion (rows gold, cols predicted: %s)" % " ".join(cl))
         for g in cl:
             print("  %-12s %s" % (g, " ".join("%5d" % sum(a == g and b == c for a, b in zip(gold, p)) for c in cl)))
-        out[ax] = {"accuracy": acc, "baseline": mn / len(gold), "macro_f1": sum(f1s) / len(f1s), "per_class": per}
+        out[ax] = {"accuracy": acc, "baseline": mn / len(gold), "macro_f1": mg, "macro_f1_all_classes": ma, "per_class": per}
     idx = [i for i, r in enumerate(rows) if r["expected"]["feature"] == "parity"]
     hit = sum(pred[i]["feature"] == "parity" for i in idx)
-    fp = sum(x["feature"] == "parity" for i, x in enumerate(pred) if i not in set(idx))
+    si = set(idx)
+    fp = sum(x["feature"] == "parity" for i, x in enumerate(pred) if i not in si)
     print("\nparity (feature): %d heldout rows, %d predicted parity correctly, %d false parity on other rows. Too few rows for a conclusion." % (len(idx), hit, fp))
     out["parity"] = {"n": len(idx), "hit": hit, "false_pos": fp}
+    out["rows"] = [{"i": i, "gold": r["expected"], "pred": x} for i, (r, x) in enumerate(zip(rows, pred))]
     return out
 
 

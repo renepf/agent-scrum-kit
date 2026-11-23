@@ -1,7 +1,8 @@
 """Fine-tune the Laya multilingual checkpoint on rows from wiki_laya_data.py. Run with the Python that has `laya` installed.
 
   python laya_train.py <train.jsonl> <heldout.jsonl> <out_dir>
-MEASURED 2026-11-06: 1 692 rows, 4 epochs, MPS, 772 s. Held-out accuracy 0.525 -> 0.891
+MEASURED triage run: 4345 rows, 12635 train items, micro_batch 4 x grad_accum 4, 4 epochs, MPS, 8504 s.
+Held-out item accuracy 0.4185 -> 0.9876 (/tmp/laya_triage_train2.log, triage-ft/train_report.json)
 (the run itself says the held-out set overlaps the training data; the independent test is laya_eval.py on the golden questions).
 """
 import os, sys, time
