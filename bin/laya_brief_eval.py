@@ -5,7 +5,7 @@
 Run with the Python that has `laya` installed (it starts bin/wiki_route.py servers with the same interpreter, one at a time).
 questions.json: list of {id, role, question, ticket, expect_topic, expect_file, expect_lines (optional [a,b])}.
 Per system: topic hit (Top-1 = topic line of the brief; lexical has none), file hit (expect_file is in the brief),
-line hit (a cited range of that file overlaps expect_lines; only rows that give expect_lines). File match is by base name.
+line hit (a cited range of that file overlaps expect_lines; only rows that give expect_lines). File match is by relative path (folder + file).
 """
 import argparse, collections, json, os, re, socket, subprocess, sys, time
 
@@ -27,11 +27,12 @@ def brief(q, url=None):
 
 def score(c, out):
     m = re.search(r"^topic: (\w+)", out, re.M)
-    b = os.path.basename(c["expect_file"])
+    b = c["expect_file"]
+    d, fn = b.split("/")[-2:]  # concept names carry the last folder and the file: <tag>-<folder>__<file>.md
     rels = [os.path.basename(l[2:].split(" [")[0]) for l in out.splitlines() if l.startswith("- ")]
-    cites = [(os.path.basename(p), int(x), int(y)) for p, x, y in CITE.findall(out)]
+    cites = [(p, int(x), int(y)) for p, x, y in CITE.findall(out)]
     r = {"topic": m.group(1) if m else None, "topic_hit": (m.group(1) == c["expect_topic"]) if m else None,
-         "file_hit": any(x.endswith("__" + b + ".md") or x == b + ".md" for x in rels) or any(f == b for f, _, _ in cites), "line_hit": None}
+         "file_hit": any(x.endswith("-" + d + "__" + fn + ".md") or x == d + "__" + fn + ".md" for x in rels) or any(f == b for f, _, _ in cites), "line_hit": None}
     if c.get("expect_lines"):
         a, z = c["expect_lines"]
         r["line_hit"] = any(f == b and x <= z and y >= a for f, x, y in cites)

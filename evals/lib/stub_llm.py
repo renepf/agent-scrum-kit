@@ -7,7 +7,8 @@ class H(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         req = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         if "q" in req:  # Laya route stub
-            body = json.dumps({"kind": "code", "kind_p": 0.9, "side": "android", "side_p": 0.8, "feature": "auth", "feature_p": 0.9}).encode()
+            f = "other" if "OTHERTOPIC" in req["q"] else "ghost" if "GHOSTTOPIC" in req["q"] else "auth"
+            body = json.dumps({"kind": "code", "kind_p": 0.9, "side": "none" if f != "auth" else "android", "side_p": 0.8, "feature": f, "feature_p": 0.9}).encode()
             self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers(); self.wfile.write(body); return
         sysm, user = req["messages"][0]["content"], req["messages"][1]["content"]
         if "route questions" in sysm:

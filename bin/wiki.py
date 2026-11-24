@@ -528,7 +528,10 @@ def cmd_brief(a):
         cmd_receipt([sid])
     top = int(os.environ.get("WIKI_BRIEF_TOP", "8"))
     scored = []
-    for rel, fm, body in concepts(ROOT):
+    cs = concepts(ROOT)
+    if feature not in {rel.split("/")[0] for rel, _, _ in cs}:
+        feature = None  # `other` or a topic without a folder: no filter, lexical over the whole wiki
+    for rel, fm, body in cs:
         if fm.get("type") == "feature" or not src_of(fm):
             continue
         if feature and rel.split("/")[0] != feature:
