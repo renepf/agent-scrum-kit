@@ -1,32 +1,30 @@
 #!/usr/bin/env python3
-"""wiki_route.py - Laya decision gate in front of `wiki.sh ask`. Runs with the Python that has `laya` installed.
+"""wiki_route.py - Laya decision gate in front of `wiki.sh ask` / `brief`. Runs with the Python that has `laya` installed.
 
-  python wiki_route.py --serve [PORT]     tiny HTTP server, POST {"q": "..."} -> {"kind", "side", "kind_p", "side_p"}
+  python wiki_route.py --serve [PORT]     tiny HTTP server, POST {"q": "..."} -> {"feature","kind","side", "*_p"}
   python wiki_route.py "<question>"       one-shot, prints the same JSON
+  --model DIR   fine-tuned checkpoint (default ~/models/laya/triage-ft, env WIKI_LAYA_MODEL)
+  --base        serve base Laya (convaiinnovations/laya, subfolder multilingual) instead, for the baseline
+  --questions F questions.py with a dict Q (default env WIKI_ROUTE_QUESTIONS): the single source of the
+                question block, the same one the fine-tune rows carry. Required, no copy lives here.
 
-Laya answers three typed `choice` questions in one forward pass (no text generation):
-  kind  code | requirement | ticket      what kind of source answers the question
-  side  ios | android | none             which platform the question names
-  feature  auth | sales | parity         which product topic the text is about
-Only the argmax and its probability are returned; the caller decides what to do with them.
-Checkpoint: convaiinnovations/laya, subfolder multilingual (German questions). Source: github.com/NandhaKishorM/laya (Apache-2.0).
+Laya answers three typed `choice` questions in one forward pass (no text generation); only argmax and its
+probability are returned. kind code|requirement|ticket, side ios|android|both|none, feature auth|sales|parity|other
+(feature "other" matches no wiki topic: `brief` then prints "no concept"). Source: github.com/NandhaKishorM/laya (Apache-2.0).
 """
-import json, os, sys
+import argparse, importlib.util, json, os
 
-QUESTIONS = {
-    "kind": {"type": "choice", "instructions": "Welche Art von Quelle beantwortet die Frage?", "criteria": {
-        "code": "Die Frage sucht eine Stelle im Quellcode: wo wird etwas gemacht, welche Datei, welche Funktion, welche Zeile",
-        "requirement": "Die Frage sucht eine Anforderung, eine Spezifikation oder eine Regel des Produkts",
-        "ticket": "Die Frage sucht ein Ticket, eine Entscheidung, einen Auftrag oder den Projektstand"}},
-    "side": {"type": "choice", "instructions": "Welche Plattform nennt die Frage ausdruecklich?", "criteria": {
-        "ios": "iOS, Swift, iPhone oder Apple wird genannt",
-        "android": "Android, Kotlin, Compose oder Google wird genannt",
-        "none": "keine Plattform wird genannt"}},
-    "feature": {"type": "choice", "instructions": "Zu welchem Produktthema gehoert der Text?", "criteria": {
-        "auth": "Anmeldung, Registrierung, Konto, E-Mail-Bestaetigung, Passwort, Abmelden",
-        "sales": "Paywall, Abo, Kauf, Preis, Verkaufsscreen, Zahlung",
-        "parity": "Abgleich Android gegen iOS, Parity-Status, Geraeteabnahme"}},
-}
+ap = argparse.ArgumentParser()
+ap.add_argument("--serve", nargs="?", const=8771, type=int, metavar="PORT")
+ap.add_argument("--model", default=os.environ.get("WIKI_LAYA_MODEL", "~/models/laya/triage-ft"))
+ap.add_argument("--base", action="store_true")
+ap.add_argument("--questions", default=os.environ.get("WIKI_ROUTE_QUESTIONS"))
+ap.add_argument("question", nargs="*")
+args = ap.parse_args()
+if not args.questions:
+    ap.error("--questions (or WIKI_ROUTE_QUESTIONS) is required: path to questions.py")
+_spec = importlib.util.spec_from_file_location("questions", os.path.expanduser(args.questions))
+QUESTIONS = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(QUESTIONS); QUESTIONS = QUESTIONS.Q
 _agent = None
 
 
@@ -34,27 +32,25 @@ def route(q):
     global _agent
     if _agent is None:
         import laya
-        m = os.environ.get("WIKI_LAYA_MODEL")  # a fine-tuned checkpoint directory (wiki_laya_data.py + laya.train)
-        _agent = laya.load(m) if m else laya.load("convaiinnovations/laya", subfolder="multilingual")
+        _agent = laya.load("convaiinnovations/laya", subfolder="multilingual") if args.base else laya.load(os.path.expanduser(args.model))
     a = _agent.predict(q, QUESTIONS)["answers"]
-    k, s, f = a["kind"], a["side"], a["feature"]
-    return {"feature": f["choice"], "feature_p": round(f["probabilities"][f["choice"]], 4), "kind": k["choice"], "kind_p": round(k["probabilities"][k["choice"]], 4),
-            "side": s["choice"], "side_p": round(s["probabilities"][s["choice"]], 4)}
+    out = {}
+    for ax in ("feature", "kind", "side"):
+        out[ax] = a[ax]["choice"]; out[ax + "_p"] = round(a[ax]["probabilities"][a[ax]["choice"]], 4)
+    return out
 
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--serve":
-        import http.server
-        port = int(sys.argv[2]) if len(sys.argv) > 2 else 8771
+if args.serve is not None:
+    import http.server
 
-        class H(http.server.BaseHTTPRequestHandler):
-            def log_message(self, *a): pass
-            def do_POST(self):
-                q = json.loads(self.rfile.read(int(self.headers["Content-Length"])))["q"]
-                body = json.dumps(route(q)).encode()
-                self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers(); self.wfile.write(body)
-        route("warmup")
-        print(f"wiki_route serving on 127.0.0.1:{port}", flush=True)
-        http.server.HTTPServer(("127.0.0.1", port), H).serve_forever()
-    else:
-        print(json.dumps(route(" ".join(sys.argv[1:]))))
+    class H(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *a): pass
+        def do_POST(self):
+            q = json.loads(self.rfile.read(int(self.headers["Content-Length"])))["q"]
+            body = json.dumps(route(q)).encode()
+            self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers(); self.wfile.write(body)
+    route("warmup")
+    print(f"wiki_route serving on 127.0.0.1:{args.serve}", flush=True)
+    http.server.HTTPServer(("127.0.0.1", args.serve), H).serve_forever()
+else:
+    print(json.dumps(route(" ".join(args.question))))
