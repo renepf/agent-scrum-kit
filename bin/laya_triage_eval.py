@@ -6,7 +6,7 @@ Per axis: accuracy, per-class precision/recall/F1, macro-F1 (gold classes, plus 
 import collections, json, statistics, sys, time
 import laya
 
-NOTE = ("side and feature labels are produced by keyword rules on the same text (mapping.json): high scores mean rule imitation, not triage skill\n"
+NOTE = ("side and feature labels are produced by keyword rules on the same text: high scores mean rule imitation, not triage skill\n"
         "kind label comes from source type (issue vs requirement file), not from the row text")
 print(NOTE)
 AX = ("kind", "side", "feature")
@@ -40,7 +40,8 @@ def report(name, pred, ms):
             pp, gg = p.count(c), gold.count(c)
             pr, rc = tp / pp if pp else 0.0, tp / gg if gg else 0.0
             f = 2 * pr * rc / (pr + rc) if pr + rc else 0.0
-            f1s.append(f); gf1 += [f] * (gg > 0); per[c] = [pr, rc, f, gg]
+            f1s.append(f); per[c] = [pr, rc, f, gg]
+            if gg: gf1.append(f)
             print("  %-12s %5.2f %5.2f %5.2f %5d" % (c, pr, rc, f, gg))
         mg, ma = sum(gf1) / len(gf1), sum(f1s) / len(f1s)
         print("  macro-F1 (gold classes only) %.3f, all classes %.3f" % (mg, ma))
