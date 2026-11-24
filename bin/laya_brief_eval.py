@@ -12,7 +12,7 @@ import argparse, collections, json, os, re, socket, subprocess, sys, time
 HERE = os.path.dirname(os.path.abspath(__file__))
 ap = argparse.ArgumentParser()
 ap.add_argument("cases"); ap.add_argument("--questions", required=True)
-ap.add_argument("--wiki", default="wiki"); ap.add_argument("--ft"); ap.add_argument("--out", default="brief_eval.json")
+ap.add_argument("--wiki", default="wiki"); ap.add_argument("--ft", default=os.environ.get("WIKI_LAYA_MODEL")); ap.add_argument("--out", default="brief_eval.json")
 args = ap.parse_args()
 cases = json.load(open(args.cases, encoding="utf-8"))
 
@@ -20,7 +20,9 @@ cases = json.load(open(args.cases, encoding="utf-8"))
 def bad(msg): print("laya_brief_eval: " + msg, file=sys.stderr); sys.exit(2)
 
 
+if not cases: bad("no cases")
 if not os.path.isdir(args.wiki): bad("--wiki is not a directory: " + args.wiki)
+if not any(f.endswith(".md") and f not in ("index.md", "log.md") for _, _, fs in os.walk(args.wiki) for f in fs): bad("--wiki has no concept files: " + args.wiki)
 for i, c in enumerate(cases):
     cid = c.get("id", "#%d" % i) if isinstance(c, dict) else "#%d" % i
     miss = [k for k in ("id", "role", "question", "expect_topic", "expect_file") if not isinstance(c, dict) or k not in c]
@@ -43,10 +45,10 @@ def score(c, out):
     m = re.search(r"^topic: (\w+)", out, re.M)
     b = c["expect_file"]
     d, fn = b.split("/")[-2:]  # concept names carry the last folder and the file: <tag>-<folder>__<file>.md
-    rels = [os.path.basename(l[2:].split(" [")[0])[:-3].partition("__") for l in out.splitlines() if l.startswith("- ")]
+    rels = [os.path.basename(l[2:].split(" [")[0]).partition("__") for l in out.splitlines() if l.startswith("- ")]
     cites = [(p, int(x), int(y)) for p, x, y in CITE.findall(out)]
     r = {"topic": m.group(1) if m else None, "topic_hit": (m.group(1) == c["expect_topic"]) if m else None,
-         "file_hit": any(t.split("-", 1)[-1] == d and f == fn for t, _, f in rels) or any(f == b for f, _, _ in cites), "line_hit": None}
+         "file_hit": any(t.split("-", 1)[-1] == d and f in (fn, fn + ".md") for t, _, f in rels) or any(f == b for f, _, _ in cites), "line_hit": None}
     if c.get("expect_lines"):
         a, z = c["expect_lines"]
         r["line_hit"] = any(f == b and x <= z and y >= a for f, x, y in cites)
@@ -57,7 +59,7 @@ def serve(extra):
     s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
     p = subprocess.Popen([sys.executable, os.path.join(HERE, "wiki_route.py"), "--questions", args.questions, "--serve", str(port)] + extra,
                          stdout=subprocess.DEVNULL)
-    for _ in range(30):
+    for _ in range(150):
         try: socket.create_connection(("127.0.0.1", port), 1).close(); return p, f"http://127.0.0.1:{port}"
         except OSError:
             if p.poll() is not None: break
@@ -66,7 +68,9 @@ def serve(extra):
 
 
 res = {}
-for name, extra in (("triage-ft", ["--model", args.ft] if args.ft else []), ("base-laya", ["--base"]), ("lexical", None)):
+runs = ([("triage-ft", ["--model", os.path.expanduser(args.ft)])] if args.ft else []) + [("base-laya", ["--base"]), ("lexical", None)]
+if not args.ft: print("no fine-tuned model given, triage-ft row skipped")
+for name, extra in runs:
     p, url = serve(extra) if extra is not None else (None, None)
     try: res[name] = [dict(id=c["id"], role=c["role"], **score(c, brief(c["question"], url))) for c in cases]
     finally:

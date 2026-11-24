@@ -38,7 +38,7 @@ class H(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             q = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)))["q"]
-            if not isinstance(q, str): raise TypeError
+            if not isinstance(q, str) or not q.strip(): raise TypeError
         except (ValueError, KeyError, TypeError):
             return self.reply(400, {"error": 'body must be JSON {"q": "<question>"}'})
         self.reply(200, route(q))
